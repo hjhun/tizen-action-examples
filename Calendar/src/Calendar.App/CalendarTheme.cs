@@ -18,6 +18,7 @@ public sealed record CalendarTheme(
     float AgendaPaneRatio,
     int SafeInsetHorizontal,
     int SafeInsetVertical,
+    int SafeInsetBottom,
     int FocusOutlineWidth,
     float FocusScale)
 {
@@ -45,6 +46,7 @@ public sealed record CalendarTheme(
         AgendaPaneRatio: 0.32f,
         SafeInsetHorizontal: 64,
         SafeInsetVertical: 44,
+        SafeInsetBottom: 100,
         FocusOutlineWidth: 4,
         FocusScale: 1.03f);
 }

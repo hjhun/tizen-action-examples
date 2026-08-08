@@ -17,6 +17,8 @@
     <Compile Include="../../src/Calendar.App/CalendarPeriodRenderPolicy.cs" Link="CalendarPeriodRenderPolicy.cs" />
     <Compile Include="../../src/Calendar.App/CalendarSearchState.cs" Link="CalendarSearchState.cs" />
     <Compile Include="../../src/Calendar.App/CalendarTheme.cs" Link="CalendarTheme.cs" />
+    <Compile Include="../../src/Calendar.App/CalendarLayoutMetrics.cs" Link="CalendarLayoutMetrics.cs" />
+    <Compile Include="../../src/Calendar.App/ProportionalViewport.cs" Link="ProportionalViewport.cs" />
     <Compile Include="../../src/Calendar.App/CalendarViewAnnotationRegistry.cs" Link="CalendarViewAnnotationRegistry.cs" />
   </ItemGroup>
 </Project>

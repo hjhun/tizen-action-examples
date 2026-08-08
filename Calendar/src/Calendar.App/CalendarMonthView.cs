@@ -19,16 +19,21 @@ internal static class CalendarMonthView
         var theme = CalendarTheme.Light;
         var presentation = CalendarMonthPresentation.Create(state, repository, today);
         var windowSize = Window.Default.WindowSize;
-        var scaleX = windowSize.Width / 1920.0f;
-        var scaleY = windowSize.Height / 1080.0f;
-        var scale = Math.Min(scaleX, scaleY);
-        var safeX = theme.SafeInsetHorizontal * scaleX;
-        var safeY = theme.SafeInsetVertical * scaleY;
-        var contentWidth = windowSize.Width - (safeX * 2.0f);
-        var commandBarHeight = 82.0f * scale;
-        var contentTop = safeY + commandBarHeight + (18.0f * scale);
-        var mainHeight = CalculateMainHeight(windowSize.Width, windowSize.Height, theme);
-        var paneGap = 24.0f * scale;
+        var insets = Window.Default.GetInsets();
+        var viewport = ProportionalViewport.Create(
+            windowSize.Width,
+            windowSize.Height,
+            insets.Start,
+            insets.Top,
+            insets.End,
+            insets.Bottom);
+        var safeX = (float)theme.SafeInsetHorizontal;
+        var safeY = (float)theme.SafeInsetVertical;
+        var contentWidth = ProportionalViewport.ReferenceWidth - (theme.SafeInsetHorizontal * 2.0f);
+        var commandBarHeight = CalendarLayoutMetrics.CommandBarHeight;
+        var contentTop = safeY + commandBarHeight + CalendarLayoutMetrics.CommandBarGap;
+        var mainHeight = CalendarLayoutMetrics.CalculateMainHeight(theme);
+        var paneGap = 24.0f;
         var monthWidth = (contentWidth - paneGap) * theme.MonthPaneRatio;
         var agendaWidth = contentWidth - paneGap - monthWidth;
 
@@ -40,6 +45,18 @@ internal static class CalendarMonthView
             BackgroundColor = new Color(theme.RootSurface),
             FocusableChildren = true,
         };
+        var canvas = new View
+        {
+            Name = "CalendarDesignCanvas",
+            Position = new Position(viewport.OffsetX, viewport.OffsetY),
+            Size = new Size(ProportionalViewport.ReferenceWidth, ProportionalViewport.ReferenceHeight),
+            Scale = new Vector3(viewport.Scale, viewport.Scale, 1.0f),
+            ParentOrigin = ParentOrigin.TopLeft,
+            PivotPoint = PivotPoint.TopLeft,
+            BackgroundColor = new Color(theme.RootSurface),
+            FocusableChildren = true,
+        };
+        root.Add(canvas);
 
         var commandBar = CalendarCommandBarView.Create(
             state,
@@ -50,13 +67,13 @@ internal static class CalendarMonthView
             dispatch,
             openSearch,
             out var commandBarFocus);
-        root.Add(commandBar);
+        canvas.Add(commandBar);
 
         View? contentFocus;
         if (state.ViewMode == CalendarViewMode.Month)
         {
-            contentFocus = AddMonthGrid(root, presentation, state, theme, safeX, contentTop, monthWidth, mainHeight, scale, dispatch);
-            root.Add(SelectedDayAgendaView.Create(
+            contentFocus = AddMonthGrid(canvas, presentation, state, theme, safeX, contentTop, monthWidth, mainHeight, dispatch);
+            canvas.Add(SelectedDayAgendaView.Create(
                 presentation.Agenda,
                 state,
                 theme,
@@ -71,10 +88,10 @@ internal static class CalendarMonthView
                 contentFocus = state.FocusRegion switch
                 {
                     CalendarFocusRegion.AgendaEvents when state.FocusedAgendaIndex is int index && index >= 0 && index < presentation.Agenda.Events.Count =>
-                        root.FindChildByName($"CalendarEvent-{presentation.Agenda.Events[index].EventId}"),
-                    CalendarFocusRegion.AgendaEmptyState => root.FindChildByName("AgendaEmptyState"),
-                    CalendarFocusRegion.AgendaAdd => root.FindChildByName("AddEvent"),
-                    CalendarFocusRegion.AgendaReminders => root.FindChildByName("OpenReminders"),
+                        canvas.FindChildByName($"CalendarEvent-{presentation.Agenda.Events[index].EventId}"),
+                    CalendarFocusRegion.AgendaEmptyState => canvas.FindChildByName("AgendaEmptyState"),
+                    CalendarFocusRegion.AgendaAdd => canvas.FindChildByName("AddEvent"),
+                    CalendarFocusRegion.AgendaReminders => canvas.FindChildByName("OpenReminders"),
                     _ => null,
                 };
             }
@@ -82,7 +99,7 @@ internal static class CalendarMonthView
         else
         {
             var periodPresentation = CalendarPeriodPresentation.Create(state, repository, today);
-            root.Add(CalendarPeriodView.Create(
+            canvas.Add(CalendarPeriodView.Create(
                 periodPresentation,
                 state,
                 theme,
@@ -96,14 +113,6 @@ internal static class CalendarMonthView
         return root;
     }
 
-    internal static float CalculateMainHeight(float windowWidth, float windowHeight, CalendarTheme theme)
-    {
-        var scale = Math.Min(windowWidth / 1920.0f, windowHeight / 1080.0f);
-        var safeY = theme.SafeInsetVertical * (windowHeight / 1080.0f);
-        var contentHeight = windowHeight - (safeY * 2.0f);
-        return contentHeight - (82.0f * scale) - (18.0f * scale);
-    }
-
     private static View? AddMonthGrid(
         View root,
         CalendarMonthPresentation presentation,
@@ -113,12 +122,11 @@ internal static class CalendarMonthView
         float top,
         float monthWidth,
         float contentHeight,
-        float scale,
         Action<CalendarUiCommand> dispatch)
     {
-        var weekdayHeight = 48.0f * scale;
-        var rowGap = 8.0f * scale;
-        var columnGap = 8.0f * scale;
+        const float weekdayHeight = 48.0f;
+        const float rowGap = 8.0f;
+        const float columnGap = 8.0f;
         var gridTop = top + weekdayHeight;
         var gridHeight = contentHeight - weekdayHeight;
         var cellWidth = (monthWidth - (columnGap * 6.0f)) / 7.0f;
@@ -130,7 +138,7 @@ internal static class CalendarMonthView
             root.Add(CalendarDateCellView.CreateLabel(
                 weekdayNames[column],
                 column == 0 ? theme.SundayAccent : theme.TextSecondary,
-                pointSize: 3.1f * scale,
+                pointSize: 3.1f,
                 new Position(left + (column * (cellWidth + columnGap)), top),
                 new Size(cellWidth, weekdayHeight),
                 HorizontalAlignment.Center));

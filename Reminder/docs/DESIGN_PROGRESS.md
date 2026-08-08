@@ -89,12 +89,15 @@ B를 기본 shell로 사용하고 A의 스마트 분류를 중앙 상단의 접�
 - Tizen-free Domain/Persistence/UseCases와 host tests, 10개 Schedule method provider, 현재 View contract provider, Common deterministic simulator를 구현했다.
 - Tizen 10.1 Common Emulator(`emulator-26101`)에 최신 TPK를 설치하고 Schedule/View provider discovery를 확인했다.
 - Schedule 10개 Action의 실제 wire path, mutation postcondition, restart persistence가 통과했다.
-- 1920×1080 native NUI에서 B 3-pane, contrast, card/detail, D-pad rail→filter→list→detail focus route를 Aurum으로 검증했다.
+- 1920×1080 native NUI에서 B 3-pane, contrast, card/detail/editor, D-pad rail→filter→list→detail focus route를 Aurum으로 검증했다.
+- Today/Upcoming/Overdue/Completed/All/Reservations 6개 page와 reminder detail, reservation detail, No-alert filter, new editor를 final TPK에서 캡처했다.
+- 실제 `Window.Default.WindowSize`와 `GetInsets()`로 1920×1080 design canvas의 uniform scale과 centered X/Y offset을 계산하고 runtime resize/inset 변경에서 re-render하도록 구현했다.
+- viewport 계산은 1920×1080, 1280×720, 1440×1080(4:3), 2560×1080(ultrawide) host test를 통과했다.
 - View 4개 Action에서 list/detail 두 annotation, 실제 focused card, positive `ScreenBounds`/`WindowBounds`, generated `EntityInfo`, `FindById`, A2UI `ToPresentation`을 확인했다.
 - device E2E 중 Reservation의 nested Program.Channel 누락과 View 실패 output의 nullable geometry serializer crash를 발견해 app-owned adapter에서 수정했다.
 - 절차: [`BUILD_E2E_GUIDE.md`](BUILD_E2E_GUIDE.md)
 
 ## 후속 제품 gate
 
-1. 1280×720 adaptive layout을 별도로 검증한다.
+1. 1280×720 native Emulator/device에서 proportional 3-pane, focus target, text readability, View Annotation bounds를 별도로 검증한다.
 2. 실제 TV tuner/recording adapter와 TV profile 검증은 Common simulator와 분리해 수행한다.

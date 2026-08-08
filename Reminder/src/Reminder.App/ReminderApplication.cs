@@ -25,6 +25,7 @@ internal sealed class ReminderApplication : NUIApplication
     private string _timeFilter = "All";
     private SynchronizationContext? _uiContext;
     private IReadOnlyList<ReminderViewSnapshot> _published = [];
+    private ProportionalViewport _viewport;
 
     protected override void OnCreate()
     {
@@ -38,6 +39,8 @@ internal sealed class ReminderApplication : NUIApplication
         ReminderScheduleActionProviderHost.Start(_service);
         ReminderViewActionProviderHost.Start();
         Window.Default.KeyEvent += OnKeyEvent;
+        Window.Default.Resized += OnWindowResized;
+        Window.Default.InsetsChanged += OnWindowResized;
         FocusManager.Instance.FocusChanged += OnFocusChanged;
         Render();
     }
@@ -58,10 +61,17 @@ internal sealed class ReminderApplication : NUIApplication
     protected override void OnTerminate()
     {
         if (_service is not null) _service.Changed -= OnServiceChanged;
+        Window.Default.InsetsChanged -= OnWindowResized;
+        Window.Default.Resized -= OnWindowResized;
         Window.Default.KeyEvent -= OnKeyEvent;
         FocusManager.Instance.FocusChanged -= OnFocusChanged;
         ReminderViewActionProviderHost.Clear();
         base.OnTerminate();
+    }
+
+    private void OnWindowResized(object? sender, EventArgs args)
+    {
+        Render();
     }
 
     private void OnServiceChanged()
@@ -95,7 +105,11 @@ internal sealed class ReminderApplication : NUIApplication
                 var index = Array.IndexOf(Navigation, name["ReminderNav-".Length..]);
                 FocusByName($"ReminderNav-{Navigation[Math.Min(Navigation.Length - 1, Math.Max(0, index) + 1)]}");
             }
-            else if (name == "ReminderSearchApply") FocusByName($"ReminderFilter-{_timeFilter.Replace(" ", string.Empty)}");
+            else if (name == "ReminderSearchApply")
+            {
+                if (_section == "Reservations") FocusFirstItem();
+                else FocusByName($"ReminderFilter-{_timeFilter.Replace(" ", string.Empty)}");
+            }
             else if (name.StartsWith("ReminderFilter-", StringComparison.Ordinal)) FocusFirstItem();
             else if (name.StartsWith("ReminderEntity-", StringComparison.Ordinal)) FocusAdjacentItem(name["ReminderEntity-".Length..], 1);
             else FocusByName($"ReminderNav-{_section}");
@@ -170,7 +184,15 @@ internal sealed class ReminderApplication : NUIApplication
         }
 
         var size = Window.Default.WindowSize;
-        var scale = Math.Min(size.Width / 1920f, size.Height / 1080f);
+        var insets = Window.Default.GetInsets();
+        _viewport = ProportionalViewport.Create(
+            size.Width,
+            size.Height,
+            insets.Start,
+            insets.Top,
+            insets.End,
+            insets.Bottom);
+        var scale = _viewport.Scale;
         _root = new View
         {
             Name = "ReminderWorkspace",
@@ -194,9 +216,9 @@ internal sealed class ReminderApplication : NUIApplication
 
     private void AddHeader(View root, float scale, float width)
     {
-        root.Add(Label("Reminder", "#201D29", 9.5f * scale, 58, 28, 550, 84, scale));
-        root.Add(Label("Focused workspace · Common Emulator simulator", "#746F7E", 3.3f * scale, 62, 104, 720, 42, scale));
-        var add = Button(_section == "Reservations" ? "+ Add simulated reservation" : "+ Add reminder", 1550, 50, 310, 68, scale, OpenNew);
+        root.Add(CanvasLabel("Reminder", "#201D29", 9.5f * scale, 58, 28, 550, 84, scale));
+        root.Add(CanvasLabel("Focused workspace · Common Emulator simulator", "#746F7E", 3.3f * scale, 62, 104, 720, 42, scale));
+        var add = CanvasButton(_section == "Reservations" ? "+ Add simulated reservation" : "+ Add reminder", 1550, 50, 310, 68, scale, OpenNew);
         add.Name = "ReminderAdd";
         add.AccessibilityName = _section == "Reservations" ? "Add simulated reservation" : "Add reminder";
         root.Add(add);
@@ -204,7 +226,7 @@ internal sealed class ReminderApplication : NUIApplication
 
     private void AddNavigation(View root, float scale)
     {
-        var panel = Surface(50, 164, 300, 850, scale, "#ECE9F3", 28);
+        var panel = CanvasSurface(50, 164, 300, 850, scale, "#ECE9F3", 28);
         panel.Name = "ReminderNavigation";
         panel.Add(Label("SMART LISTS", "#777181", 2.8f * scale, 28, 24, 240, 40, scale));
         for (var index = 0; index < Navigation.Length; index++)
@@ -224,7 +246,7 @@ internal sealed class ReminderApplication : NUIApplication
 
     private void AddList(View root, float scale)
     {
-        var panel = Surface(374, 164, 700, 850, scale, "#FFFFFF", 28);
+        var panel = CanvasSurface(374, 164, 700, 850, scale, "#FFFFFF", 28);
         panel.Name = "ReminderListPane";
         var items = GetCurrentItems();
         panel.Add(Label(_section, "#272330", 6.2f * scale, 34, 25, 430, 65, scale));
@@ -277,7 +299,7 @@ internal sealed class ReminderApplication : NUIApplication
 
     private void AddDetail(View root, float scale)
     {
-        var panel = Surface(1098, 164, 772, 850, scale, "#F0EDF5", 28);
+        var panel = CanvasSurface(1098, 164, 772, 850, scale, "#F0EDF5", 28);
         panel.Name = "ReminderDetailPane";
         if (_editing && _section != "Reservations") AddReminderEditor(panel, scale);
         else if (_section == "Reservations") AddReservationDetail(panel, scale);
@@ -461,6 +483,29 @@ internal sealed class ReminderApplication : NUIApplication
         catch { }
     }
 
+    private View CanvasSurface(float x, float y, float w, float h, float scale, string color, float radius)
+    {
+        var surface = Surface(x, y, w, h, scale, color, radius);
+        surface.Position = CanvasPosition(x, y, scale);
+        return surface;
+    }
+
+    private NuiButton CanvasButton(string text, float x, float y, float w, float h, float scale, Action action)
+    {
+        var button = Button(text, x, y, w, h, scale, action);
+        button.Position = CanvasPosition(x, y, scale);
+        return button;
+    }
+
+    private TextLabel CanvasLabel(string text, string color, float pointSize, float x, float y, float w, float h, float scale)
+    {
+        var label = Label(text, color, pointSize, x, y, w, h, scale);
+        label.Position = CanvasPosition(x, y, scale);
+        return label;
+    }
+
+    private Position CanvasPosition(float x, float y, float scale) =>
+        new(_viewport.OffsetX + (x * scale), _viewport.OffsetY + (y * scale));
 
     private static View Surface(float x, float y, float w, float h, float scale, string color, float radius) => new()
     { Position = P(x, y, scale), Size = S(w, h, scale), BackgroundColor = new Color(color), CornerRadius = radius * scale, FocusableChildren = true };

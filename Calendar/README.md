@@ -82,6 +82,24 @@ Prev → Today → Next → Month → Week → Day → Agenda → Search
 
 pointer activation도 D-pad/Enter와 동일한 reducer command를 dispatch합니다. pointer로 연 control도 먼저 actual NUI focus를 받은 뒤 semantic action을 실행하므로 detail을 닫았을 때 같은 control 또는 event로 복원할 수 있습니다.
 
+## 비례 viewport scaling
+
+Calendar는 플랫폼이 제공하는 `Window.Default.WindowSize`와 `Window.Default.GetInsets()`에서 현재 drawable area를 얻습니다. 1920×1080 design canvas 기준으로 available area의 `min(width / 1920, height / 1080)` uniform scale을 계산하고, 남는 영역은 X/Y offset으로 중앙 정렬합니다.
+
+- physical root는 실제 window와 pillarbox/letterbox 배경을 채웁니다.
+- 모든 Calendar page 및 overlay는 top-left 기준의 1920×1080 NUI design canvas 아래에 배치됩니다.
+- 단일 ancestor transform이 pane-local spacing, typography, corner radius, border와 focus geometry를 정확히 한 번씩 비례 변환합니다.
+
+- 1920×1080과 1280×720 같은 16:9 화면은 전체 canvas를 비례 축소/확대합니다.
+- 1440×1080에서는 scale 0.75, Y offset 135로 세로 중앙 정렬합니다.
+- 2560×1080에서는 scale 1.0, X offset 320으로 가로 중앙 정렬합니다.
+- Calendar safe inset과 command bar/month/agenda content bounds는 `Window.Default.GetInsets()`로 얻은 platform-available area 및 centered canvas 내부에서 계산합니다.
+- Calendar는 상단 44px, 하단 100px의 비대칭 design safe inset을 사용해 Common Emulator navigation overlay 아래에 action이 배치되지 않도록 합니다.
+- `Window.Default.Resized` 또는 `InsetsChanged` event가 발생하면 현재 UI state를 유지한 채 새 geometry로 다시 render합니다.
+- View Action은 scaled design coordinate를 추정하지 않고 실제 transformed NUI descendant에서 `ScreenBounds`와 `WindowBounds`를 다시 측정합니다. 최신 installed TPK에서 `GetAnnotatedViews`, `FindById`, `ToPresentation`과 missing-ID error path를 wire E2E로 재검증했습니다.
+
+`Calendar.App.Tests`는 위 네 viewport와 invalid-size rejection을 Tizen-free 계산으로 검증합니다. README의 실제 native screenshot은 1920×1080 Common Emulator에서 캡처한 것이며, 1280×720과 non-16:9 값은 deterministic geometry test 범위입니다.
+
 ## Advanced Search semantics
 
 `CalendarSearchCriteria`와 typed `CalendarSearchQuery`는 다음 계약을 공유합니다.

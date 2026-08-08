@@ -24,6 +24,8 @@ internal sealed class CalendarApplication : NUIApplication
     {
         base.OnCreate();
         Window.Default.KeyEvent += OnKeyEvent;
+        Window.Default.Resized += OnWindowResized;
+        Window.Default.InsetsChanged += OnWindowResized;
         FocusManager.Instance.FocusChanged += OnFocusChanged;
 
         _repository = new CalendarEventRepository([]);
@@ -61,11 +63,18 @@ internal sealed class CalendarApplication : NUIApplication
     protected override void OnTerminate()
     {
         FocusManager.Instance.FocusChanged -= OnFocusChanged;
+        Window.Default.InsetsChanged -= OnWindowResized;
+        Window.Default.Resized -= OnWindowResized;
         Window.Default.KeyEvent -= OnKeyEvent;
         _activeSurfaceRoot = null;
         _renderedEventViews = Array.Empty<CalendarEventViewSnapshot>();
         CalendarViewActionProviderHost.ClearPublishedViews();
         base.OnTerminate();
+    }
+
+    private void OnWindowResized(object? sender, EventArgs eventArgs)
+    {
+        Render();
     }
 
     private void OnFocusChanged(object? sender, FocusManager.FocusChangedEventArgs eventArgs)
@@ -339,11 +348,7 @@ internal sealed class CalendarApplication : NUIApplication
         }
 
         var presentation = CalendarPeriodPresentation.Create(state, _repository, _today);
-        var windowSize = Window.Default.WindowSize;
-        var agendaHeight = CalendarMonthView.CalculateMainHeight(
-            windowSize.Width,
-            windowSize.Height,
-            CalendarTheme.Light);
+        var agendaHeight = CalendarLayoutMetrics.CalculateMainHeight(CalendarTheme.Light);
         var renderedIds = CalendarPeriodRenderPolicy.GetRenderedEventIds(presentation, agendaHeight);
         return _repository.ResolveByIds(renderedIds).Events;
     }
@@ -798,9 +803,11 @@ internal sealed class CalendarApplication : NUIApplication
                 }
 
                 var bounds = eventView.CalculateScreenPositionSize();
-                var width = bounds.Z > 0 ? bounds.Z : eventView.Size.Width;
-                var height = bounds.W > 0 ? bounds.W : eventView.Size.Height;
-                if (width <= 0 || height <= 0)
+                var width = bounds.Z;
+                var height = bounds.W;
+                if (!float.IsFinite(bounds.X) || !float.IsFinite(bounds.Y) ||
+                    !float.IsFinite(width) || !float.IsFinite(height) ||
+                    width <= 0 || height <= 0)
                 {
                     continue;
                 }

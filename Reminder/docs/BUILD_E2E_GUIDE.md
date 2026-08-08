@@ -32,7 +32,7 @@ dotnet build src/Reminder.App/Reminder.App.csproj --configuration Release
 Expected test markers:
 
 ```text
-Reminder.Core.Tests: PASS (24 assertions)
+Reminder.Core.Tests: PASS (30 assertions)
 Reminder.ActionProvider.Tests: PASS (10 MethodIds/implementations/metadata + current View contract)
 ```
 
@@ -106,7 +106,7 @@ Restart the app after mutations and verify persisted IDs/completion/reservations
 
 ## NUI and View E2E
 
-At both 1920×1080 and 1280×720:
+The proportional viewport helper is covered at 1920×1080, 1280×720, 1440×1080, and 2560×1080 by host tests. Native UI evidence currently covers 1920×1080; before a device-profile release, repeat the following native checks at both 1920×1080 and 1280×720:
 
 1. Confirm left Today/Upcoming/Overdue/Completed/All/Reservations navigation, center bounded list, and right detail/editor are visible without horizontal scrolling.
 2. Exercise D-pad/keyboard and pointer for section selection, add, list selection, edit/save, complete/delete, reservation add/cancel, Back, and focus restoration.

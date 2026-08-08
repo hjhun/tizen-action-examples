@@ -215,8 +215,30 @@ Assert(emptyAnnotations.Count == 0, "No Calendar Event must produce no published
 
 var theme = CalendarTheme.Light;
 Assert(theme.MonthPaneRatio == 0.68f && theme.AgendaPaneRatio == 0.32f, "Candidate B must preserve the approved 68:32 split.");
-Assert(theme.SafeInsetHorizontal == 64 && theme.SafeInsetVertical == 44, "The reference canvas must preserve TV-safe insets.");
+Assert(theme.SafeInsetHorizontal == 64 && theme.SafeInsetVertical == 44 && theme.SafeInsetBottom == 100, "The reference canvas must preserve top and platform-overlay-safe bottom insets.");
 Assert(theme.FocusOutlineWidth >= 3 && theme.FocusScale > 1.0f, "Focus must use a non-color outline and scale cue.");
+var fullHdViewport = ProportionalViewport.Create(1920, 1080);
+Assert(fullHdViewport == new ProportionalViewport(1.0f, 0.0f, 0.0f, 1920.0f, 1080.0f), "Full HD must preserve the reference canvas exactly.");
+var hdViewport = ProportionalViewport.Create(1280, 720);
+Assert(Math.Abs(hdViewport.Scale - (2.0f / 3.0f)) < 0.0001f && hdViewport.OffsetX == 0 && hdViewport.OffsetY == 0, "1280x720 must uniformly scale the 16:9 canvas without offsets.");
+var fourByThreeViewport = ProportionalViewport.Create(1440, 1080);
+Assert(fourByThreeViewport.Scale == 0.75f && fourByThreeViewport.OffsetX == 0 && fourByThreeViewport.OffsetY == 135.0f, "4:3 windows must vertically center a proportional canvas.");
+var ultraWideViewport = ProportionalViewport.Create(2560, 1080);
+Assert(ultraWideViewport.Scale == 1.0f && ultraWideViewport.OffsetX == 320.0f && ultraWideViewport.OffsetY == 0, "Ultrawide windows must horizontally center a proportional canvas.");
+var insetViewport = ProportionalViewport.Create(1920, 1080, 20, 30, 40, 50);
+Assert(
+    Math.Abs(insetViewport.Scale - (1000.0f / 1080.0f)) < 0.0001f &&
+    Math.Abs(insetViewport.OffsetX - 61.1111f) < 0.001f &&
+    Math.Abs(insetViewport.OffsetY - 30.0f) < 0.001f,
+    "Platform insets must constrain and center the proportional canvas inside the available area.");
+var designMainHeight = CalendarLayoutMetrics.CalculateMainHeight(theme);
+var expectedDesignMainHeight = ProportionalViewport.ReferenceHeight -
+    (theme.SafeInsetVertical + theme.SafeInsetBottom +
+     CalendarLayoutMetrics.CommandBarHeight + CalendarLayoutMetrics.CommandBarGap);
+Assert(
+    Math.Abs(designMainHeight - expectedDesignMainHeight) < 0.001f,
+    "Main content height must stay in design space so the root transform scales every descendant exactly once.");
+Assert(!ProportionalViewport.TryCreate(0, 1080, out _), "Invalid window dimensions must not create a viewport.");
 Assert(
     !string.IsNullOrWhiteSpace(theme.RootSurface) &&
     !string.IsNullOrWhiteSpace(theme.CellSelectedSurface) &&

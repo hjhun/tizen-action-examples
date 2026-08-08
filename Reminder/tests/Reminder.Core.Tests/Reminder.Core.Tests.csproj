@@ -9,5 +9,6 @@
     <ProjectReference Include="../../src/Reminder.Domain/Reminder.Domain.csproj" />
     <ProjectReference Include="../../src/Reminder.Persistence/Reminder.Persistence.csproj" />
     <ProjectReference Include="../../src/Reminder.UseCases/Reminder.UseCases.csproj" />
+    <Compile Include="../../src/Reminder.App/ProportionalViewport.cs" Link="ProportionalViewport.cs" />
   </ItemGroup>
 </Project>

@@ -28,9 +28,19 @@ internal static class CalendarOverlayView
         Action<string> openSearchResult)
     {
         var windowSize = Window.Default.WindowSize;
+        var insets = Window.Default.GetInsets();
         var theme = CalendarTheme.Light;
-        var scale = Math.Min(windowSize.Width / 1920.0f, windowSize.Height / 1080.0f);
-        var paneWidth = 760.0f * scale;
+        var viewport = ProportionalViewport.Create(
+            windowSize.Width,
+            windowSize.Height,
+            insets.Start,
+            insets.Top,
+            insets.End,
+            insets.Bottom);
+        const float scale = 1.0f;
+        const float paneWidth = 760.0f;
+        var paneTop = (float)theme.SafeInsetVertical;
+        var paneHeight = ProportionalViewport.ReferenceHeight - theme.SafeInsetVertical - theme.SafeInsetBottom;
         var root = new View
         {
             Name = "CalendarOverlay",
@@ -39,15 +49,28 @@ internal static class CalendarOverlayView
             Focusable = true,
             FocusableChildren = true,
         };
+        var canvas = new View
+        {
+            Name = "CalendarOverlayDesignCanvas",
+            Position = new Position(viewport.OffsetX, viewport.OffsetY),
+            Size = new Size(ProportionalViewport.ReferenceWidth, ProportionalViewport.ReferenceHeight),
+            Scale = new Vector3(viewport.Scale, viewport.Scale, 1.0f),
+            ParentOrigin = ParentOrigin.TopLeft,
+            PivotPoint = PivotPoint.TopLeft,
+            FocusableChildren = true,
+        };
+        root.Add(canvas);
         var pane = new View
         {
             Name = "CalendarOverlayPane",
-            Position = new Position(windowSize.Width - paneWidth, 0.0f),
-            Size = new Size(paneWidth, windowSize.Height),
+            Position = new Position(
+                ProportionalViewport.ReferenceWidth - paneWidth - theme.SafeInsetHorizontal,
+                paneTop),
+            Size = new Size(paneWidth, paneHeight),
             BackgroundColor = new Color(theme.SecondarySurface),
             FocusableChildren = true,
         };
-        root.Add(pane);
+        canvas.Add(pane);
 
         var closeButton = CreateButton(
             "Close",

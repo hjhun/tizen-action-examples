@@ -1,3 +1,4 @@
+using Reminder.App;
 using Reminder.Domain;
 using Reminder.Persistence;
 using Reminder.UseCases;
@@ -11,6 +12,22 @@ var now = new DateTimeOffset(2026, 8, 9, 10, 0, 0, TimeSpan.Zero);
 var store = new MemoryScheduleStore();
 var resources = new DeterministicReservationSimulator();
 var service = new ScheduleService(store, resources, () => now);
+
+var fullHdViewport = ProportionalViewport.Create(1920, 1080);
+Assert(fullHdViewport == new ProportionalViewport(1.0f, 0.0f, 0.0f, 1920.0f, 1080.0f), "Full HD must preserve the reference canvas exactly.");
+var hdViewport = ProportionalViewport.Create(1280, 720);
+Assert(Math.Abs(hdViewport.Scale - (2.0f / 3.0f)) < 0.0001f && hdViewport.OffsetX == 0 && hdViewport.OffsetY == 0, "1280x720 must uniformly scale the 16:9 canvas without offsets.");
+var fourByThreeViewport = ProportionalViewport.Create(1440, 1080);
+Assert(fourByThreeViewport.Scale == 0.75f && fourByThreeViewport.OffsetX == 0 && fourByThreeViewport.OffsetY == 135.0f, "4:3 windows must vertically center a proportional canvas.");
+var ultraWideViewport = ProportionalViewport.Create(2560, 1080);
+Assert(ultraWideViewport.Scale == 1.0f && ultraWideViewport.OffsetX == 320.0f && ultraWideViewport.OffsetY == 0, "Ultrawide windows must horizontally center a proportional canvas.");
+var insetViewport = ProportionalViewport.Create(1920, 1080, 20, 30, 40, 50);
+Assert(
+    Math.Abs(insetViewport.Scale - (1000.0f / 1080.0f)) < 0.0001f &&
+    Math.Abs(insetViewport.OffsetX - 61.1111f) < 0.001f &&
+    Math.Abs(insetViewport.OffsetY - 30.0f) < 0.001f,
+    "Platform insets must constrain and center the proportional canvas inside the available area.");
+Assert(!ProportionalViewport.TryCreate(0, 1080, out _), "Invalid window dimensions must not create a viewport.");
 
 var milk = ReminderItem.Create("rem-1", "  Buy milk  ", now.AddHours(2), "  oat  ");
 Assert(service.CreateReminder(milk).Success, "Create must succeed.");
@@ -72,4 +89,4 @@ finally
     foreach (var file in Directory.GetFiles(Path.GetDirectoryName(temp)!, Path.GetFileName(temp) + "*")) File.Delete(file);
 }
 
-Console.WriteLine("Reminder.Core.Tests: PASS (24 assertions)");
+Console.WriteLine("Reminder.Core.Tests: PASS (30 assertions)");
