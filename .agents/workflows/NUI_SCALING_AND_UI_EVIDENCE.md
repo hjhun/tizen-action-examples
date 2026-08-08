@@ -37,7 +37,7 @@ offsetY         = insetTop   + (availableHeight - contentHeight) / 2
 이 정책은 다음을 보장한다.
 
 - 같은 aspect ratio: 전체 canvas uniform scaling
-- 4:3: 위아래 또는 좌우의 남는 영역을 centered letterbox/pillarbox로 처리
+- 4:3: 16:9 canvas를 stretch하지 않고 위아래 남는 영역을 centered top/bottom letterbox로 처리
 - ultrawide: stretch하지 않고 centered pillarbox 처리
 - platform inset: content를 실제 drawable area 안에 유지
 
