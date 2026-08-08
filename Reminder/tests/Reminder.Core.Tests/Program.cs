@@ -28,6 +28,9 @@ Assert(
     Math.Abs(insetViewport.OffsetY - 30.0f) < 0.001f,
     "Platform insets must constrain and center the proportional canvas inside the available area.");
 Assert(!ProportionalViewport.TryCreate(0, 1080, out _), "Invalid window dimensions must not create a viewport.");
+Assert(
+    !ProportionalViewport.TryCreate(100, 100, 60, 0, 40, 0, out _),
+    "Insets that consume the drawable area must skip the transient frame.");
 
 var milk = ReminderItem.Create("rem-1", "  Buy milk  ", now.AddHours(2), "  oat  ");
 Assert(service.CreateReminder(milk).Success, "Create must succeed.");
@@ -89,4 +92,4 @@ finally
     foreach (var file in Directory.GetFiles(Path.GetDirectoryName(temp)!, Path.GetFileName(temp) + "*")) File.Delete(file);
 }
 
-Console.WriteLine("Reminder.Core.Tests: PASS (30 assertions)");
+Console.WriteLine("Reminder.Core.Tests: PASS (31 assertions)");

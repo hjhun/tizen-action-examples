@@ -177,21 +177,28 @@ internal sealed class ReminderApplication : NUIApplication
     private void Render()
     {
         if (_service is null) return;
+
+        var size = Window.Default.WindowSize;
+        var insets = Window.Default.GetInsets();
+        if (!ProportionalViewport.TryCreate(
+                size.Width,
+                size.Height,
+                insets.Start,
+                insets.Top,
+                insets.End,
+                insets.Bottom,
+                out var viewport))
+        {
+            return;
+        }
+
         if (_root is not null)
         {
             Window.Default.GetDefaultLayer().Remove(_root);
             _root.Dispose();
         }
 
-        var size = Window.Default.WindowSize;
-        var insets = Window.Default.GetInsets();
-        _viewport = ProportionalViewport.Create(
-            size.Width,
-            size.Height,
-            insets.Start,
-            insets.Top,
-            insets.End,
-            insets.Bottom);
+        _viewport = viewport;
         var scale = _viewport.Scale;
         _root = new View
         {

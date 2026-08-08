@@ -681,9 +681,30 @@ internal sealed class CalendarApplication : NUIApplication
         }
     }
 
+    private static bool HasRenderableViewport()
+    {
+        try
+        {
+            var size = Window.Default.WindowSize;
+            var insets = Window.Default.GetInsets();
+            return ProportionalViewport.TryCreate(
+                size.Width,
+                size.Height,
+                insets.Start,
+                insets.Top,
+                insets.End,
+                insets.Bottom,
+                out _);
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
     private void Render()
     {
-        if (_interaction is null || _repository is null)
+        if (_interaction is null || _repository is null || !HasRenderableViewport())
         {
             return;
         }

@@ -32,7 +32,7 @@ dotnet build src/Reminder.App/Reminder.App.csproj --configuration Release
 Expected test markers:
 
 ```text
-Reminder.Core.Tests: PASS (30 assertions)
+Reminder.Core.Tests: PASS (31 assertions)
 Reminder.ActionProvider.Tests: PASS (10 MethodIds/implementations/metadata + current View contract)
 ```
 

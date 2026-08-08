@@ -240,6 +240,9 @@ Assert(
     "Main content height must stay in design space so the root transform scales every descendant exactly once.");
 Assert(!ProportionalViewport.TryCreate(0, 1080, out _), "Invalid window dimensions must not create a viewport.");
 Assert(
+    !ProportionalViewport.TryCreate(100, 100, 60, 0, 40, 0, out _),
+    "Insets that consume the drawable area must skip the transient frame.");
+Assert(
     !string.IsNullOrWhiteSpace(theme.RootSurface) &&
     !string.IsNullOrWhiteSpace(theme.CellSelectedSurface) &&
     !string.IsNullOrWhiteSpace(theme.TodayPillSurface) &&

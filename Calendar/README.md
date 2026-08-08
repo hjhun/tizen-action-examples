@@ -98,7 +98,7 @@ Calendar는 플랫폼이 제공하는 `Window.Default.WindowSize`와 `Window.Def
 - `Window.Default.Resized` 또는 `InsetsChanged` event가 발생하면 현재 UI state를 유지한 채 새 geometry로 다시 render합니다.
 - View Action은 scaled design coordinate를 추정하지 않고 실제 transformed NUI descendant에서 `ScreenBounds`와 `WindowBounds`를 다시 측정합니다. 최신 installed TPK에서 `GetAnnotatedViews`, `FindById`, `ToPresentation`과 missing-ID error path를 wire E2E로 재검증했습니다.
 
-`Calendar.App.Tests`는 위 네 viewport와 invalid-size rejection을 Tizen-free 계산으로 검증합니다. README의 실제 native screenshot은 1920×1080 Common Emulator에서 캡처한 것이며, 1280×720과 non-16:9 값은 deterministic geometry test 범위입니다.
+`Calendar.App.Tests`는 위 네 viewport, invalid-size rejection, inset이 drawable area를 소진하는 transient frame skip을 Tizen-free 계산으로 검증합니다. README의 실제 native screenshot은 1920×1080 Common Emulator에서 캡처한 것이며, 1280×720과 non-16:9 값은 deterministic geometry test 범위입니다.
 
 ## Advanced Search semantics
 

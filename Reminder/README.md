@@ -95,7 +95,7 @@ The Aurum accessibility tree on this Emulator returned `root_count: 0`; therefor
 
 ## Verification summary
 
-- `Reminder.Core.Tests: PASS (30 assertions)`, including four viewport shapes, platform insets, and invalid-size rejection
+- `Reminder.Core.Tests: PASS (31 assertions)`, including four viewport shapes, platform insets, invalid-size rejection, and transient inset exhaustion
 - `Reminder.ActionProvider.Tests: PASS`
 - Reminder App Release build: 0 warnings, 0 errors
 - latest TPK archive payload/signatures verified, installed, and launched
