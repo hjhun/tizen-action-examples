@@ -1,0 +1,4 @@
+interface:
+  display_name: "Tizen Aurum UI Automation"
+  short_description: "Control and capture Tizen NUI apps through Aurum gRPC"
+  default_prompt: "Use $tizen-aurum-ui-automation to inspect, control, and capture the connected Tizen NUI app safely."

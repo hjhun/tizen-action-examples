@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+CACHE_DIR="${TIZEN_AURUM_CACHE:-$HOME/.cache/tizen-aurum-ui-automation}"
+PYTHON="$CACHE_DIR/venv/bin/python"
+GENERATED="$CACHE_DIR/generated"
+
+if [[ ! -x "$PYTHON" || ! -f "$GENERATED/aurum_pb2_grpc.py" ]]; then
+  printf '%s\n' "Aurum client cache is missing." >&2
+  printf '%s\n' "Run: python3 $SCRIPT_DIR/prepare_client.py" >&2
+  exit 2
+fi
+
+export PYTHONPATH="$GENERATED${PYTHONPATH:+:$PYTHONPATH}"
+exec "$PYTHON" "$SCRIPT_DIR/aurum_ui.py" "$@"

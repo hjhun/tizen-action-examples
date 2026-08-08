@@ -455,7 +455,7 @@ Common profile에서 성공한 것은 Common emulator validation이다. TV profi
 ```sh
 sdb -s <serial> install <package>.tpk
 /home/hjhun/tizen-studio/tools/ide/bin/tizen run -s <serial> -p <application-id>
-sdb -s <serial> shell 'app_launcher --is-running=<application-id>'
+sdb -s <serial> shell 'app_launcher --is-running <application-id>'
 sdb -s <serial> shell 'ps -ef | grep <application-id> | grep -v grep'
 ```
 
@@ -517,7 +517,317 @@ notification popup visibility는 scheduler evidence와 별도의 UI/OS policy ga
 
 ---
 
-## 10. 다른 domain을 시작하는 체크리스트
+## 10. End-to-end 개발·검증·문서화 workflow
+
+이 절차는 Calendar에서 실제로 수행한 설계, 구현, host test, provider E2E, NUI acceptance, screenshot, 문서화 순서를 일반화한 것이다. 각 단계는 다음 단계의 입력이 되며, 마지막에 한 번에 검증하려고 미루지 않는다.
+
+```text
+Preflight and baseline
+  → contract/design approval
+  → RED test
+  → minimal implementation
+  → generated binding and manifest integration
+  → host regression/build
+  → independent review
+  → TPK/package inspection
+  → Emulator Action/View E2E
+  → NUI input/focus acceptance
+  → native screenshots and documentation
+  → final clean-room regression and evidence report
+```
+
+### 10.1 Phase 0 — scope, source of truth, baseline
+
+작업 시작 시 다음 상태를 먼저 보존한다.
+
+```sh
+git status --short
+git branch --show-current
+git log -5 --oneline --decorate
+```
+
+동시에 다음 source of truth를 식별한다.
+
+- authoritative `.action`, `.entity`, `action.seq`
+- generator와 template source
+- generated binding output
+- manifest provider metadata
+- domain/use-case test project
+- target profile, serial, package/app ID
+- 기존 README, design spec, 개발 가이드
+
+Graphify가 해당 source extension과 language를 지원하면 repository 분석 전에 knowledge graph를 생성하거나 갱신한다. 지원하지 않으면 실패 이유와 범위를 기록하고 원본 schema/source를 직접 검사한다. Graphify 미지원은 source 분석 생략 사유가 아니다.
+
+변경 전 canonical host test/build를 실행해 baseline을 확보한다. baseline부터 실패한 항목은 이번 변경의 regression과 분리해서 기록한다. local patch, untracked file, 다른 세션의 변경은 reset/clean으로 제거하지 않는다.
+
+### 10.2 Phase 1 — contract와 UI design을 구현보다 먼저 확정
+
+Action/Entity 변경은 다음을 문서와 test case로 먼저 고정한다.
+
+- stable Entity ID와 ownership
+- input/output wire type
+- validation과 typed status
+- ordering, limit, unresolved behavior
+- 기간 경계와 timezone 의미
+- persistence 및 external handle compensation
+- 기존 `action.seq` method ID 보존 여부
+- ViewAnnotation identity, bounds, focus, lifecycle
+
+UI 기능은 구현 전 다음 관점의 review를 수행한다.
+
+- **Architecture**: domain, use-case, provider, UI 경계
+- **Product/CX**: user journey, destructive flow, empty/error state
+- **NUI/TV UX**: D-pad order, actual focus, pointer parity, Back hierarchy
+- **Agent usability**: Entity discovery, Action selection, ViewAnnotation/A2UI usability
+
+합의한 결정은 `docs/specs/YYYY-MM-DD-<topic>.md`에 저장한다. UI reference app이 없으면 Android/iOS의 널리 알려진 interaction model을 참고하되 Tizen remote/focus 제약을 별도로 명시한다.
+
+Calendar 기준 design spec:
+
+- [Calendar navigation, search, and View design](specs/2026-08-08-calendar-navigation-search-view-design.md)
+
+### 10.3 Phase 2 — behavior 단위 RED → GREEN → REFACTOR
+
+한 번에 한 observable behavior를 개발한다.
+
+1. production code보다 먼저 focused test를 추가한다.
+2. targeted test가 feature 부재 때문에 실패하는지 확인한다.
+3. 최소 구현으로 GREEN을 만든다.
+4. domain/provider/UI 책임이 섞이지 않도록 refactor한다.
+5. targeted test 후 관련 suite 전체를 실행한다.
+6. failure output과 통과 output을 실제 command 결과로 보존한다.
+
+UI도 reducer/state test부터 시작한다.
+
+```text
+remote key or pointer event
+  → shared semantic command
+  → pure reducer/state transition
+  → render projection
+  → actual NUI focus synchronization
+```
+
+renderer가 표시하는 Entity 목록과 D-pad focus 대상 목록은 같은 render policy를 사용한다. logical index로 focus를 보존하지 말고 stable Entity ID를 사용한다.
+
+### 10.4 Phase 3 — generated ABI와 provider integration
+
+Entity/Action API가 바뀌면 generated source를 직접 patch하지 않는다.
+
+1. authoritative catalog input을 변경한다.
+2. 신규 Action을 category의 기존 항목 뒤에 append한다.
+3. category 전체를 `actionc -a <category>`로 재생성한다.
+4. 기존 method ID와 generated signature를 baseline과 비교한다.
+5. provider service와 manifest에는 실제 제공하는 exact Action만 연결한다.
+6. compile로 모든 abstract method 구현과 assembly reference를 확인한다.
+
+기존 Action의 broad/legacy behavior를 바꾸지 않고 typed variant를 추가하는 경우 compatibility normalization을 provider boundary 또는 domain adapter에 명시하고 host test와 device RPC에서 모두 검증한다.
+
+### 10.5 Phase 4 — host regression, build, diff quality
+
+Calendar 기준 canonical gate:
+
+```sh
+cd Calendar
+set -euo pipefail
+
+dotnet run --project tests/Calendar.Domain.Tests/Calendar.Domain.Tests.csproj
+dotnet run --project tests/Calendar.Persistence.Tests/Calendar.Persistence.Tests.csproj
+dotnet run --project tests/Calendar.UseCases.Tests/Calendar.UseCases.Tests.csproj
+dotnet run --project tests/Calendar.App.Tests/Calendar.App.Tests.csproj
+dotnet run --project tests/Calendar.ActionProvider.Tests/Calendar.ActionProvider.Tests.csproj
+
+dotnet build src/Calendar.ActionProvider/Calendar.ActionProvider.csproj --configuration Debug --no-restore
+dotnet build src/Calendar.ScheduleActionProvider/Calendar.ScheduleActionProvider.csproj --configuration Debug --no-restore
+dotnet build src/Calendar.ViewActionProvider/Calendar.ViewActionProvider.csproj --configuration Debug --no-restore
+dotnet build src/Calendar.App/Calendar.App.csproj --configuration Debug --no-restore
+
+git diff --check
+```
+
+검증용 임시 script가 필요하면 `/tmp/hermes-verify-*.sh` 또는 `/tmp/hermes-verify-*.py`처럼 task-specific 이름을 사용하고 종료 후 삭제한다. 임시 verifier, generated module, virtual environment를 repository에 추가하지 않는다.
+
+### 10.6 Phase 5 — 독립 review와 source-grounded 통합
+
+중요 변경은 최소한 다음 관점을 독립적으로 review한다.
+
+- domain/provider contract와 ABI
+- persistence/transaction/compensation
+- NUI renderer와 focus target parity
+- ViewAnnotation bounds/focus/lifecycle
+- test의 실제 regression coverage
+
+review 결과는 제안일 뿐 최종 진실이 아니다. 지적 사항을 actual source와 test output으로 다시 확인하고, 중복을 제거해 severity별로 통합한다. P0/P1이 남아 있으면 packaging과 최종 acceptance로 진행하지 않는다.
+
+외부 reviewer/agent가 timeout, 인증 실패, 비정상 종료하면 해당 reviewer만 `unavailable`로 기록한다. 이미 확보한 source inspection, host tests, Hermes review를 계속하며 reviewer failure를 전체 검증 성공이나 실패로 왜곡하지 않는다.
+
+### 10.7 Phase 6 — package 생성과 archive inspection
+
+host build가 green인 뒤 TPK를 만든다.
+
+1. fresh build output만 staging한다.
+2. manifest와 모든 runtime/project dependency를 포함한다.
+3. signed archive를 생성한다.
+4. `unzip -t`, entry listing, size, SHA-256을 기록한다.
+5. raw DLL이 아니라 TPK를 설치한다.
+
+표준 packaging command가 실패하고 fallback staging/package flow를 사용했다면 두 결과를 구분한다.
+
+```text
+Standard packaging: FAILED (<command>, exit code, error)
+Fallback test package: PASS (<path>, archive check, SHA-256)
+Production/reproducible signing: NOT VERIFIED
+```
+
+fallback package를 official reproducible signing 성공으로 표현하지 않는다. credential, certificate password, token은 문서나 로그에 복사하지 않는다.
+
+### 10.8 Phase 7 — Emulator Action, ViewAnnotation, A2UI E2E
+
+package install 후 다음을 독립 postcondition으로 확인한다.
+
+```text
+install
+  → launch
+  → process survival
+  → provider discovery
+  → explicit appid invocation
+  → typed positive/negative result
+  → repository/UI postcondition
+```
+
+RPM으로 배포된 Action fixture는 payload install만으로 Action DB registration이 끝났다고 가정하지 않는다. 필요한 경우 다음 preload를 수행한 뒤 discovery를 다시 확인한다.
+
+```sh
+unified-backend --preload -y <package-id>
+```
+
+View provider가 있는 앱은 실제 visible Entity view로 다음 flow를 검증한다.
+
+```text
+GetAnnotatedViews
+  → finite positive View.Bounds
+  → FindById
+  → actual NUI focus 이동
+  → GetFocusedView
+  → ToPresentation
+  → valid A2UI Template/Document JSON
+  → pause/terminate clear
+  → resume/render republish
+```
+
+`Annotation`에 Entity context가 있고 좌표는 enclosing `View.Bounds`에 있다는 wire nesting을 그대로 문서화한다. 측정한 좌표는 runtime example이며 schema 상수로 표현하지 않는다.
+
+### 10.9 Phase 8 — 실제 NUI input과 visual acceptance
+
+소스·host test·Action RPC가 모두 통과해도 UI 완료가 아니다. 최신 TPK를 실행한 실제 target 화면에서 다음을 확인한다.
+
+- Month/Week/Day/Agenda 같은 모든 primary surface
+- D-pad focus order와 Enter activation
+- pointer/touch와 remote key의 semantic parity
+- Back/Close 후 exact focus restoration
+- editor/search 입력과 result activation
+- destructive confirmation의 cancel/confirm
+- clipping, overflow, disabled control, empty state
+- renderer가 숨긴 Entity로 focus가 이동하지 않는지
+
+화면 조작은 가능한 경우 repository-local Aurum skill을 사용한다.
+
+- [Tizen Aurum UI Automation skill](../.agents/skills/tizen-aurum-ui-automation/SKILL.md)
+
+기본 흐름:
+
+```sh
+cd ~/samba/workspace/tizen-action-examples
+SKILL_ROOT="$PWD/.agents/skills/tizen-aurum-ui-automation"
+python3 "$SKILL_ROOT/scripts/prepare_client.py"
+AURUM="$SKILL_ROOT/scripts/aurum-ui"
+
+"$AURUM" session-start --serial <serial>
+"$AURUM" health
+"$AURUM" tree --max-depth 4
+"$AURUM" key right
+"$AURUM" key enter
+"$AURUM" move 1900 1040
+"$AURUM" screenshot Calendar/docs/images/calendar-example.png
+"$AURUM" session-stop --serial <serial> --stop-bootstrap
+```
+
+Aurum tree가 status OK와 empty roots를 반환하더라도 screen-size, key/pointer, screenshot RPC가 동작할 수 있다. 이 경우 element ID를 만들지 말고 screenshot-guided remote key 또는 native coordinate fallback을 사용한다. 각 state change 뒤 fresh screenshot으로 postcondition을 확인한다.
+
+### 10.10 Phase 9 — README, component guide, screenshot provenance
+
+기능과 검증 결과가 실제로 존재한 뒤 문서를 작성한다. 계획 중인 기능을 구현 완료처럼 설명하지 않는다.
+
+문서 계층:
+
+```text
+<Domain>/README.md
+  → 사용자와 reviewer를 위한 대표 개요, 실제 화면, quick commands
+
+<Domain>/docs/README.md
+  → component-local 문서 index
+
+<Domain>/docs/<DEVELOPMENT_GUIDE>.md
+  → schema, architecture, build, package, E2E 상세
+
+<Domain>/docs/<CONTRACT>.md
+  → ViewAnnotation, wire format 등 좁은 계약
+
+repository docs/TIZEN_ACTION_DOMAIN_DEVELOPMENT_GUIDE.md
+  → 모든 domain에 적용하는 공통 process와 acceptance gate
+```
+
+README screenshot은 `/tmp`가 아니라 `<Domain>/docs/images/`에 저장한다. 각 image는 다음 provenance를 남긴다.
+
+- capture date
+- target serial/label
+- profile과 platform version
+- app/package ID
+- native resolution
+- capture mechanism과 RPC
+- fixture data 여부
+- accessibility-tree 사용 가능 여부
+- platform overlay 또는 known limitation
+
+현재 Calendar의 대표 문서와 상세 가이드:
+
+- [Calendar README](../Calendar/README.md)
+- [Calendar 문서 index](../Calendar/docs/README.md)
+- [Calendar Tizen Action Framework 2.0 개발 가이드](../Calendar/docs/TIZEN_ACTION_FRAMEWORK_2_0_DEVELOPMENT_GUIDE.md)
+- [Calendar ViewAnnotation 및 좌표 계약](../Calendar/docs/VIEW_ANNOTATION.md)
+
+### 10.11 Phase 10 — 문서와 최종 regression 검증
+
+문서 변경은 다음을 검사한다.
+
+1. 모든 relative Markdown link가 page directory 기준으로 존재한다.
+2. PNG/JPEG가 decode되고 기대 resolution을 갖는다.
+3. JSON/YAML code block은 parser로 검증한다.
+4. fenced code delimiter가 balanced이고 Mermaid block이 비어 있지 않다.
+5. command의 working directory와 placeholder가 명확하다.
+6. measured runtime value와 schema constant를 구분한다.
+7. `git diff --check`를 실행한다.
+
+최종 clean-room regression은 현재 작업 중 만든 shell state에 의존하지 않는 fresh script 또는 새 shell에서 수행한다. 결과는 gate별로 보고한다.
+
+```text
+Source/design review: PASS
+Host tests: PASS
+Provider/App builds: PASS
+Independent P0/P1 review: PASS
+TPK archive/package: PASS or qualified fallback
+Emulator install/launch: PASS
+Action RPC E2E: PASS
+ViewAnnotation/A2UI E2E: PASS
+D-pad/pointer UI acceptance: PASS
+Native screenshot/document links: PASS
+TV/product profile: NOT VERIFIED (when Common Emulator only)
+```
+
+마지막으로 변경 file을 확인하되 pre-existing unrelated worktree 항목과 이번 변경을 분리한다. 사용자가 요청하지 않으면 commit, amend, push하지 않는다.
+
+---
+
+## 11. 다른 domain을 시작하는 체크리스트
 
 ### Design
 
@@ -557,9 +867,19 @@ notification popup visibility는 scheduler evidence와 별도의 UI/OS policy ga
 - [ ] destructive confirmation의 cancel/confirm/back hierarchy를 확인했다.
 - [ ] fresh screenshots에 clipping, touch target, disabled action 문제가 없는지 확인했다.
 
+### Documentation and final evidence
+
+- [ ] 대표 README에 실제 구현 기능과 최신 화면을 설명했다.
+- [ ] screenshot을 `<Domain>/docs/images/`에 저장하고 provenance를 기록했다.
+- [ ] component guide와 repository guide의 중복을 줄이고 상호 link했다.
+- [ ] Markdown link, image decode/resolution, JSON/YAML example, code fence를 검사했다.
+- [ ] host/build/package/Action/View/UI gate를 분리해 결과를 보고했다.
+- [ ] Common Emulator 결과와 TV/product validation 범위를 구분했다.
+- [ ] pre-existing worktree와 이번 변경을 분리하고 `git diff --check`를 실행했다.
+
 ---
 
-## 11. Calendar 구현에서 재사용 가능한 검증 명령 요약
+## 12. Calendar 구현에서 재사용 가능한 검증 명령 요약
 
 ```sh
 cd ~/samba/workspace/tizen-action-examples
@@ -587,12 +907,16 @@ sdb -s emulator-26101 shell 'action-tool find-appids Tizen.Action.Schedule --jso
 
 ---
 
-## 12. 참고 자료
+## 13. 참고 자료
 
-- `CALENDAR_DEVELOPMENT_HANDOFF.md`: Calendar 구현의 구체적 source, command, 결과
-- `.dev/DEVELOPTMENT.md`: 현재 구현 결과와 검증 기록
-- `.dev/progress/developer.md`: 개발 결정 및 device evidence
-- Tizen Action default action schemas: `/home/hjhun/samba/workspace/appfw/tizen-action/default-actions`
+- [Calendar 대표 README](../Calendar/README.md): 앱 개요, 실제 Emulator 화면, quick commands
+- [Calendar Tizen Action Framework 2.0 개발 가이드](../Calendar/docs/TIZEN_ACTION_FRAMEWORK_2_0_DEVELOPMENT_GUIDE.md): Calendar-specific schema, provider, ViewAnnotation, packaging, E2E
+- [Calendar ViewAnnotation 및 좌표 계약](../Calendar/docs/VIEW_ANNOTATION.md): bounds, actual focus, lifecycle, A2UI
+- [Calendar navigation, search, and View design](specs/2026-08-08-calendar-navigation-search-view-design.md): 구현 전 승인한 UX/architecture 결정
+- [Tizen Aurum UI Automation skill](../.agents/skills/tizen-aurum-ui-automation/SKILL.md): target-native input, tree, screenshot workflow와 실행 코드
+- [Current development record](../.dev/DEVELOPTMENT.md): 현재 구현 결과와 검증 기록
+- [Developer progress evidence](../.dev/progress/developer.md): 개발 결정과 device evidence
+- Tizen Action default Action schemas: `/home/hjhun/samba/workspace/appfw/tizen-action/default-actions`
 - TIDL implementation repository: `/home/hjhun/samba/workspace/appfw/tidl`
 
-새 domain을 시작할 때 이 문서를 baseline으로 사용하되, domain-specific Entity contract, existing action category ABI, target device profile을 먼저 확인한 뒤 세부 계획을 작성한다.
+새 domain을 시작할 때 이 문서를 baseline으로 사용하되, domain-specific Entity contract, existing Action category ABI, target device profile을 먼저 확인한 뒤 세부 계획을 작성한다.

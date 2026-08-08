@@ -1,0 +1,23 @@
+{
+  "skill_name": "tizen-aurum-ui-automation",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "The Tizen Common Emulator is connected and my native NUI calendar app is running. Use Aurum to capture Month, Week, Day, Agenda, Search, and detail screens as repository PNG assets, then add correct relative links to the README without leaving temporary forwards or files.",
+      "expected_output": "The agent preflights the target and bootstrap, uses the bundled client if needed, verifies each post-action frame, saves valid native-resolution PNG files under a stable repository path, documents provenance, and cleans the scoped SDB forward.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "Aurum health and screenshots work on emulator-26101, but dumpObjectTree returns status OK with zero roots for my NUI app. Diagnose this and continue UI verification safely.",
+      "expected_output": "The agent records the empty-tree capability boundary, avoids inventing element IDs, switches to screenshot-guided remote keys or calibrated native coordinates, and validates every state change visually.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "Two Tizen devices are attached. Capture the current app on the device labeled tc-lab-2 with Aurum and do not disturb the other target or any unrelated port forward.",
+      "expected_output": "The agent resolves and passes the exact serial, uses a scoped local forward, verifies target-native resolution before coordinates, captures a valid image, and removes only the forward it owns.",
+      "files": []
+    }
+  ]
+}
