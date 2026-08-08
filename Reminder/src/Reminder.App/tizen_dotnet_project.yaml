@@ -1,0 +1,15 @@
+csproj_file: Reminder.App.csproj
+profile: common
+api_version: "10.0"
+build_type: Debug
+signing_profile: ""
+files:
+  - Reminder.App.csproj
+  - ReminderApplication.cs
+  - tizen-manifest.xml
+deps:
+  - ../Reminder.Domain/Reminder.Domain.csproj
+  - ../Reminder.Persistence/Reminder.Persistence.csproj
+  - ../Reminder.UseCases/Reminder.UseCases.csproj
+  - ../Reminder.ScheduleActionProvider/Reminder.ScheduleActionProvider.csproj
+  - ../Reminder.ViewActionProvider/Reminder.ViewActionProvider.csproj

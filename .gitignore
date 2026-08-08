@@ -6,6 +6,8 @@
 Calendar/dist/
 Calendar/graphify-out/
 Calendar/*.tpk
+Reminder/dist/
+Reminder/*.tpk
 
 # Local design-server/prototype workspace
 .superpowers/

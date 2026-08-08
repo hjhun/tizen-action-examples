@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Tizen.NET" Version="13.0.0.19198" />
+    <ProjectReference Include="../Reminder.Domain/Reminder.Domain.csproj" />
+    <ProjectReference Include="../Reminder.Persistence/Reminder.Persistence.csproj" />
+    <ProjectReference Include="../Reminder.UseCases/Reminder.UseCases.csproj" />
+    <ProjectReference Include="../Reminder.ScheduleActionProvider/Reminder.ScheduleActionProvider.csproj" />
+    <ProjectReference Include="../Reminder.ViewActionProvider/Reminder.ViewActionProvider.csproj" />
+  </ItemGroup>
+</Project>
