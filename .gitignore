@@ -2,6 +2,10 @@
 **/bin/
 **/obj/
 
+# Local agent workspaces
+.hermes/
+.dev/
+
 # Locally generated packages and Graphify data
 Calendar/dist/
 Calendar/graphify-out/
