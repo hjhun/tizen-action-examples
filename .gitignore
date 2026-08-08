@@ -1,0 +1,11 @@
+# .NET build output
+**/bin/
+**/obj/
+
+# Locally generated packages and Graphify data
+Calendar/dist/
+Calendar/graphify-out/
+Calendar/*.tpk
+
+# Local design-server/prototype workspace
+.superpowers/

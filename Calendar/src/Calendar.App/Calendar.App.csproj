@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Tizen.NET" Version="13.0.0.19198" />
+    <ProjectReference Include="../Calendar.Domain/Calendar.Domain.csproj" />
+    <ProjectReference Include="../Calendar.Persistence/Calendar.Persistence.csproj" />
+    <ProjectReference Include="../Calendar.UseCases/Calendar.UseCases.csproj" />
+    <ProjectReference Include="../Calendar.ActionProvider/Calendar.ActionProvider.csproj" />
+    <ProjectReference Include="../Calendar.ScheduleActionProvider/Calendar.ScheduleActionProvider.csproj" />
+    <ProjectReference Include="../Calendar.ViewActionProvider/Calendar.ViewActionProvider.csproj" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/Calendar.Domain/Calendar.Domain.csproj" />
+    <Compile Include="../../src/Calendar.App/CalendarUiState.cs" Link="CalendarUiState.cs" />
+    <Compile Include="../../src/Calendar.App/CalendarUiCommand.cs" Link="CalendarUiCommand.cs" />
+    <Compile Include="../../src/Calendar.App/CalendarEditorState.cs" Link="CalendarEditorState.cs" />
+    <Compile Include="../../src/Calendar.App/CalendarInteractionState.cs" Link="CalendarInteractionState.cs" />
+    <Compile Include="../../src/Calendar.App/CalendarReminderEditorState.cs" Link="CalendarReminderEditorState.cs" />
+    <Compile Include="../../src/Calendar.App/CalendarMonthPresentation.cs" Link="CalendarMonthPresentation.cs" />
+    <Compile Include="../../src/Calendar.App/CalendarPeriodPresentation.cs" Link="CalendarPeriodPresentation.cs" />
+    <Compile Include="../../src/Calendar.App/CalendarPeriodRenderPolicy.cs" Link="CalendarPeriodRenderPolicy.cs" />
+    <Compile Include="../../src/Calendar.App/CalendarSearchState.cs" Link="CalendarSearchState.cs" />
+    <Compile Include="../../src/Calendar.App/CalendarTheme.cs" Link="CalendarTheme.cs" />
+    <Compile Include="../../src/Calendar.App/CalendarViewAnnotationRegistry.cs" Link="CalendarViewAnnotationRegistry.cs" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- Exercise the Tizen-independent input adapter used directly by CalendarService.
+         The generated Tizen binding is compile-verified in Calendar.ActionProvider and
+         runtime-verified with action-tool on the Common Emulator. -->
+    <ProjectReference Include="../../src/Calendar.Domain/Calendar.Domain.csproj" />
+  </ItemGroup>
+</Project>

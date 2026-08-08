@@ -1,0 +1,12 @@
+csproj_file: Calendar.App.csproj
+profile: common
+api_version: "10.0"
+build_type: Debug
+signing_profile: ""
+files:
+  - Calendar.App.csproj
+  - CalendarApplication.cs
+  - tizen-manifest.xml
+deps:
+  - ../Calendar.Domain/Calendar.Domain.csproj
+  - ../Calendar.ActionProvider/Calendar.ActionProvider.csproj
