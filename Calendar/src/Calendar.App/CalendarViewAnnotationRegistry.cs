@@ -5,7 +5,7 @@ namespace Calendar.App;
 public sealed record CalendarViewAnnotation(
     string EntityType,
     string EntityId,
-    string EntityJson);
+    string EntityInfo);
 
 public static class CalendarViewAnnotationRegistry
 {
@@ -13,16 +13,16 @@ public static class CalendarViewAnnotationRegistry
 
     public static IReadOnlyList<CalendarViewAnnotation> Create(
         IEnumerable<CalendarEvent> visibleEvents,
-        Func<CalendarEvent, string> toGeneratedEntityJson)
+        Func<CalendarEvent, string> toGeneratedEntityInfo)
     {
         ArgumentNullException.ThrowIfNull(visibleEvents);
-        ArgumentNullException.ThrowIfNull(toGeneratedEntityJson);
+        ArgumentNullException.ThrowIfNull(toGeneratedEntityInfo);
 
         return visibleEvents
             .Select(calendarEvent => new CalendarViewAnnotation(
                 CalendarEntityType,
                 calendarEvent.Id,
-                toGeneratedEntityJson(calendarEvent)))
+                toGeneratedEntityInfo(calendarEvent)))
             .ToArray();
     }
 }

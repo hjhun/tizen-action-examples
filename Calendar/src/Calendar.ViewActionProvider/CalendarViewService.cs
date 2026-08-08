@@ -1,8 +1,8 @@
 #nullable enable
 
 using Calendar.Domain;
-using RPCPort.ViewActionProvider;
-using RPCPort.ViewActionProvider.Stub;
+using RPCPort.CalendarViewActionProvider;
+using RPCPort.CalendarViewActionProvider.Stub;
 using CalendarEntity = RPCPort.CalendarActionProvider.TizenEntityCalendar;
 
 namespace Calendar.ViewActionProvider;
@@ -45,13 +45,12 @@ public sealed class CalendarViewService : TizenInternalActionView.ServiceBase
 
     public override TizenEntityStatus ToPresentation(TizenEntityView view, out TizenEntityPresentation result)
     {
-        if (view?.HasAnnotation != true ||
-            view.Annotation is null ||
+        if (view?.Annotation is null ||
             view.Annotation.EntityType != CalendarViewProviderState.CalendarEntityType ||
-            !CalendarA2UiPresentations.TryCreateFromGeneratedEntityJson(view.Annotation.EntityJson, out var presentation))
+            !CalendarA2UiPresentations.TryCreateFromGeneratedEntityJson(view.Annotation.EntityInfo, out var presentation))
         {
             result = new TizenEntityPresentation();
-            return Failure("A valid Calendar ViewAnnotation with generated EntityJson is required.");
+            return Failure("A valid Calendar ViewAnnotation with generated EntityInfo is required.");
         }
 
         result = new TizenEntityPresentation
@@ -79,8 +78,8 @@ internal static class CalendarViewProviderState
 
         var published = visibleViews
             .Where(snapshot =>
-                double.IsFinite(snapshot.X) &&
-                double.IsFinite(snapshot.Y) &&
+                double.IsFinite(snapshot.ScreenX) &&
+                double.IsFinite(snapshot.ScreenY) &&
                 double.IsFinite(snapshot.Width) &&
                 double.IsFinite(snapshot.Height) &&
                 snapshot.Width > 0 &&
@@ -142,22 +141,32 @@ internal static class CalendarViewProviderState
             Extra = string.Empty,
             Type = "Calendar.EventCard",
             Description = calendarEvent.Title,
-            Bounds = new Bounds
+            ScreenBounds = new ScreenBounds
             {
-                X = snapshot.X,
-                Y = snapshot.Y,
+                X = snapshot.ScreenX,
+                Y = snapshot.ScreenY,
                 Width = snapshot.Width,
                 Height = snapshot.Height,
             },
+            WindowBounds = snapshot.WindowX is { } windowX &&
+                snapshot.WindowY is { } windowY &&
+                double.IsFinite(windowX) &&
+                double.IsFinite(windowY)
+                    ? new WindowBounds
+                    {
+                        X = windowX,
+                        Y = windowY,
+                        Width = snapshot.Width,
+                        Height = snapshot.Height,
+                    }
+                    : null,
             IsFocused = isFocused,
             IsEnabled = true,
-            IsVisible = true,
-            HasAnnotation = true,
             Annotation = new Annotation
             {
                 EntityType = CalendarEntityType,
                 EntityId = calendarEvent.Id,
-                EntityJson = entity.ToJson(),
+                EntityInfo = entity.ToJson(),
             },
         };
     }

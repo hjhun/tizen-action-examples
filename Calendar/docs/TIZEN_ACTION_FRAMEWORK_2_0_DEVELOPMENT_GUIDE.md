@@ -65,7 +65,7 @@ Note
 Location
 ```
 
-provider는 domain model을 generated `TizenEntityCalendar`로 변환합니다. ViewAnnotation의 `EntityJson`도 같은 generated DTO의 `ToJson()`을 사용합니다. Entity JSON을 별도로 손으로 조립하지 마십시오.
+provider는 domain model을 generated `TizenEntityCalendar`로 변환합니다. ViewAnnotation의 `EntityInfo`도 같은 generated DTO의 `ToJson()`을 사용합니다. Entity JSON을 별도로 손으로 조립하지 마십시오.
 
 ### 3.2 제공하는 Calendar Actions
 
@@ -223,34 +223,40 @@ View ID:     calendar:event:<CalendarEvent.Id>
 View Type:   Calendar.EventCard
 EntityType:  Tizen.Entity.Calendar
 EntityId:    CalendarEvent.Id
-EntityJson:  generated TizenEntityCalendar.ToJson()
+EntityInfo:  generated TizenEntityCalendar.ToJson()
 ```
 
 헤더, Command Bar, view tab, search input은 Calendar Entity annotation 대상이 아닙니다.
 
 ### 6.1 좌표 포함 여부
 
-좌표는 포함됩니다. 다만 `Annotation` 객체 내부가 아니라 그것을 감싸는 `Tizen.Entity.View.Bounds`에 있습니다.
+좌표는 포함됩니다. 다만 `Annotation` 객체 내부가 아니라 그것을 감싸는
+`Tizen.Entity.View.ScreenBounds`와 `WindowBounds`에 있습니다.
 
 ```json
 {
   "Id": "calendar:event:event-001",
-  "Bounds": {
+  "ScreenBounds": {
     "X": 384.0,
     "Y": 144.0,
     "Width": 700.0,
     "Height": 64.0
   },
-  "HasAnnotation": true,
+  "WindowBounds": {
+    "X": 384.0,
+    "Y": 144.0,
+    "Width": 700.0,
+    "Height": 64.0
+  },
   "Annotation": {
     "EntityType": "Tizen.Entity.Calendar",
     "EntityId": "event-001",
-    "EntityJson": "{...generated entity JSON...}"
+    "EntityInfo": "{...generated entity JSON...}"
   }
 }
 ```
 
-`CalendarApplication`은 event NUI view에서 `CalculateScreenPositionSize()`를 호출해 X/Y/Width/Height를 수집합니다. width/height fallback은 실제 `View.Size`를 사용합니다. finite X/Y/Width/Height이고 Width/Height가 양수인 snapshot만 게시됩니다. synthetic zero bounds는 게시하지 않습니다.
+`CalendarApplication`은 event NUI view에서 `CalculateScreenPositionSize()`를 호출해 screen-space X/Y/Width/Height를 수집합니다. `Window.Default.WindowPosition`을 빼 window-relative X/Y도 계산합니다. width/height fallback은 실제 `View.Size`를 사용합니다. finite screen bounds이고 Width/Height가 양수인 snapshot만 게시되며 synthetic zero bounds는 게시하지 않습니다. window 위치를 읽을 수 없는 frame에서는 `WindowBounds`를 생략하되 유효한 `ScreenBounds`는 계속 게시합니다.
 
 좌표·focus·lifecycle의 상세 계약은 [ViewAnnotation 및 좌표 계약](VIEW_ANNOTATION.md)을 참조하십시오.
 
@@ -427,8 +433,8 @@ launch visible event
 반환 payload에서 다음을 확인합니다.
 
 - stable view ID와 Entity ID
-- finite positive `Bounds`
-- generated `EntityJson`
+- finite positive `ScreenBounds`와 가능한 경우 `WindowBounds`
+- generated `EntityInfo`
 - actual `IsFocused`
 - A2UI Template/Document가 각각 valid JSON
 
@@ -453,8 +459,8 @@ launch visible event
 ### ViewAnnotation
 
 - [ ] 실제 렌더된 Entity view만 게시한다.
-- [ ] `EntityJson`은 generated Entity `ToJson()`이다.
-- [ ] `Bounds`는 finite이고 Width/Height가 양수다.
+- [ ] `EntityInfo`는 generated Entity `ToJson()`이다.
+- [ ] `ScreenBounds`와 `WindowBounds`는 finite이고 Width/Height가 양수다.
 - [ ] focused state는 actual NUI focus에서 계산한다.
 - [ ] pause/terminate에서 snapshot을 clear한다.
 - [ ] `ToPresentation`이 성공하는 A2UI payload를 반환한다.

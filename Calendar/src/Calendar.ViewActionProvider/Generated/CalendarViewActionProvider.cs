@@ -13,7 +13,7 @@ using Tizen.Applications.RPCPort;
 
 namespace RPCPort
 {
-    namespace ViewActionProvider
+    namespace CalendarViewActionProvider
     {
         internal class LocalExecution
         {
@@ -471,7 +471,7 @@ namespace RPCPort
 
         }
 
-        public class Bounds
+        public class ScreenBounds
         {
             
 
@@ -481,13 +481,147 @@ namespace RPCPort
             public double Width;
             public double Height;
 
-            public Bounds()
+            public ScreenBounds()
             {
             }
 
             public string ToJson()
             {
-                string json_str = "{\"Bounds\":{";
+                string json_str = "{\"ScreenBounds\":{";
+                json_str += "\"X\":";
+                AppendToJson(ref json_str, X);
+        json_str += ",";        json_str += "\"Y\":";
+                AppendToJson(ref json_str, Y);
+        json_str += ",";        json_str += "\"Width\":";
+                AppendToJson(ref json_str, Width);
+        json_str += ",";        json_str += "\"Height\":";
+                AppendToJson(ref json_str, Height);
+                json_str += "}}";
+                return json_str;
+            }
+
+            private static string JsonEscape(string str)
+            {
+                if (str == null) return "";
+                var sb = new System.Text.StringBuilder(str.Length);
+                foreach (char c in str)
+                {
+                    switch (c)
+                    {
+                        case '\\': sb.Append("\\\\"); break;
+                        case '"': sb.Append("\\\""); break;
+                        case '\b': sb.Append("\\b"); break;
+                        case '\f': sb.Append("\\f"); break;
+                        case '\n': sb.Append("\\n"); break;
+                        case '\r': sb.Append("\\r"); break;
+                        case '\t': sb.Append("\\t"); break;
+                        default:
+                            if (c < 0x20)
+                                sb.Append("\\u").Append(((int)c).ToString("x4"));
+                            else
+                                sb.Append(c);
+                            break;
+                    }
+                }
+                return sb.ToString();
+            }
+
+            private static void AppendToJson(ref string json_str, object val)
+            {
+                if (val == null)
+                {
+                    json_str += "null";
+                    return;
+                }
+                var type = val.GetType();
+                if (type.IsEnum)
+                {
+                    json_str += ((int)val).ToString();
+                }
+                else if (val is bool b)
+                {
+                    json_str += b ? "true" : "false";
+                }
+                else if (val is string s)
+                {
+                    json_str += "\"" + JsonEscape(s) + "\"";
+                }
+                else if (val is float f)
+                {
+                    json_str += f.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                }
+                else if (val is double d)
+                {
+                    json_str += d.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                }
+                else if (val is sbyte || val is byte || val is short || val is ushort || val is int || val is uint || val is long || val is ulong)
+                {
+                    json_str += val.ToString();
+                }
+                else
+                {
+                    var method = type.GetMethod("ToJson");
+                    if (method != null)
+                    {
+                        json_str += method.Invoke(val, null);
+                    }
+                    else if (val is System.Collections.IDictionary dict)
+                    {
+                        json_str += "{";
+                        bool first = true;
+                        foreach (System.Collections.DictionaryEntry entry in dict)
+                        {
+                            if (!first) json_str += ",";
+                            string key_str = "";
+                            AppendToJson(ref key_str, entry.Key);
+                            if (!key_str.StartsWith("\""))
+                            {
+                                key_str = "\"" + key_str + "\"";
+                            }
+                            json_str += key_str + ":";
+                            AppendToJson(ref json_str, entry.Value);
+                            first = false;
+                        }
+                        json_str += "}";
+                    }
+                    else if (val is System.Collections.IEnumerable enumerable)
+                    {
+                        json_str += "[";
+                        bool first = true;
+                        foreach (var item in enumerable)
+                        {
+                            if (!first) json_str += ",";
+                            AppendToJson(ref json_str, item);
+                            first = false;
+                        }
+                        json_str += "]";
+                    }
+                    else
+                    {
+                        json_str += "null";
+                    }
+                }
+            }
+
+        }
+
+        public class WindowBounds
+        {
+
+
+
+            public double X;
+            public double Y;
+            public double Width;
+            public double Height;
+
+            public WindowBounds()
+            {
+            }
+
+            public string ToJson()
+            {
+                string json_str = "{\"WindowBounds\":{";
                 json_str += "\"X\":";
                 AppendToJson(ref json_str, X);
         json_str += ",";        json_str += "\"Y\":";
@@ -612,7 +746,7 @@ namespace RPCPort
 
             public string EntityId;
             public string EntityType;
-            public string EntityJson;
+            public string EntityInfo;
 
             public Annotation()
             {
@@ -625,8 +759,8 @@ namespace RPCPort
                 AppendToJson(ref json_str, EntityId);
         json_str += ",";        json_str += "\"EntityType\":";
                 AppendToJson(ref json_str, EntityType);
-        json_str += ",";        json_str += "\"EntityJson\":";
-                AppendToJson(ref json_str, EntityJson);
+        json_str += ",";        json_str += "\"EntityInfo\":";
+                AppendToJson(ref json_str, EntityInfo);
                 json_str += "}}";
                 return json_str;
             }
@@ -743,11 +877,10 @@ namespace RPCPort
 
             public string Type;
             public string Description;
-            public Bounds Bounds;
+            public ScreenBounds ScreenBounds;
+            public WindowBounds WindowBounds;
             public bool IsFocused;
             public bool IsEnabled;
-            public bool IsVisible;
-            public bool HasAnnotation;
             public Annotation Annotation;
 
             public TizenEntityView()
@@ -765,16 +898,14 @@ namespace RPCPort
                 AppendToJson(ref json_str, Type);
         json_str += ",";        json_str += "\"Description\":";
                 AppendToJson(ref json_str, Description);
-        json_str += ",";        json_str += "\"Bounds\":";
-                AppendToJson(ref json_str, Bounds);
+        json_str += ",";        json_str += "\"ScreenBounds\":";
+                AppendToJson(ref json_str, ScreenBounds);
+        json_str += ",";        json_str += "\"WindowBounds\":";
+                AppendToJson(ref json_str, WindowBounds);
         json_str += ",";        json_str += "\"IsFocused\":";
                 AppendToJson(ref json_str, IsFocused);
         json_str += ",";        json_str += "\"IsEnabled\":";
                 AppendToJson(ref json_str, IsEnabled);
-        json_str += ",";        json_str += "\"IsVisible\":";
-                AppendToJson(ref json_str, IsVisible);
-        json_str += ",";        json_str += "\"HasAnnotation\":";
-                AppendToJson(ref json_str, HasAnnotation);
         json_str += ",";        json_str += "\"Annotation\":";
                 AppendToJson(ref json_str, Annotation);
                 json_str += "}}";
@@ -1434,7 +1565,7 @@ namespace RPCPort
                     param.Extra = Extra;
                 }
 
-                private static void Serialize(Parcel h, Bounds param)
+                private static void Serialize(Parcel h, ScreenBounds param)
                 {
                     h.WriteDouble(param.X);
                     h.WriteDouble(param.Y);
@@ -1442,7 +1573,27 @@ namespace RPCPort
                     h.WriteDouble(param.Height);
                 }
 
-                private static void Deserialize(Parcel h, Bounds param)
+                private static void Deserialize(Parcel h, ScreenBounds param)
+                {
+                    var X = h.ReadDouble();
+                    param.X = X;
+                    var Y = h.ReadDouble();
+                    param.Y = Y;
+                    var Width = h.ReadDouble();
+                    param.Width = Width;
+                    var Height = h.ReadDouble();
+                    param.Height = Height;
+                }
+
+                private static void Serialize(Parcel h, WindowBounds param)
+                {
+                    h.WriteDouble(param.X);
+                    h.WriteDouble(param.Y);
+                    h.WriteDouble(param.Width);
+                    h.WriteDouble(param.Height);
+                }
+
+                private static void Deserialize(Parcel h, WindowBounds param)
                 {
                     var X = h.ReadDouble();
                     param.X = X;
@@ -1458,7 +1609,7 @@ namespace RPCPort
                 {
                     h.WriteString(param.EntityId);
                     h.WriteString(param.EntityType);
-                    h.WriteString(param.EntityJson);
+                    h.WriteString(param.EntityInfo);
                 }
 
                 private static void Deserialize(Parcel h, Annotation param)
@@ -1467,8 +1618,8 @@ namespace RPCPort
                     param.EntityId = EntityId;
                     var EntityType = h.ReadString();
                     param.EntityType = EntityType;
-                    var EntityJson = h.ReadString();
-                    param.EntityJson = EntityJson;
+                    var EntityInfo = h.ReadString();
+                    param.EntityInfo = EntityInfo;
                 }
 
                 private static void Serialize(Parcel h, TizenEntityView param)
@@ -1476,11 +1627,10 @@ namespace RPCPort
                     Serialize(h, (TizenEntity)param);
                     h.WriteString(param.Type);
                     h.WriteString(param.Description);
-                    Serialize(h, param.Bounds);
+                    Serialize(h, param.ScreenBounds);
+                    Serialize(h, param.WindowBounds);
                     h.WriteBool(param.IsFocused);
                     h.WriteBool(param.IsEnabled);
-                    h.WriteBool(param.IsVisible);
-                    h.WriteBool(param.HasAnnotation);
                     Serialize(h, param.Annotation);
                 }
 
@@ -1491,16 +1641,14 @@ namespace RPCPort
                     param.Type = Type;
                     var Description = h.ReadString();
                     param.Description = Description;
-                    param.Bounds = new Bounds();
-                    Deserialize(h, param.Bounds);
+                    param.ScreenBounds = new ScreenBounds();
+                    Deserialize(h, param.ScreenBounds);
+                    param.WindowBounds = new WindowBounds();
+                    Deserialize(h, param.WindowBounds);
                     var IsFocused = h.ReadBool();
                     param.IsFocused = IsFocused;
                     var IsEnabled = h.ReadBool();
                     param.IsEnabled = IsEnabled;
-                    var IsVisible = h.ReadBool();
-                    param.IsVisible = IsVisible;
-                    var HasAnnotation = h.ReadBool();
-                    param.HasAnnotation = HasAnnotation;
                     param.Annotation = new Annotation();
                     Deserialize(h, param.Annotation);
                 }

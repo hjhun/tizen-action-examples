@@ -773,6 +773,19 @@ internal sealed class CalendarApplication : NUIApplication
             FocusManager.Instance.SetCurrentFocusView(overlayFocus);
         }
 
+        double? windowOriginX = null;
+        double? windowOriginY = null;
+        try
+        {
+            using var windowPosition = Window.Default.WindowPosition;
+            windowOriginX = windowPosition.X;
+            windowOriginY = windowPosition.Y;
+        }
+        catch
+        {
+            // Screen-space annotations remain valid when window geometry is unavailable.
+        }
+
         var renderedEventViews = new List<CalendarEventViewSnapshot>();
         foreach (var calendarEvent in GetVisibleEvents())
         {
@@ -796,6 +809,8 @@ internal sealed class CalendarApplication : NUIApplication
                     calendarEvent,
                     bounds.X,
                     bounds.Y,
+                    windowOriginX is { } originX ? bounds.X - originX : null,
+                    windowOriginY is { } originY ? bounds.Y - originY : null,
                     width,
                     height));
             }

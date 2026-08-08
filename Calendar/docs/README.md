@@ -12,7 +12,7 @@
   - ViewAnnotation과 A2UI 통합
 - [ViewAnnotation 및 좌표 계약](VIEW_ANNOTATION.md)
   - Calendar가 annotation을 게시하는 대상
-  - `Bounds.X/Y/Width/Height`의 위치와 의미
+  - `ScreenBounds`와 `WindowBounds`의 위치와 의미
   - 실제 NUI bounds/focus 수집 방식
   - lifecycle 및 검증 방법
 

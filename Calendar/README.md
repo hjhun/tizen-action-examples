@@ -128,27 +128,34 @@ pointer activation도 D-pad/Enter와 동일한 reducer command를 dispatch합니
 
 현재 ViewAnnotation 결과에는 좌표가 포함됩니다.
 
-좌표는 `Annotation` 객체 내부가 아니라 annotation을 소유하는 `Tizen.Entity.View.Bounds`에 있습니다.
+좌표는 `Annotation` 객체 내부가 아니라 annotation을 소유하는
+`Tizen.Entity.View.ScreenBounds`와 `WindowBounds`에 있습니다.
 
 ```json
 {
   "Id": "calendar:event:event-001",
-  "Bounds": {
+  "ScreenBounds": {
     "X": 384.0,
     "Y": 144.0,
     "Width": 700.0,
     "Height": 64.0
   },
-  "HasAnnotation": true,
+  "WindowBounds": {
+    "X": 384.0,
+    "Y": 144.0,
+    "Width": 700.0,
+    "Height": 64.0
+  },
   "Annotation": {
     "EntityType": "Tizen.Entity.Calendar",
     "EntityId": "event-001",
-    "EntityJson": "{...generated TizenEntityCalendar JSON...}"
+    "EntityInfo": "{...generated TizenEntityCalendar JSON...}"
   }
 }
 ```
 
 - `CalculateScreenPositionSize()`로 actual NUI screen-space bounds 수집
+- `Window.Default.WindowPosition`을 빼서 window-relative bounds 계산
 - finite X/Y/Width/Height만 허용
 - Width/Height가 양수인 snapshot만 게시
 - synthetic zero bounds를 만들지 않음

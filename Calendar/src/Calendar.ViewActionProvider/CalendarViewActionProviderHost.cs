@@ -1,14 +1,16 @@
 #nullable enable
 
 using Calendar.Domain;
-using RPCPort.ViewActionProvider.Stub;
+using RPCPort.CalendarViewActionProvider.Stub;
 
 namespace Calendar.ViewActionProvider;
 
 public sealed record CalendarEventViewSnapshot(
     CalendarEvent Event,
-    double X,
-    double Y,
+    double ScreenX,
+    double ScreenY,
+    double? WindowX,
+    double? WindowY,
     double Width,
     double Height);
 

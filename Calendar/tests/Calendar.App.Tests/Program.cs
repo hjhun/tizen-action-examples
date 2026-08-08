@@ -207,8 +207,8 @@ Assert(
     annotations.Count == 1 &&
     annotations[0].EntityType == "Tizen.Entity.Calendar" &&
     annotations[0].EntityId == "event-annotated" &&
-    annotations[0].EntityJson == "generated:event-annotated",
-    "Each published calendar view annotation must retain stable EntityType/EntityId hints and the generated Entity ToJson snapshot.");
+    annotations[0].EntityInfo == "generated:event-annotated",
+    "Each published calendar view annotation must retain stable EntityType/EntityId hints and generated EntityInfo.");
 
 var emptyAnnotations = CalendarViewAnnotationRegistry.Create([], calendarEvent => $"generated:{calendarEvent.Id}");
 Assert(emptyAnnotations.Count == 0, "No Calendar Event must produce no published view annotation.");

@@ -1,22 +1,18 @@
 # Calendar ViewAnnotation 및 좌표 계약
 
-## 1. 결론
+## 1. 새 `Tizen.Entity.View` 계약
 
-현재 Calendar의 ViewAnnotation 결과에는 좌표 정보가 포함됩니다.
+Calendar는 업데이트된 `Tizen.Entity.View` schema를 사용합니다.
 
-정확히는 Entity context인 `Annotation` 객체 내부가 아니라, annotation을 소유하는 `Tizen.Entity.View`의 `Bounds` 필드에 다음 값이 포함됩니다.
+- `ScreenBounds`: screen-space geometry
+- `WindowBounds`: owning window 기준 geometry
+- `Annotation.EntityType`: generated Entity type
+- `Annotation.EntityId`: stable Entity ID
+- `Annotation.EntityInfo`: generated Entity `ToJson()` 결과
 
-```text
-Bounds.X
-Bounds.Y
-Bounds.Width
-Bounds.Height
-```
-
-따라서 consumer는 한 `Tizen.Entity.View`에서 다음 두 부분을 함께 읽어야 합니다.
-
-- `Bounds`: 화면 geometry
-- `Annotation`: Entity type, stable ID, generated Entity JSON
+이전 schema의 `Bounds`, `IsVisible`, `HasAnnotation`,
+`Annotation.EntityJson`은 더 이상 게시하지 않습니다. Annotation 존재 여부는
+`Annotation` 값 자체로 판단합니다.
 
 ## 2. wire 구조
 
@@ -27,7 +23,13 @@ Bounds.Height
   "Id": "calendar:event:e2e-commandbar-001",
   "Type": "Calendar.EventCard",
   "Description": "Calendar E2E Review",
-  "Bounds": {
+  "ScreenBounds": {
+    "X": 384.0,
+    "Y": 144.0,
+    "Width": 700.0,
+    "Height": 64.0
+  },
+  "WindowBounds": {
     "X": 384.0,
     "Y": 144.0,
     "Width": 700.0,
@@ -35,17 +37,17 @@ Bounds.Height
   },
   "IsFocused": false,
   "IsEnabled": true,
-  "IsVisible": true,
-  "HasAnnotation": true,
   "Annotation": {
     "EntityType": "Tizen.Entity.Calendar",
     "EntityId": "e2e-commandbar-001",
-    "EntityJson": "{\"TizenEntityCalendar\":{...}}"
+    "EntityInfo": "{\"TizenEntityCalendar\":{...}}"
   }
 }
 ```
 
-`EntityJson`은 JSON-in-a-string이며 generated `TizenEntityCalendar.ToJson()` 결과입니다. outer View JSON parser와 별도로 inner Entity JSON을 parse해야 합니다.
+`EntityInfo`는 JSON-in-a-string이며 generated
+`TizenEntityCalendar.ToJson()` 결과입니다. Consumer는 outer View JSON과
+inner Entity JSON을 각각 parse합니다.
 
 ## 3. source data flow
 
@@ -58,49 +60,62 @@ sequenceDiagram
 
     App->>NUI: FindChildByName("CalendarEvent-<id>")
     App->>NUI: CalculateScreenPositionSize()
-    NUI-->>App: X, Y, Width, Height
+    App->>NUI: Window.Default.WindowPosition
+    NUI-->>App: screen bounds + window origin
     App->>Registry: PublishVisibleEventViews(snapshot, focusedEventId)
     Registry->>Registry: finite/positive validation + dedupe
     Agent->>Registry: GetAnnotatedViews / FindById / GetFocusedView
-    Registry-->>Agent: Tizen.Entity.View + Bounds + Annotation
+    Registry-->>Agent: View + ScreenBounds + WindowBounds + Annotation
 ```
 
 주요 source:
 
 - `src/Calendar.App/CalendarApplication.cs`
   - active surface의 `CalendarEvent-<id>` NUI view 검색
-  - `CalculateScreenPositionSize()` 호출
-  - screen position과 size snapshot 생성
+  - `CalculateScreenPositionSize()`로 screen bounds 수집
+  - `Window.Default.WindowPosition`으로 window origin 수집
   - actual focused event ID 계산
 - `src/Calendar.ViewActionProvider/CalendarViewActionProviderHost.cs`
-  - `CalendarEventViewSnapshot(Event, X, Y, Width, Height)` 전달
+  - screen/window 좌표를 가진 `CalendarEventViewSnapshot` 전달
 - `src/Calendar.ViewActionProvider/CalendarViewService.cs`
-  - finite/positive bounds 필터
-  - `TizenEntityView.Bounds` 구성
-  - generated Calendar Entity `ToJson()`으로 Annotation 구성
+  - finite/positive screen bounds 필터
+  - `ScreenBounds`와 가능한 경우 `WindowBounds` 구성
+  - generated Calendar Entity `ToJson()`을 `EntityInfo`로 게시
 
 ## 4. 게시 조건
 
 Calendar는 다음 조건을 모두 만족하는 event card만 게시합니다.
 
-1. 현재 active surface에 실제 NUI view가 존재한다.
-2. stable name이 `CalendarEvent-<CalendarEvent.Id>`다.
-3. X/Y/Width/Height가 finite다.
-4. Width와 Height가 0보다 크다.
-5. 동일 Entity ID snapshot은 중복 게시하지 않는다.
+1. 현재 active surface에 실제 NUI view가 존재합니다.
+2. stable name은 `CalendarEvent-<CalendarEvent.Id>`입니다.
+3. screen X/Y/Width/Height가 finite입니다.
+4. Width와 Height가 0보다 큽니다.
+5. 동일 Entity ID snapshot은 중복 게시하지 않습니다.
 
-사용할 수 없는 geometry를 synthetic `(0, 0, 0, 0)`으로 대체하지 않습니다. frame 교체 중 actor handle 또는 bounds를 안정적으로 얻을 수 없으면 그 frame에서는 해당 view를 게시하지 않습니다.
+사용할 수 없는 geometry를 synthetic `(0, 0, 0, 0)`으로 대체하지 않습니다.
+window origin을 읽지 못한 frame에서는 `WindowBounds`만 생략하고, 유효한
+`ScreenBounds`와 annotation은 계속 게시합니다.
 
 ## 5. 좌표의 의미
 
-`CalculateScreenPositionSize()`에서 수집한 값이므로 Calendar가 사용하는 좌표는 실제 NUI screen-space snapshot입니다.
+### ScreenBounds
 
-- `X`, `Y`: event view의 screen position
-- `Width`, `Height`: event view의 현재 렌더 크기
-- 값은 annotation publication 시점의 snapshot
-- layout, view mode, window size, 화면 전환 후에는 바뀔 수 있음
+`CalculateScreenPositionSize()`에서 수집한 실제 NUI screen-space snapshot입니다.
 
-Entity instance처럼 영구적으로 저장하거나 이전 frame 좌표를 재사용하면 안 됩니다. 최신 화면 상태는 `GetAnnotatedViews` 또는 `FindById`로 다시 조회합니다.
+- `X`, `Y`: screen 기준 event view 위치
+- `Width`, `Height`: 현재 렌더 크기
+
+### WindowBounds
+
+같은 snapshot에서 window origin을 빼 계산합니다.
+
+```text
+WindowBounds.X = ScreenBounds.X - Window.Default.WindowPosition.X
+WindowBounds.Y = ScreenBounds.Y - Window.Default.WindowPosition.Y
+```
+
+크기는 screen bounds와 같습니다. 두 좌표계 모두 publication 시점의 값이므로
+layout, view mode, window 위치와 크기, 화면 전환 후에는 다시 조회해야 합니다.
 
 ## 6. focus 계약
 
@@ -109,32 +124,27 @@ Entity instance처럼 영구적으로 저장하거나 이전 frame 좌표를 재
 1. `FocusManager.Instance.GetCurrentFocusView()`로 실제 NUI focus를 읽습니다.
 2. focused view가 현재 active surface subtree 내부인지 확인합니다.
 3. name prefix가 `CalendarEvent-`인 경우에만 event ID를 추출합니다.
-4. `FocusChanged`에서 기존 visible geometry snapshot을 focus 상태와 함께 재게시합니다.
+4. `FocusChanged`에서 geometry snapshot을 focus 상태와 함께 재게시합니다.
 
-Command Bar, search input, overlay root 등 non-Entity control에 focus가 있으면 `GetFocusedView`는 focused Calendar annotation이 없다는 failure status를 반환할 수 있습니다.
+Command Bar, search input, overlay root 등 non-Entity control에 focus가 있으면
+`GetFocusedView`는 focused Calendar annotation이 없다는 failure를 반환할 수
+있습니다.
 
 ## 7. surface와 lifecycle
 
-게시 대상은 현재 surface에 따라 달라집니다.
+게시 대상:
 
-- Calendar Month/Week/Day/Agenda: 실제 렌더된 event card
-- Search results: 실제 렌더된 result card
-- Event detail: 선택된 event를 표현하는 active view가 존재할 때 해당 view
-- non-event controls: 미게시
+- Calendar Month/Week/Day/Agenda의 실제 렌더 event card
+- Search result의 실제 렌더 event card
+- Event detail에서 선택 event를 표현하는 active view
 
-lifecycle:
+헤더, navigation, command, editor draft와 화면 밖 view는 게시하지 않습니다.
+render와 focus 변경 후 snapshot을 게시하고, pause/terminate에서 clear하며,
+resume 후 fresh geometry를 다시 수집합니다.
 
-- render 후 snapshot publication
-- NUI focus 변경 후 focus flag republish
-- pause 시 clear
-- terminate 시 clear 및 focus event unsubscribe
-- resume/foreground render 후 fresh bounds republish
+## 8. View Actions와 A2UI
 
-따라서 background 상태에서 stale coordinates를 계속 제공하지 않습니다.
-
-## 8. View Actions
-
-Calendar 앱은 다음 exact View Actions를 manifest에 등록합니다.
+Calendar 앱은 다음 exact View Actions를 등록합니다.
 
 ```text
 Common_Tizen.Internal.Action.View_FindById
@@ -143,69 +153,35 @@ Common_Tizen.Internal.Action.View_GetFocusedView
 Common_Tizen.Internal.Action.View_ToPresentation
 ```
 
-동작:
-
 - `GetAnnotatedViews`: 현재 visible annotated view 목록
-- `FindById`: stable View ID로 현재 visible view 조회
+- `FindById`: `calendar:event:<EntityId>`로 현재 view 조회
 - `GetFocusedView`: actual focus를 가진 annotated Calendar view 조회
-- `ToPresentation`: Annotation의 generated Entity JSON을 A2UI로 변환
+- `ToPresentation`: `Annotation.EntityInfo`의 generated Entity JSON을 A2UI로 변환
 
-`FindById`의 ID는 Entity ID 자체가 아니라 다음 View ID입니다.
+`ToPresentation`은 `Template`에 `surfaceUpdate`, `Document`에 matching
+`dataModelUpdate` JSON을 반환합니다.
 
-```text
-calendar:event:<EntityId>
-```
-
-## 9. A2UI
-
-`ToPresentation`은 ViewAnnotation의 generated `EntityJson`을 입력으로 사용합니다.
-
-- `Template`: `surfaceUpdate` JSON
-- `Document`: matching `dataModelUpdate` JSON
-
-이 경로는 annotation context와 Agent presentation이 서로 다른 Entity serialization을 사용하지 않게 합니다.
-
-## 10. 검증 체크리스트
+## 9. 검증 체크리스트
 
 ### Source/host
 
-- [ ] `CalendarEventViewSnapshot`에 X/Y/Width/Height가 있다.
-- [ ] provider가 non-finite 값과 non-positive size를 거부한다.
-- [ ] `Bounds`가 snapshot 값으로 구성된다.
-- [ ] `EntityJson`이 generated `ToJson()` 결과다.
-- [ ] actual NUI focus가 active surface subtree로 제한된다.
+- [ ] snapshot에 screen/window 좌표와 size가 있습니다.
+- [ ] provider가 non-finite screen 값과 non-positive size를 거부합니다.
+- [ ] `ScreenBounds`가 measured screen snapshot과 일치합니다.
+- [ ] `WindowBounds`가 screen 좌표에서 window origin을 뺀 값입니다.
+- [ ] `EntityInfo`가 generated Entity `ToJson()` 결과입니다.
+- [ ] actual NUI focus가 active surface subtree로 제한됩니다.
 
 ### Emulator
 
-1. visible event를 만든다.
-2. `GetAnnotatedViews`를 호출한다.
-3. 반환 View의 `Bounds`가 finite positive인지 검사한다.
-4. View ID와 Entity ID가 stable event ID와 일치하는지 검사한다.
-5. event card로 actual focus를 이동한다.
-6. `GetFocusedView`가 동일 View/Entity ID를 반환하는지 검사한다.
-7. `FindById`로 같은 bounds/context를 조회한다.
-8. background 전환 후 목록이 비는지 확인한다.
-9. foreground 복귀 후 새 bounds가 게시되는지 확인한다.
-10. `ToPresentation`의 Template/Document를 각각 JSON parse한다.
+1. visible event를 만들고 `GetAnnotatedViews`를 호출합니다.
+2. `ScreenBounds`와 `WindowBounds`가 finite positive인지 검사합니다.
+3. View ID와 Entity ID가 stable event ID와 일치하는지 검사합니다.
+4. event card로 actual focus를 이동합니다.
+5. `GetFocusedView`가 동일 View/Entity ID를 반환하는지 검사합니다.
+6. `FindById`로 같은 bounds와 `EntityInfo`를 조회합니다.
+7. background에서 목록이 clear되고 foreground에서 republish되는지 확인합니다.
+8. `ToPresentation`의 Template/Document를 각각 JSON parse합니다.
 
-## 11. 실제 검증된 반환 형태
-
-Common Emulator E2E에서 확인한 예:
-
-```json
-{
-  "Id": "calendar:event:e2e-commandbar-001",
-  "Bounds": {
-    "X": 384.0,
-    "Y": 144.0,
-    "Width": 700.0,
-    "Height": 64.0
-  },
-  "Annotation": {
-    "EntityType": "Tizen.Entity.Calendar",
-    "EntityId": "e2e-commandbar-001"
-  }
-}
-```
-
-이 숫자는 특정 Agenda layout/frame의 예시이며 API 상수가 아닙니다. 다른 view mode, window size, selected period에서는 달라집니다.
+실제 숫자는 특정 frame의 증거이며 API 상수가 아닙니다. 완료 판단에는 현재
+설치한 TPK의 RPC payload와 GUI automation screenshot을 함께 사용합니다.

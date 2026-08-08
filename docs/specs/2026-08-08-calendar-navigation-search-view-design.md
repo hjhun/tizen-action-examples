@@ -162,11 +162,11 @@ This is additive. Existing positional method IDs remain unchanged, and the new m
 - Actual rendered event cards in Month agenda, Week, Day, Agenda, and search results are annotated.
 - `Annotation.EntityType` remains `Tizen.Entity.Calendar`.
 - `Annotation.EntityId` remains the stable event ID.
-- `Annotation.EntityJson` remains the generated Calendar Entity `ToJson()` snapshot.
+- `Annotation.EntityInfo` remains the generated Calendar Entity `ToJson()` snapshot.
 - Published views are replaced when period, view mode, search result, overlay, or app activation changes.
-- Only actually rendered cards are `IsVisible=true`.
+- Annotation presence is represented by the `Annotation` object itself.
 - Focused annotation must match actual NUI focus.
-- Real screen bounds replace synthetic zero bounds when NUI geometry is available.
+- Measured `ScreenBounds` and window-relative `WindowBounds` replace synthetic zero bounds.
 
 The generated Calendar snapshot currently includes note and location. This design preserves the canonical `ToJson()` requirement but records disclosure as an explicit product policy: annotations are published only while the corresponding card is rendered in the foreground. Redaction would require a separate Entity contract rather than manually mutating canonical generated JSON.
 
