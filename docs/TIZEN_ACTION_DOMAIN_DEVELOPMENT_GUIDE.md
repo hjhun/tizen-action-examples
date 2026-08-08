@@ -316,6 +316,24 @@ Consumed sequence: no second activation
 - input field는 실제로 focus/edit/save 가능한 native control이어야 한다.
 - disabled/decorative Add button을 남기지 않는다.
 
+### 6.4 reference-canvas scaling과 runtime geometry
+
+NUI reference-canvas 앱은 [NUI Scaling and UI Evidence Workflow](../.agents/workflows/NUI_SCALING_AND_UI_EVIDENCE.md)를 따른다.
+
+핵심 계약:
+
+1. `Window.Default.WindowSize`와 `Window.Default.GetInsets()`에서 실제 drawable area를 계산한다.
+2. available area에서 design canvas의 uniform minimum scale과 centered offset을 계산한다.
+3. 새 앱은 physical root 아래의 top-left design canvas에 page와 overlay를 두는 ancestor transform을 우선한다. 현재 Calendar가 이 구조다.
+4. ancestor-transform descendant는 design units를 유지한다. 기존 manual-scaling 앱은 position, size, typography, radius, border, focus geometry를 helper에서 정확히 한 번 scaling한다. 현재 Reminder가 이 compatibility 구조다.
+5. `Resized`와 `InsetsChanged`에서 rerender하고 종료 시 handlers를 해제한다.
+6. transient invalid viewport는 `TryCreate`로 거부하고 기존 frame을 유지한다.
+7. ViewAnnotation bounds는 final NUI geometry를 기준으로 한다. ancestor-transform 앱은 design-space `View.Size` fallback을 금지하며, manual 앱의 already-scaled size fallback은 별도 non-1.0 native bounds 검증이 필요하다.
+
+platform inset과 product safe area는 별도 계층이다. platform inset을 제외한 available area에 canvas를 배치한 뒤, 앱의 top/bottom/overscan 여백은 design units로 적용한다.
+
+host geometry tests는 최소 1920×1080, 1280×720, 1440×1080, 2560×1080, non-zero insets, invalid dimensions, inset exhaustion을 포함한다. host 계산 통과를 실제 native profile render/focus/View-bounds 검증으로 표현하지 않는다.
+
 ---
 
 ## 7. Generated C# provider 관리
@@ -753,6 +771,8 @@ AURUM="$SKILL_ROOT/scripts/aurum-ui"
 
 Aurum tree가 status OK와 empty roots를 반환하더라도 screen-size, key/pointer, screenshot RPC가 동작할 수 있다. 이 경우 element ID를 만들지 말고 screenshot-guided remote key 또는 native coordinate fallback을 사용한다. 각 state change 뒤 fresh screenshot으로 postcondition을 확인한다.
 
+capture와 README evidence의 상세 절차는 [NUI Scaling and UI Evidence Workflow](../.agents/workflows/NUI_SCALING_AND_UI_EVIDENCE.md)를 따른다. 화면 fixture는 app data나 platform DB를 직접 수정하지 않고 가능한 경우 public Action wire path로 deterministic하게 만든다. 모든 primary page와 대표 detail/filter/editor/focus state를 stable `<Domain>/docs/images/` 경로에 캡처하고, image decode/dimensions와 relative Markdown link를 검증한다.
+
 ### 10.10 Phase 9 — README, component guide, screenshot provenance
 
 기능과 검증 결과가 실제로 존재한 뒤 문서를 작성한다. 계획 중인 기능을 구현 완료처럼 설명하지 않는다.
@@ -861,15 +881,22 @@ TV/product profile: NOT VERIFIED (when Common Emulator only)
 
 ### UI
 
+- [ ] `WindowSize`/`GetInsets()` 기반 available area와 uniform centered viewport를 사용한다.
+- [ ] page, overlay, typography, border, radius, focus geometry가 ancestor transform으로 정확히 한 번 scaling된다.
+- [ ] invalid resize/inset frame에서 기존 root를 유지하고 runtime handlers를 teardown한다.
 - [ ] focus ring과 D-pad hierarchy를 확인했다.
 - [ ] pointer activation contract를 확인했다.
 - [ ] editor field의 실제 input/save를 확인했다.
 - [ ] destructive confirmation의 cancel/confirm/back hierarchy를 확인했다.
 - [ ] fresh screenshots에 clipping, touch target, disabled action 문제가 없는지 확인했다.
+- [ ] actual transformed View bounds와 focused annotated actor를 device wire path로 확인했다.
 
 ### Documentation and final evidence
 
 - [ ] 대표 README에 실제 구현 기능과 최신 화면을 설명했다.
+- [ ] deterministic fixture를 public Action path로 만들고 capture state를 재현할 수 있다.
+- [ ] repository Aurum wrapper를 사용하고 tree/input/screenshot capability를 각각 기록했다.
+- [ ] 모든 primary page와 대표 detail/filter/editor/focus state를 캡처했다.
 - [ ] screenshot을 `<Domain>/docs/images/`에 저장하고 provenance를 기록했다.
 - [ ] component guide와 repository guide의 중복을 줄이고 상호 link했다.
 - [ ] Markdown link, image decode/resolution, JSON/YAML example, code fence를 검사했다.
@@ -914,6 +941,7 @@ sdb -s emulator-26101 shell 'action-tool find-appids Tizen.Action.Schedule --jso
 - [Calendar ViewAnnotation 및 좌표 계약](../Calendar/docs/VIEW_ANNOTATION.md): bounds, actual focus, lifecycle, A2UI
 - [Calendar navigation, search, and View design](specs/2026-08-08-calendar-navigation-search-view-design.md): 구현 전 승인한 UX/architecture 결정
 - [Tizen Aurum UI Automation skill](../.agents/skills/tizen-aurum-ui-automation/SKILL.md): target-native input, tree, screenshot workflow와 실행 코드
+- [NUI Scaling and UI Evidence Workflow](../.agents/workflows/NUI_SCALING_AND_UI_EVIDENCE.md): inset-aware reference canvas, View bounds, Aurum capture, README evidence 재사용 절차
 - [Current development record](../.dev/DEVELOPTMENT.md): 현재 구현 결과와 검증 기록
 - [Developer progress evidence](../.dev/progress/developer.md): 개발 결정과 device evidence
 - Tizen Action default Action schemas: `/home/hjhun/samba/workspace/appfw/tizen-action/default-actions`

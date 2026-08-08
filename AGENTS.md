@@ -94,6 +94,8 @@ Tizen NUI / Action providers / platform adapters
 - Preserve familiar platform behavior while adapting touch-oriented Galaxy patterns to every supported Tizen input method, including remote/D-pad, keyboard, pointer, and touch where applicable.
 - Make focus visible and deterministic. Define sensible initial focus, directional navigation, back behavior, modal focus trapping, and focus restoration.
 - Provide accessible labels, sufficient contrast, scalable text, bounded content, loading and empty states, validation feedback, and confirmation for destructive actions.
+- For new or migrated reference-canvas NUI apps, derive the drawable area from `Window.Default.WindowSize` and `GetInsets()`, then prefer one centered uniform ancestor transform so page, overlay, typography, border, radius, and focus geometry scale exactly once. Existing manual-scaling apps must prove those same properties are each scaled once without duplicate root/local offsets.
+- Validate resize/inset geometry before replacing the current root. Ancestor-transform apps publish only finite, positive measured View bounds; existing manual compatibility fallbacks require explicit scaled-size and non-1.0 native-bounds verification.
 - Reuse project theme tokens and shared components where they already exist, but do not introduce a design-system abstraction solely for one screen.
 
 ## Testing and Completion Gates
@@ -113,6 +115,7 @@ For each advertised Action, test at least one successful invocation and one mean
 
 - Treat `Calendar/` as the current reference implementation, not as a template that must be copied wholesale.
 - Consult `docs/TIZEN_ACTION_DOMAIN_DEVELOPMENT_GUIDE.md` for detailed engineering and validation guidance.
+- Follow `.agents/workflows/NUI_SCALING_AND_UI_EVIDENCE.md` when implementing reference-canvas scaling, capturing native UI states, or publishing README screenshot evidence.
 - Consult `docs/TIZEN_ACTION_2_0_DOMAIN_APP_CATALOG.md` for planned application domains and minimum scenarios.
 - Keep application-specific documentation beside its application when practical.
 - Preserve existing untracked files, local patches, generated artifacts, and development records unless the task explicitly covers them.
