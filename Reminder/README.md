@@ -50,11 +50,13 @@ Both Reminder and Calendar use the live NUI window dimensions supplied by the pl
 Reminder derives a centered proportional canvas from a 1920×1080 design space:
 
 ```text
-scale         = min(windowWidth / 1920, windowHeight / 1080)
-contentWidth  = 1920 × scale
-contentHeight = 1080 × scale
-offsetX       = (windowWidth  - contentWidth)  / 2
-offsetY       = (windowHeight - contentHeight) / 2
+availableWidth  = windowWidth  - insetStart - insetEnd
+availableHeight = windowHeight - insetTop   - insetBottom
+scale           = min(availableWidth / 1920, availableHeight / 1080)
+contentWidth    = 1920 × scale
+contentHeight   = 1080 × scale
+offsetX         = insetStart + (availableWidth  - contentWidth)  / 2
+offsetY         = insetTop   + (availableHeight - contentHeight) / 2
 ```
 
 - Root-level header and three panes receive the centered canvas offsets.
@@ -65,7 +67,7 @@ offsetY       = (windowHeight - contentHeight) / 2
 - `Window.Default.Resized` or `Window.Default.InsetsChanged` triggers a fresh render, so runtime window/inset changes do not retain stale geometry.
 - Actual NUI geometry remains the source for published `ScreenBounds` and `WindowBounds`.
 
-The Tizen-free viewport tests cover:
+The zero-platform-inset geometry cases are:
 
 | Window | Scale | Centered offset | Purpose |
 |---|---:|---:|---|
