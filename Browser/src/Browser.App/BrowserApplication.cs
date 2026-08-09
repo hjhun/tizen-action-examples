@@ -1,5 +1,6 @@
 using Browser.ActionProvider;
 using Browser.Domain;
+using Browser.Persistence;
 using Browser.UseCases;
 using Browser.ViewActionProvider;
 using Tizen.NUI;
@@ -12,14 +13,18 @@ namespace Browser.App;
 /// </summary>
 internal sealed class BrowserApplication : NUIApplication
 {
-    private static readonly Uri InitialPage = new("https://www.tizen.org/");
     private readonly CancellationTokenSource _lifetime = new();
     private BrowserChromeView? _chrome;
     private WebView? _webView;
     private NuiWebViewRuntime? _webRuntime;
     private BrowserNavigationCoordinator? _navigation;
+    private BrowserTabCoordinator? _tabsCoordinator;
+    private BrowserSessionCoordinator? _sessionCoordinator;
+    private BrowserTabPersistenceCoordinator? _tabPersistence;
     private BrowserPageQueryService? _queries;
     private SynchronizationContext? _uiContext;
+    private int _paused;
+    private int _tabMutationPending;
 
     protected override void OnCreate()
     {
@@ -27,13 +32,25 @@ internal sealed class BrowserApplication : NUIApplication
 
         _uiContext = SynchronizationContext.Current
             ?? throw new InvalidOperationException("Browser NUI composition requires a UI synchronization context.");
+        _tabsCoordinator = new BrowserTabCoordinator(BrowserTabWorkspace.Create("tab-1"));
+        var sessionPath = System.IO.Path.Combine(
+            Tizen.Applications.Application.Current.DirectoryInfo.Data,
+            "browser-session.json");
+        _sessionCoordinator = new BrowserSessionCoordinator(new BrowserFileSessionStore(sessionPath));
+        _tabPersistence = new BrowserTabPersistenceCoordinator(_tabsCoordinator, _sessionCoordinator);
         _chrome = new BrowserChromeView(
             NavigateAddressFromUi,
             goBack: GoBackFromUi,
             goForward: GoForwardFromUi,
+            openTabs: OpenTabsFromUi,
             reload: ReloadFromUi,
             retry: RetryFromUi,
-            recoveryBack: HandleBackFromUi);
+            recoveryBack: HandleBackFromUi,
+            createTab: CreateTabFromUi,
+            selectTab: SelectTabFromUi,
+            requestClose: RequestCloseTabFromUi,
+            confirmClose: ConfirmCloseTabFromUi,
+            cancelClose: CancelCloseTabFromUi);
         Window.Default.GetDefaultLayer().Add(_chrome.Root);
         UpdateReferenceCanvasLayout();
         Window.Default.Resized += OnWindowResized;
@@ -69,14 +86,17 @@ internal sealed class BrowserApplication : NUIApplication
 
         _navigation = new BrowserNavigationCoordinator(runtime);
         _navigation.StateChanged += OnNavigationStateChanged;
+        _tabsCoordinator.StateChanged += OnTabStateChanged;
         _queries = new BrowserPageQueryService(_navigation);
 
         BrowserActionProviderHost.Start(_queries, new NuiNavigationBridge(this, _uiContext));
         BrowserViewActionProviderHost.Start();
         FocusManager.Instance.FocusChanged += OnFocusChanged;
         Window.Default.KeyEvent += OnKeyEvent;
+        _chrome.UpdateNavigationState(_navigation.CurrentState);
+        _chrome.UpdateWorkspace(_tabsCoordinator.Current);
         _chrome.FocusAddress();
-        _ = NavigateFromUiAsync("tab-1", InitialPage.AbsoluteUri);
+        _ = RestoreSessionAsync();
     }
 
     protected override void OnTerminate()
@@ -85,6 +105,10 @@ internal sealed class BrowserApplication : NUIApplication
         if (_navigation is not null)
         {
             _navigation.StateChanged -= OnNavigationStateChanged;
+        }
+        if (_tabsCoordinator is not null)
+        {
+            _tabsCoordinator.StateChanged -= OnTabStateChanged;
         }
         Window.Default.Resized -= OnWindowResized;
         Window.Default.InsetsChanged -= OnWindowResized;
@@ -105,6 +129,32 @@ internal sealed class BrowserApplication : NUIApplication
         _ = DisposeNavigationAsync();
         _lifetime.Dispose();
         base.OnTerminate();
+    }
+
+    protected override void OnPause()
+    {
+        Volatile.Write(ref _paused, 1);
+        SaveSessionFromUi();
+        BrowserViewActionProviderHost.ClearPublishedViews();
+        base.OnPause();
+    }
+
+    protected override void OnResume()
+    {
+        base.OnResume();
+        Volatile.Write(ref _paused, 0);
+        UpdateReferenceCanvasLayout();
+        if (_navigation is not null)
+        {
+            _chrome?.UpdateNavigationState(_navigation.CurrentState);
+        }
+
+        if (_tabsCoordinator is not null)
+        {
+            _chrome?.UpdateWorkspace(_tabsCoordinator.Current);
+        }
+
+        PublishCurrentPageAnnotation();
     }
 
     private void OnWindowResized(object? sender, EventArgs eventArgs)
@@ -177,7 +227,232 @@ internal sealed class BrowserApplication : NUIApplication
 
     private void NavigateAddressFromUi(string address)
     {
-        _ = NavigateFromUiAsync("tab-1", address);
+        var tabId = _tabsCoordinator?.Current.SelectedTabId;
+        if (!string.IsNullOrEmpty(tabId))
+        {
+            _ = NavigateFromUiAsync(tabId, address);
+        }
+    }
+
+    private void OpenTabsFromUi()
+    {
+        if (Volatile.Read(ref _tabMutationPending) == 0)
+        {
+            _tabsCoordinator?.OpenTabs();
+        }
+    }
+
+    private void CreateTabFromUi()
+    {
+        _ = CreateTabPersistedAsync();
+    }
+
+    private void SelectTabFromUi(string tabId)
+    {
+        _ = SelectTabPersistedAsync(tabId);
+    }
+
+    private async Task CreateTabPersistedAsync()
+    {
+        if (_tabPersistence is null || Interlocked.CompareExchange(ref _tabMutationPending, 1, 0) != 0)
+        {
+            return;
+        }
+
+        try
+        {
+            _chrome?.SetTabMutationBusy(true);
+            await _tabPersistence.CreateTabAsync(_lifetime.Token);
+        }
+        catch (OperationCanceledException) when (_lifetime.IsCancellationRequested)
+        {
+            // Lifecycle ended before the desired tab could become durable.
+        }
+        catch (Exception exception) when (exception is InvalidDataException or IOException or UnauthorizedAccessException or InvalidOperationException)
+        {
+            // Persist-first semantics leave the prior tab workspace published.
+        }
+        finally
+        {
+            Volatile.Write(ref _tabMutationPending, 0);
+            _chrome?.SetTabMutationBusy(false);
+        }
+    }
+
+    private async Task SelectTabPersistedAsync(string tabId)
+    {
+        if (_tabPersistence is null || Interlocked.CompareExchange(ref _tabMutationPending, 1, 0) != 0)
+        {
+            return;
+        }
+
+        try
+        {
+            _chrome?.SetTabMutationBusy(true);
+            var result = await _tabPersistence.SelectTabAsync(tabId, _lifetime.Token);
+            if (result.Succeeded && result.SelectedTab is not null)
+            {
+                ActivateTab(result.SelectedTab);
+            }
+        }
+        catch (OperationCanceledException) when (_lifetime.IsCancellationRequested)
+        {
+            // Lifecycle ended before selection could become durable.
+        }
+        catch (Exception exception) when (exception is InvalidDataException or IOException or UnauthorizedAccessException or InvalidOperationException)
+        {
+            // Persist-first semantics leave the prior selection published.
+        }
+        finally
+        {
+            Volatile.Write(ref _tabMutationPending, 0);
+            _chrome?.SetTabMutationBusy(false);
+        }
+    }
+
+    private void RequestCloseTabFromUi(string tabId)
+    {
+        if (Volatile.Read(ref _tabMutationPending) == 0)
+        {
+            _tabsCoordinator?.TryRequestClose(tabId);
+        }
+    }
+
+    private void CancelCloseTabFromUi()
+    {
+        if (Volatile.Read(ref _tabMutationPending) == 0)
+        {
+            _tabsCoordinator?.TryCancelClose();
+        }
+    }
+
+    private void ConfirmCloseTabFromUi()
+    {
+        _ = ConfirmClosePersistedAsync();
+    }
+
+    private async Task ConfirmClosePersistedAsync()
+    {
+        if (_tabPersistence is null || _tabsCoordinator is null ||
+            Interlocked.CompareExchange(ref _tabMutationPending, 1, 0) != 0)
+        {
+            return;
+        }
+
+        try
+        {
+            _chrome?.SetTabMutationBusy(true);
+            if (await _tabPersistence.ConfirmCloseAsync(_lifetime.Token))
+            {
+                ActivateTab(_tabsCoordinator.Current.SelectedTab, keepTabsOpen: true);
+            }
+        }
+        catch (OperationCanceledException) when (_lifetime.IsCancellationRequested)
+        {
+            // Lifecycle ended before close confirmation could commit.
+        }
+        catch (Exception exception) when (exception is InvalidDataException or IOException or UnauthorizedAccessException or InvalidOperationException)
+        {
+            // Persist-first semantics leave the tab and modal state unchanged.
+        }
+        finally
+        {
+            Volatile.Write(ref _tabMutationPending, 0);
+            _chrome?.SetTabMutationBusy(false);
+        }
+    }
+
+    private void ActivateTab(BrowserTab tab, bool keepTabsOpen = false)
+    {
+        ArgumentNullException.ThrowIfNull(tab);
+        if (tab.Page is null)
+        {
+            _navigation?.ResetToHome();
+        }
+        else
+        {
+            _ = NavigateFromUiAsync(tab.Id, tab.Page.Url);
+        }
+
+        if (!keepTabsOpen)
+        {
+            _chrome?.FocusAddress();
+        }
+    }
+
+    private async Task RestoreSessionAsync()
+    {
+        if (_sessionCoordinator is null || _tabsCoordinator is null)
+        {
+            return;
+        }
+
+        BrowserSessionRestoreResult result;
+        try
+        {
+            result = await _sessionCoordinator.RestoreAsync(_lifetime.Token);
+        }
+        catch (OperationCanceledException) when (_lifetime.IsCancellationRequested)
+        {
+            return;
+        }
+
+        var context = _uiContext;
+        if (context is null || _lifetime.IsCancellationRequested)
+        {
+            return;
+        }
+
+        context.Post(static value =>
+        {
+            var restore = (SessionRestoreUpdate)value!;
+            if (restore.Application._lifetime.IsCancellationRequested || restore.Application._tabsCoordinator is null)
+            {
+                return;
+            }
+
+            if (restore.Result.Status == BrowserSessionRestoreStatus.Restored && restore.Result.Snapshot is not null)
+            {
+                restore.Application._tabsCoordinator.Restore(restore.Result.Snapshot);
+            }
+            else if (restore.Result.Status == BrowserSessionRestoreStatus.InvalidSession)
+            {
+                restore.Application.SaveSessionFromUi();
+            }
+
+            restore.Application.ActivateTab(restore.Application._tabsCoordinator.Current.SelectedTab);
+        }, new SessionRestoreUpdate(this, result));
+    }
+
+    private void SaveSessionFromUi()
+    {
+        if (_tabPersistence is null || _lifetime.IsCancellationRequested)
+        {
+            return;
+        }
+
+        _ = SaveCurrentSessionAsync();
+    }
+
+    private async Task SaveCurrentSessionAsync()
+    {
+        if (_tabPersistence is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await _tabPersistence.SaveCurrentAsync(_lifetime.Token);
+        }
+        catch (OperationCanceledException) when (_lifetime.IsCancellationRequested)
+        {
+            // Lifecycle cancellation leaves the last complete atomic snapshot intact.
+        }
+        catch (Exception exception) when (exception is InvalidDataException or IOException or UnauthorizedAccessException)
+        {
+            // The in-memory normal session remains usable when persistence is unavailable.
+        }
     }
 
     private void ReloadFromUi() => _ = RunNavigationCommandAsync(navigation => navigation.ReloadAsync(_lifetime.Token));
@@ -207,6 +482,24 @@ internal sealed class BrowserApplication : NUIApplication
 
     private void HandleBackFromUi()
     {
+        if (Volatile.Read(ref _tabMutationPending) != 0)
+        {
+            return;
+        }
+
+        var workspace = _tabsCoordinator?.Current;
+        if (workspace?.Surface == BrowserWorkspaceSurface.CloseConfirmation)
+        {
+            CancelCloseTabFromUi();
+            return;
+        }
+
+        if (workspace?.Surface == BrowserWorkspaceSurface.Tabs)
+        {
+            _tabsCoordinator?.TryCloseTabs();
+            return;
+        }
+
         if (_navigation is null)
         {
             Exit();
@@ -255,14 +548,72 @@ internal sealed class BrowserApplication : NUIApplication
 
     private void ApplyNavigationState(BrowserNavigationState state)
     {
+        if (state.Phase == BrowserNavigationPhase.Page && state.Page is not null &&
+            _tabsCoordinator?.Current.SelectedTabId == state.Page.Id)
+        {
+            _ = PersistSelectedPageAsync(state.Page);
+        }
+
         _chrome?.UpdateNavigationState(state);
+        PublishCurrentPageAnnotation();
+    }
+
+    private async Task PersistSelectedPageAsync(BrowserPage page)
+    {
+        if (_tabPersistence is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await _tabPersistence.UpdateSelectedPageAsync(page, _lifetime.Token);
+        }
+        catch (OperationCanceledException) when (_lifetime.IsCancellationRequested)
+        {
+        }
+        catch (Exception exception) when (exception is InvalidDataException or IOException or UnauthorizedAccessException or InvalidOperationException)
+        {
+            // Navigation remains visible; a later successful mutation/pause can retry persistence.
+        }
+    }
+
+    private void OnTabStateChanged(object? sender, BrowserTabWorkspace workspace)
+    {
+        var context = _uiContext;
+        if (context is null || _lifetime.IsCancellationRequested)
+        {
+            return;
+        }
+
+        if (SynchronizationContext.Current == context)
+        {
+            ApplyWorkspaceState(workspace);
+        }
+        else
+        {
+            context.Post(static value =>
+            {
+                var update = (WorkspaceStateUpdate)value!;
+                if (!update.Application._lifetime.IsCancellationRequested)
+                {
+                    update.Application.ApplyWorkspaceState(update.Workspace);
+                }
+            }, new WorkspaceStateUpdate(this, workspace));
+        }
+    }
+
+    private void ApplyWorkspaceState(BrowserTabWorkspace workspace)
+    {
+        _chrome?.UpdateWorkspace(workspace);
         PublishCurrentPageAnnotation();
     }
 
     private void PublishCurrentPageAnnotation()
     {
-        if (_webView is null || _navigation?.CurrentState is not { Phase: BrowserNavigationPhase.Page, Page: { } page } ||
-            _lifetime.IsCancellationRequested)
+        if (_tabsCoordinator?.Current.Surface != BrowserWorkspaceSurface.Page ||
+            _webView is null || _navigation?.CurrentState is not { Phase: BrowserNavigationPhase.Page, Page: { } page } ||
+            _lifetime.IsCancellationRequested || Volatile.Read(ref _paused) != 0)
         {
             BrowserViewActionProviderHost.ClearPublishedViews();
             return;
@@ -314,6 +665,11 @@ internal sealed class BrowserApplication : NUIApplication
         {
             await _webRuntime.DisposeAsync();
         }
+
+        if (_sessionCoordinator is not null)
+        {
+            await _sessionCoordinator.DisposeAsync();
+        }
     }
 
     private sealed class NuiNavigationBridge : IBrowserActionNavigation
@@ -352,6 +708,10 @@ internal sealed class BrowserApplication : NUIApplication
     }
 
     private sealed record NavigationStateUpdate(BrowserApplication Application, BrowserNavigationState State);
+
+    private sealed record WorkspaceStateUpdate(BrowserApplication Application, BrowserTabWorkspace Workspace);
+
+    private sealed record SessionRestoreUpdate(BrowserApplication Application, BrowserSessionRestoreResult Result);
 
     private sealed class UnavailableWebRuntime : IWebRuntime
     {

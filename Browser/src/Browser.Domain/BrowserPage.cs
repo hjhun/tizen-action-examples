@@ -37,12 +37,20 @@ public sealed record BrowserPage
         }
 
         if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) ||
-            (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
+            (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps) ||
+            !string.IsNullOrEmpty(uri.UserInfo))
         {
-            throw new ArgumentException("Browser page URL must be an absolute HTTP or HTTPS URL.", nameof(url));
+            throw new ArgumentException("Browser page URL must be an absolute HTTP or HTTPS URL without embedded credentials.", nameof(url));
         }
 
-        return new BrowserPage(id, uri.AbsoluteUri, title, details);
+        var publicUri = new UriBuilder(uri)
+        {
+            Query = string.Empty,
+            Fragment = string.Empty,
+            UserName = string.Empty,
+            Password = string.Empty,
+        }.Uri.AbsoluteUri;
+        return new BrowserPage(id, publicUri, title, details);
     }
 }
 

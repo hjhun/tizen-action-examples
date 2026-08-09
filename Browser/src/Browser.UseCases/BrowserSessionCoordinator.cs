@@ -2,17 +2,11 @@ using Browser.Persistence;
 
 namespace Browser.UseCases;
 
-public interface IBrowserSessionStore
-{
-    Task<string?> LoadAsync(CancellationToken cancellationToken);
-
-    Task SaveAsync(string serializedSnapshot, CancellationToken cancellationToken);
-}
-
 public enum BrowserSessionRestoreStatus
 {
     Restored,
     NoSession,
+    InvalidSession,
     Superseded
 }
 
@@ -45,7 +39,15 @@ public sealed class BrowserSessionCoordinator : IAsyncDisposable
         try
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var serialized = await _store.LoadAsync(cancellationToken).ConfigureAwait(false);
+            string? serialized;
+            try
+            {
+                serialized = await _store.LoadAsync(cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception exception) when (exception is InvalidDataException or IOException or UnauthorizedAccessException)
+            {
+                return new BrowserSessionRestoreResult(BrowserSessionRestoreStatus.InvalidSession, null);
+            }
             cancellationToken.ThrowIfCancellationRequested();
 
             if (IsSuperseded(operationId))
@@ -53,11 +55,21 @@ public sealed class BrowserSessionCoordinator : IAsyncDisposable
                 return new BrowserSessionRestoreResult(BrowserSessionRestoreStatus.Superseded, null);
             }
 
-            return string.IsNullOrWhiteSpace(serialized)
-                ? new BrowserSessionRestoreResult(BrowserSessionRestoreStatus.NoSession, null)
-                : new BrowserSessionRestoreResult(
+            if (string.IsNullOrWhiteSpace(serialized))
+            {
+                return new BrowserSessionRestoreResult(BrowserSessionRestoreStatus.NoSession, null);
+            }
+
+            try
+            {
+                return new BrowserSessionRestoreResult(
                     BrowserSessionRestoreStatus.Restored,
                     BrowserSessionSnapshotSerializer.Deserialize(serialized));
+            }
+            catch (InvalidDataException)
+            {
+                return new BrowserSessionRestoreResult(BrowserSessionRestoreStatus.InvalidSession, null);
+            }
         }
         finally
         {

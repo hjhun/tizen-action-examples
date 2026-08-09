@@ -1,6 +1,6 @@
 # Browser 요구사항 추적성
 
-갱신일: 2026-08-09 (Stage 2B)
+갱신일: 2026-08-09 (Stage 2C)
 상태 정의: `문서화`는 구현 완료가 아니며, `부분`은 일부 source/host evidence만 존재하고 target gate가 남았다는 뜻이다.
 
 ## 기능 요구사항
@@ -18,13 +18,13 @@
 | FR-BROWSER-009 | 2B stale suppression | active linked cancellation + monotonic intent | A cancellation 관찰 후 B만 publish PASS | rapid consecutive Go/input | trace + final native frame 예정 | host PASS/target 대기 |
 | FR-BROWSER-010 | 2B history | real `WebView.GoBack/GoForward/CanGo*` adapter | availability/one-step command pipeline + disabled skip PASS | Back/Forward success+disabled | focused chrome native 예정 | host/source PASS/target 대기 |
 | FR-BROWSER-011 | 2B/2C Back hierarchy | error→stable/home, page→history; tabs/modal은 2C | recovery Back + history host PASS | remote Back each state | error/tabs/modal native 예정 | 2B host PASS/2C·target 대기 |
-| FR-BROWSER-012 | 2C tabs aggregate | tab domain/use case/view 예정 | order/selected/max tests 예정 | open Tabs/select | tabs HTML/native 예정 | HTML-only 부분 |
-| FR-BROWSER-013 | 2C new tab | tab command/persistence 예정 | max-20/ID/focus tests 예정 | New tab/disabled at max | tabs-new HTML/native 예정 | HTML-only 부분 |
-| FR-BROWSER-014 | 2C select tab | tab command + runtime binding 예정 | selection/order/state tests 예정 | select via key/pointer | selected tab HTML/native 예정 | HTML-only 부분 |
-| FR-BROWSER-015 | 2C close request/modal | confirmation state 예정 | trap/title-bound tests 예정 | Close → modal | close-confirm HTML/native 예정 | HTML-only 부분 |
-| FR-BROWSER-016 | 2C confirm close | aggregate + persistence 예정 | nearest selection/last-tab tests 예정 | confirm close | post-close HTML/native 예정 | HTML-only 부분 |
-| FR-BROWSER-017 | 2C cancel/restore | focus restoration reducer 예정 | Cancel/Back invariant tests 예정 | modal Back/Cancel | restored-focus frame 예정 | HTML-only 부분 |
-| FR-BROWSER-018 | 2C persistence/lifecycle | `BrowserSessionSnapshot`, `BrowserSessionCoordinator`, Tizen store 예정 | existing round-trip/version/stale save + failure injection 예정 | terminate/relaunch | relaunch state frame 예정 | 부분 |
+| FR-BROWSER-012 | 2C tabs aggregate | `BrowserTabWorkspace`, coordinator, NUI clipped ordered rows | order/selected/max/surface tests PASS | open Tabs/select | Stage 1 tabs HTML; native 예정 | host/source PASS/target 대기 |
+| FR-BROWSER-013 | 2C new tab | stable GUID ID, Home tab, max-20 disabled, persist-first publish | unique/non-reuse/max/new-selected/focus/durable-before-publish PASS | New tab/disabled at max | tabs-new native 예정 | host/source PASS/target 대기 |
+| FR-BROWSER-014 | 2C select tab | tab coordinator + selected WebView/home activation | selected/order/shared-page snapshot PASS | select via key/pointer | selected tab native 예정 | host/source PASS/target 대기 |
+| FR-BROWSER-015 | 2C close request/modal | full-canvas modal + bounded title + Cancel initial | 80-char title, modal state/visual/focus PASS | Close → modal | Stage 1 close HTML; native 예정 | host/source PASS/target 대기 |
+| FR-BROWSER-016 | 2C confirm close | aggregate + atomic snapshot | exactly one/nearest/last-tab guard/ID non-reuse PASS | confirm close | post-close native 예정 | host PASS/target 대기 |
+| FR-BROWSER-017 | 2C cancel/restore | immutable cancel + invoking close focus ID + Back hierarchy | order/selected unchanged + focus restoration PASS | modal Back/Cancel | restored-focus native 예정 | host/source PASS/target 대기 |
+| FR-BROWSER-018 | 2C persistence/lifecycle | session v2 tabs, v1 migration, atomic store, persist-first mutation, pause save | round-trip/migration/malformed/unknown/256KiB/stale save/durable-before-publish PASS | pause/terminate/relaunch | relaunch native 예정 | host/source PASS/target 대기 |
 | FR-BROWSER-019 | 2D Action current | `BrowserActionService.GetCurrent` | provider contract test 확장 | positive + `not_found` RPC | RPC JSON/log excerpt in evidence | host 부분/target 차단 |
 | FR-BROWSER-020 | 2D Action Go | `BrowserActionService.Go`, NUI bridge | valid/invalid/unavailable tests 예정 | positive + invalid scheme + postcondition | Action trace + final page frame | host 부분/target 차단 |
 | FR-BROWSER-021 | 2D resolver | `BrowserPageCatalog`, `BrowserActionService.GetBrowserByIds` | duplicate/order host PASS | positive + oversized/invalid RPC | resolver output in evidence | host PASS/target 차단 |
@@ -44,18 +44,18 @@
 | NFR-BROWSER-004 | active CTS + stale ID | second intent의 first cancellation 관찰과 stale suppression PASS | rapid target navigation 예정 | host PASS/target 대기 |
 | NFR-BROWSER-005 | `BrowserNavigationPolicy` + runtime timeout | exact 15초와 typed timeout/Retry mapping PASS | controlled timeout 예정 | host/source PASS/target 대기 |
 | NFR-BROWSER-006 | coordinator/runtime async gates, previous request cancellation | serial runtime command + latest publish PASS | target responsiveness 예정 | host PASS/target 대기 |
-| NFR-BROWSER-007 | domain/session bounds | page/session/resolver tests 일부 존재 | oversized Action negative 예정 | 부분 |
-| NFR-BROWSER-008 | versioned atomic persistence | serializer tests 존재, file adapter 없음 | restart/corruption 예정 | 부분 |
+| NFR-BROWSER-007 | domain/session/error bounds | max-20, 80-char dialog, 256KiB store, page/resolver bounds PASS | oversized Action negative 예정 | host PASS/target·2D 대기 |
+| NFR-BROWSER-008 | versioned atomic persistence | v2 tabs, v1 migration, same-directory temp replace, malformed fail-closed PASS | restart/corruption 예정 | host PASS/target 대기 |
 | NFR-BROWSER-009 | query/fragment/userinfo-free public URI + generic bounded engine errors | projection/redaction/credential tests PASS | screenshot/report/A2UI scan 예정 | host PASS/target·2D 대기 |
 | NFR-BROWSER-010 | HTTP(S), credential rejection, no approval path | URL/search/scheme/credential validation PASS | real HTTPS + permission denial 예정 | host PASS/target 대기 |
 | NFR-BROWSER-011 | accessible labels | HTML/source assertion 예정 | Aurum tree 또는 capability-limit 기록 | 부분 |
 | NFR-BROWSER-012 | contrast/two focus cues | token contrast script 예정 | screenshot visual review | two cues 일부 native 증거 |
-| NFR-BROWSER-013 | focus graph/trap/restore | Stage 2A disabled-skip command↔WebView graph PASS; modal은 2C | all-state key verification | shell host PASS/target·modal 대기 |
+| NFR-BROWSER-013 | focus graph/trap/restore | shell + recovery + tab selected/new/close + modal Cancel/Close trap/restore contract PASS | all-state key verification | host PASS/target 대기 |
 | NFR-BROWSER-014 | input parity | HTML suite/reducer tests 예정 | key/pointer/touch matrix | 미검증 |
 | NFR-BROWSER-015 | uniform canvas | `ReferenceCanvasViewport` 1920×1080/16:9/4:3/ultrawide host matrix PASS | multi-resolution native는 범위 가능성 따라 | host PASS/target 대기 |
 | NFR-BROWSER-016 | insets/invalid retention | non-zero inset + invalid/transient retention host matrix PASS, resize+inset event source 연결 | non-zero inset target 예정 | host PASS/target 대기 |
 | NFR-BROWSER-017 | localization | string catalog/longest-string tests 예정 | ko/en frames 예정 | 미구현 |
-| NFR-BROWSER-018 | lifecycle cleanup | cancellation tests 일부; App late-callback tests 예정 | pause/terminate/relaunch | 부분 |
+| NFR-BROWSER-018 | pause clear/save, resume state/layout republish, terminate cancellation/unsubscribe | session stale save + source lifecycle review PASS | pause/terminate/relaunch | host/source PASS/target 대기 |
 | NFR-BROWSER-019 | generated ABI | fresh generation/order/byte compare Stage 2D/3 | installed runtime compatibility | 기존 source provenance, runtime 차단 |
 | NFR-BROWSER-020 | A2UI v0.9.1/legacy split | schema/profile tests 예정 | DisplayPresentation target | 미구현 |
 | NFR-BROWSER-021 | actual View bounds | mapper/registry tests 예정 | RPC + Aurum | source 부분/target 차단 |
@@ -114,3 +114,15 @@ Playwright Chromium은 direct `file:` open에서 primary/exception flow, scrolle
 | NFR-BROWSER-007, 009, 010 | input/error bounds, HTTP(S), embedded credential rejection, query/fragment-free public projection | PASS | target log/screenshot/Entity scan |
 
 `Browser.UseCases.Tests`는 의도한 RED compile failure 뒤 input/state/cancellation/history/recovery 계약을 통과했고, `Browser.App.Tests`는 loading/recovery visual mapping과 Retry→Back→Edit address focus trap을 통과했다. 전체 solution build는 성공했다. WebView network, installed visuals, package, RPC, View/A2UI는 아직 target gate다.
+
+## Stage 2C tabs/confirmation/persistence gate
+
+| 계약 | source/host 증거 | 결과 | 남은 target 경계 |
+|---|---|---|---|
+| FR-BROWSER-012~014 | ordered 1~20 tab workspace, stable non-reused ID, selected Home/page, clipped NUI list/New tab | PASS | native D-pad/pointer/scroll |
+| FR-BROWSER-015~017 | individual close modal, 80-char title, Cancel initial, Cancel/Back restore, exact-one close, nearest remaining | PASS | native modal trap/frame |
+| FR-BROWSER-018 | session v2 nullable-page tabs, v1 migration, selected/order/ID restore, 256KiB atomic store, persist-first mutations, malformed→Home | PASS | installed pause/relaunch/corruption |
+| NFR-BROWSER-013 | modal full-canvas input boundary and Cancel↔Close trap; invoking close/selected card focus IDs | PASS | Aurum focus/input proof |
+| NFR-BROWSER-018 | pause clears View and saves; resume reapplies geometry/state; terminate cancels/unsubscribes | PASS(source) | target lifecycle proof |
+
+Domain/Persistence/UseCases/App RED→GREEN tests와 실행형 host test 5개, clean solution build가 통과했다. 이 gate는 installed tabs, persisted relaunch, native modal, package, RPC, View/A2UI를 증명하지 않는다.

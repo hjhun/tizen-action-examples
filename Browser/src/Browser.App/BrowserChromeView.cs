@@ -17,6 +17,11 @@ internal sealed class BrowserChromeView
     private readonly Action _reloadAction;
     private readonly Action _retryAction;
     private readonly Action _recoveryBackAction;
+    private readonly Action _createTabAction;
+    private readonly Action _confirmCloseAction;
+    private readonly Action _cancelCloseAction;
+    private readonly Action<string> _selectTabAction;
+    private readonly Action<string> _requestCloseAction;
     private readonly View _back;
     private readonly View _forward;
     private readonly TextField _address;
@@ -32,6 +37,18 @@ internal sealed class BrowserChromeView
     private View? _retry;
     private View? _recoveryBack;
     private View? _editAddress;
+    private View? _homeSurface;
+    private View? _tabsSurface;
+    private View? _tabListViewport;
+    private View? _newTab;
+    private View? _closeModal;
+    private TextLabel? _closeModalTitle;
+    private View? _cancelClose;
+    private View? _confirmClose;
+    private readonly List<View> _dynamicTabViews = [];
+    private readonly List<(View Row, View Open, View Close, int Index, string TabId)> _tabRows = [];
+    private BrowserTabWorkspace? _workspace;
+    private BrowserNavigationState _navigationState = BrowserNavigationState.Initial;
     private WebView? _webView;
     private BrowserShellFocusGraph _focusGraph = BrowserShellFocusGraph.Create(false, false);
     private readonly Dictionary<View, Action> _activations = new();
@@ -43,12 +60,22 @@ internal sealed class BrowserChromeView
         Action? openTabs = null,
         Action? reload = null,
         Action? retry = null,
-        Action? recoveryBack = null)
+        Action? recoveryBack = null,
+        Action? createTab = null,
+        Action<string>? selectTab = null,
+        Action<string>? requestClose = null,
+        Action? confirmClose = null,
+        Action? cancelClose = null)
     {
         _navigate = navigate ?? throw new ArgumentNullException(nameof(navigate));
         _reloadAction = reload ?? ReloadAddress;
         _retryAction = retry ?? ReloadAddress;
         _recoveryBackAction = recoveryBack ?? FocusAddress;
+        _createTabAction = createTab ?? (() => { });
+        _selectTabAction = selectTab ?? (_ => { });
+        _requestCloseAction = requestClose ?? (_ => { });
+        _confirmCloseAction = confirmClose ?? (() => { });
+        _cancelCloseAction = cancelClose ?? (() => { });
         Root = new View
         {
             Name = "BrowserPhysicalRoot",
@@ -144,7 +171,10 @@ internal sealed class BrowserChromeView
         };
         Canvas.Add(_progressFill);
         _progressFill.Hide();
+        BuildHomeSurface();
         BuildRecoverySurface();
+        BuildTabsSurface();
+        BuildCloseModal();
     }
 
     internal View Root { get; }
@@ -162,11 +192,7 @@ internal sealed class BrowserChromeView
         webView.Position = new Position(BrowserShellMetrics.ContentLeft, BrowserShellMetrics.ContentTop);
         webView.Size = new Size(BrowserShellMetrics.ContentWidth, BrowserShellMetrics.ContentHeight);
         Canvas.Add(webView);
-        if (_recoverySurface is not null)
-        {
-            Canvas.Remove(_recoverySurface);
-            Canvas.Add(_recoverySurface);
-        }
+        BringOverlaysToFront();
     }
 
     internal void UpdatePhysicalSize(float width, float height) => Root.Size = new Size(width, height);
@@ -181,6 +207,7 @@ internal sealed class BrowserChromeView
     internal void UpdateNavigationState(BrowserNavigationState state)
     {
         ArgumentNullException.ThrowIfNull(state);
+        _navigationState = state;
         var visual = BrowserNavigationVisualState.From(state);
 
         SetControlEnabled(_reload, visual.ReloadEnabled, visual.ShowsProgress ? "Reload unavailable while loading" : "Reload current page");
@@ -204,6 +231,14 @@ internal sealed class BrowserChromeView
             if (visual.ShowsRecovery) _recoverySurface.Show(); else _recoverySurface.Hide();
         }
 
+        if (_homeSurface is not null)
+        {
+            var showHome = state.Phase == BrowserNavigationPhase.Home &&
+                           _workspace?.Surface == BrowserWorkspaceSurface.Page &&
+                           _workspace.SelectedTab.Page is null;
+            if (showHome) _homeSurface.Show(); else _homeSurface.Hide();
+        }
+
         if (visual.ShowsProgress && IsRecoveryControl(FocusManager.Instance.GetCurrentFocusView()))
         {
             FocusAddress();
@@ -218,6 +253,84 @@ internal sealed class BrowserChromeView
                 FocusManager.Instance.SetCurrentFocusView(_retry);
             }
         }
+
+        ApplyModalInputBoundary();
+    }
+
+    internal void UpdateWorkspace(BrowserTabWorkspace workspace)
+    {
+        ArgumentNullException.ThrowIfNull(workspace);
+        var priorWorkspace = _workspace;
+        _workspace = workspace;
+        var workspaceVisual = BrowserWorkspaceVisualState.From(workspace);
+        _tabs.AccessibilityName = $"Open tabs. {workspace.Tabs.Count} tabs.";
+
+        var countLabel = workspace.Tabs.Count == 1 ? "Tab   1" : $"Tabs   {workspace.Tabs.Count}";
+        if (_tabs.GetChildAt(0) is TextLabel tabsLabel)
+        {
+            tabsLabel.Text = countLabel;
+        }
+
+        if (_tabsSurface is not null)
+        {
+            if (workspaceVisual.ShowsTabs) _tabsSurface.Show(); else _tabsSurface.Hide();
+        }
+
+        if (_homeSurface is not null)
+        {
+            if (workspaceVisual.ShowsHome) _homeSurface.Show(); else _homeSurface.Hide();
+        }
+
+        RenderTabRows(workspace);
+        if (_closeModal is not null)
+        {
+            if (workspaceVisual.ShowsCloseConfirmation)
+            {
+                if (_closeModalTitle is not null)
+                {
+                    _closeModalTitle.Text = $"Close “{workspace.PendingCloseTitle}”?";
+                }
+
+                _closeModal.Show();
+                if (_cancelClose is not null) FocusManager.Instance.SetCurrentFocusView(_cancelClose);
+            }
+            else
+            {
+                _closeModal.Hide();
+                if (priorWorkspace?.Surface != workspace.Surface ||
+                    priorWorkspace?.SelectedTabId != workspace.SelectedTabId ||
+                    priorWorkspace?.PreferredFocus != workspace.PreferredFocus ||
+                    priorWorkspace?.PreferredFocusTabId != workspace.PreferredFocusTabId)
+                {
+                    RestoreWorkspaceFocus(workspace);
+                }
+            }
+        }
+
+        ApplyModalInputBoundary();
+    }
+
+    internal void SetTabMutationBusy(bool busy)
+    {
+        if (!busy)
+        {
+            if (_workspace is not null)
+            {
+                UpdateWorkspace(_workspace);
+            }
+
+            return;
+        }
+
+        if (_newTab is not null) SetControlEnabled(_newTab, false, "Updating tabs");
+        foreach (var row in _tabRows)
+        {
+            SetControlEnabled(row.Open, false, "Updating tabs");
+            SetControlEnabled(row.Close, false, "Updating tabs");
+        }
+
+        if (_cancelClose is not null) SetControlEnabled(_cancelClose, false, "Updating tabs");
+        if (_confirmClose is not null) SetControlEnabled(_confirmClose, false, "Updating tabs");
     }
 
     internal void UpdatePage(BrowserPage? page, string? error = null)
@@ -238,6 +351,16 @@ internal sealed class BrowserChromeView
 
     internal bool TryHandleKey(string keyName)
     {
+        if (_workspace?.Surface == BrowserWorkspaceSurface.CloseConfirmation && TryHandleModalKey(keyName))
+        {
+            return true;
+        }
+
+        if (_workspace?.Surface == BrowserWorkspaceSurface.Tabs && TryHandleTabsKey(keyName))
+        {
+            return true;
+        }
+
         if (keyName is "Left" or "Right")
         {
             var delta = keyName == "Left" ? -1 : 1;
@@ -348,6 +471,20 @@ internal sealed class BrowserChromeView
         _navigate(address ?? string.Empty);
     }
 
+    private void BuildHomeSurface()
+    {
+        _homeSurface = new View
+        {
+            Name = "BrowserHomeSurface",
+            Position = new Position(BrowserShellMetrics.ContentLeft, BrowserShellMetrics.ContentTop),
+            Size = new Size(BrowserShellMetrics.ContentWidth, BrowserShellMetrics.ContentHeight),
+            BackgroundColor = new Color("#F7F7FAFF"),
+        };
+        _homeSurface.Add(Label("Start browsing", "#1B1B1FFF", 16.0f, new Position(164, 150), new Size(1488, 110), HorizontalAlignment.Begin));
+        _homeSurface.Add(Label("Enter an address or search above. Your normal tabs keep only bounded public page metadata.", "#61616AFF", 7.0f, new Position(164, 276), new Size(1488, 84), HorizontalAlignment.Begin));
+        Canvas.Add(_homeSurface);
+    }
+
     private void BuildRecoverySurface()
     {
         _recoverySurface = new View
@@ -372,6 +509,213 @@ internal sealed class BrowserChromeView
         _recoverySurface.Hide();
     }
 
+    private void BuildTabsSurface()
+    {
+        _tabsSurface = new View
+        {
+            Name = "BrowserTabsSurface",
+            Position = new Position(BrowserShellMetrics.ContentLeft, BrowserShellMetrics.ContentTop),
+            Size = new Size(BrowserShellMetrics.ContentWidth, BrowserShellMetrics.ContentHeight),
+            BackgroundColor = new Color("#F7F7FAFF"),
+            FocusableChildren = true,
+        };
+        _tabsSurface.Add(Label("Tabs", "#1B1B1FFF", 14.0f, new Position(108, 38), new Size(520, 88), HorizontalAlignment.Begin));
+        _tabsSurface.Add(Label("Normal browsing · maximum 20", "#61616AFF", 5.5f, new Position(624, 38), new Size(700, 88), HorizontalAlignment.Begin));
+        _tabListViewport = new View
+        {
+            Name = "BrowserTabListViewport",
+            Position = new Position(108, 142),
+            Size = new Size(1600, 512),
+            ClippingMode = ClippingModeType.ClipChildren,
+            FocusableChildren = true,
+        };
+        _tabsSurface.Add(_tabListViewport);
+        _newTab = CreateControl("NewTab", "Create a new normal tab", "New tab", new Position(108, 684), new Size(260, 76), _createTabAction);
+        _tabsSurface.Add(_newTab);
+        Canvas.Add(_tabsSurface);
+        _tabsSurface.Hide();
+    }
+
+    private void BuildCloseModal()
+    {
+        _closeModal = new View
+        {
+            Name = "BrowserCloseConfirmation",
+            Position = new Position(0, 0),
+            Size = new Size(BrowserShellMetrics.DesignWidth, BrowserShellMetrics.DesignHeight),
+            BackgroundColor = new Color("#00000099"),
+            FocusableChildren = true,
+        };
+        _closeModal.TouchEvent += (_, _) => true;
+        var card = new View
+        {
+            Name = "BrowserCloseConfirmationCard",
+            Position = new Position(550, 300),
+            Size = new Size(820, 480),
+            BackgroundColor = Color.White,
+            CornerRadius = 30.0f,
+            FocusableChildren = true,
+        };
+        _closeModalTitle = Label("Close tab?", "#1B1B1FFF", 12.0f, new Position(72, 58), new Size(676, 120), HorizontalAlignment.Begin);
+        card.Add(_closeModalTitle);
+        card.Add(Label("The tab's public metadata will be removed from this normal browsing session.", "#61616AFF", 6.5f, new Position(72, 178), new Size(676, 94), HorizontalAlignment.Begin));
+        _cancelClose = CreateControl("CancelClose", "Cancel closing tab", "Cancel", new Position(72, 328), new Size(310, 82), _cancelCloseAction);
+        _confirmClose = CreateControl("ConfirmClose", "Close this tab", "Close", new Position(406, 328), new Size(310, 82), _confirmCloseAction);
+        card.Add(_cancelClose);
+        card.Add(_confirmClose);
+        _closeModal.Add(card);
+        Canvas.Add(_closeModal);
+        _closeModal.Hide();
+    }
+
+    private void BringOverlaysToFront()
+    {
+        foreach (var overlay in new[] { _homeSurface, _recoverySurface, _tabsSurface, _closeModal })
+        {
+            if (overlay is null)
+            {
+                continue;
+            }
+
+            Canvas.Remove(overlay);
+            Canvas.Add(overlay);
+        }
+    }
+
+    private void RenderTabRows(BrowserTabWorkspace workspace)
+    {
+        if (_tabListViewport is null || _newTab is null)
+        {
+            return;
+        }
+
+        foreach (var row in _tabRows)
+        {
+            _activations.Remove(row.Open);
+            _activations.Remove(row.Close);
+        }
+
+        foreach (var view in _dynamicTabViews)
+        {
+            _tabListViewport.Remove(view);
+            view.Dispose();
+        }
+
+        _dynamicTabViews.Clear();
+        _tabRows.Clear();
+        for (var index = 0; index < workspace.Tabs.Count; index++)
+        {
+            var tab = workspace.Tabs[index];
+            var selected = tab.Id == workspace.SelectedTabId;
+            var row = new View
+            {
+                Name = $"TabRow-{tab.Id}",
+                Position = new Position(0, index * 94),
+                Size = new Size(1600, 82),
+                BackgroundColor = new Color(selected ? "#EAF2FFFF" : "#FFFFFFFF"),
+                CornerRadius = 18.0f,
+                FocusableChildren = true,
+            };
+            var title = TabTitle(tab);
+            var publicUrl = tab.Page?.Url ?? "Start page";
+            var open = CreateControl(
+                $"Open-{tab.Id}",
+                $"Open {title}{(selected ? ", current tab" : string.Empty)}",
+                $"{title}    {publicUrl}",
+                new Position(0, 0),
+                new Size(1458, 82),
+                () => _selectTabAction(tab.Id));
+            open.BackgroundColor = new Color(selected ? "#EAF2FFFF" : "#FFFFFFFF");
+            var close = CreateControl(
+                $"Close-{tab.Id}",
+                $"Close {title}",
+                "×",
+                new Position(1476, 0),
+                new Size(124, 82),
+                () => _requestCloseAction(tab.Id));
+            SetControlEnabled(close, workspace.Tabs.Count > 1, workspace.Tabs.Count > 1 ? $"Close {title}" : "Last tab cannot be closed");
+            var capturedIndex = index;
+            open.FocusGained += (_, _) => EnsureTabVisible(capturedIndex);
+            close.FocusGained += (_, _) => EnsureTabVisible(capturedIndex);
+            row.Add(open);
+            row.Add(close);
+            _tabListViewport.Add(row);
+            _dynamicTabViews.Add(row);
+            _tabRows.Add((row, open, close, index, tab.Id));
+        }
+
+        SetControlEnabled(
+            _newTab,
+            workspace.CanCreateTab,
+            workspace.CanCreateTab ? "Create a new normal tab" : "Tab limit reached. Maximum 20 tabs.");
+        var preferredIndex = workspace.Tabs.ToList().FindIndex(tab => tab.Id == (workspace.PreferredFocusTabId ?? workspace.SelectedTabId));
+        EnsureTabVisible(Math.Max(0, preferredIndex));
+    }
+
+    private void EnsureTabVisible(int index)
+    {
+        if (_tabRows.Count == 0)
+        {
+            return;
+        }
+
+        const int visibleRows = 5;
+        var firstVisible = Math.Clamp(index - 2, 0, Math.Max(0, _tabRows.Count - visibleRows));
+        foreach (var row in _tabRows)
+        {
+            row.Row.Position = new Position(0, (row.Index - firstVisible) * 94);
+        }
+    }
+
+    private void RestoreWorkspaceFocus(BrowserTabWorkspace workspace)
+    {
+        if (workspace.Surface != BrowserWorkspaceSurface.Tabs)
+        {
+            if (workspace.PreferredFocus == BrowserWorkspaceFocus.Address)
+            {
+                FocusAddress();
+            }
+
+            return;
+        }
+
+        var row = _tabRows.FirstOrDefault(item => item.TabId == (workspace.PreferredFocusTabId ?? workspace.SelectedTabId));
+        var target = workspace.PreferredFocus == BrowserWorkspaceFocus.InvokingClose && row.Close?.Focusable == true
+            ? row.Close
+            : row.Open;
+        if (target is not null)
+        {
+            EnsureTabVisible(row.Index);
+            FocusManager.Instance.SetCurrentFocusView(target);
+        }
+    }
+
+    private void ApplyModalInputBoundary()
+    {
+        var modal = _workspace?.Surface == BrowserWorkspaceSurface.CloseConfirmation;
+        _address.Focusable = !modal;
+        _address.EnableEditing = !modal;
+        if (modal)
+        {
+            _back.Focusable = false;
+            _forward.Focusable = false;
+            _reload.Focusable = false;
+            _tabs.Focusable = false;
+            return;
+        }
+
+        var visual = BrowserNavigationVisualState.From(_navigationState);
+        SetControlEnabled(_reload, visual.ReloadEnabled, visual.ShowsProgress ? "Reload unavailable while loading" : "Reload current page");
+        SetHistoryAvailability(!visual.ShowsProgress && _navigationState.History.CanGoBack, !visual.ShowsProgress && _navigationState.History.CanGoForward);
+        SetControlEnabled(_tabs, true, _workspace is null ? "Open tabs" : $"Open tabs. {_workspace.Tabs.Count} tabs.");
+    }
+
+    private static string TabTitle(BrowserTab tab)
+    {
+        var title = tab.Page?.Title ?? "New tab";
+        return title.Length <= 80 ? title : title[..80];
+    }
+
     private bool IsRecoveryControl(View? view) =>
         ReferenceEquals(view, _retry) || ReferenceEquals(view, _recoveryBack) || ReferenceEquals(view, _editAddress);
 
@@ -393,6 +737,107 @@ internal sealed class BrowserChromeView
         {
             FocusManager.Instance.SetCurrentFocusView(target);
         }
+    }
+
+    private bool TryHandleModalKey(string keyName)
+    {
+        if (_cancelClose is null || _confirmClose is null)
+        {
+            return false;
+        }
+
+        if (keyName is "Left" or "Right")
+        {
+            var target = keyName == "Left" ? _cancelClose : _confirmClose;
+            FocusManager.Instance.SetCurrentFocusView(target);
+            return true;
+        }
+
+        if (keyName is "Up" or "Down")
+        {
+            return true;
+        }
+
+        if (keyName is "Return" or "Enter" or "XF86Select")
+        {
+            if (_activations.TryGetValue(FocusManager.Instance.GetCurrentFocusView(), out var activate))
+            {
+                activate();
+            }
+
+            return true;
+        }
+
+        return false;
+    }
+
+    private bool TryHandleTabsKey(string keyName)
+    {
+        var current = FocusManager.Instance.GetCurrentFocusView();
+        var rowIndex = _tabRows.FindIndex(row => ReferenceEquals(row.Open, current) || ReferenceEquals(row.Close, current));
+        if (keyName is "Left" or "Right")
+        {
+            if (rowIndex < 0)
+            {
+                return ReferenceEquals(current, _newTab);
+            }
+
+            var row = _tabRows[rowIndex];
+            var target = keyName == "Right" && ReferenceEquals(current, row.Open) && row.Close.Focusable
+                ? row.Close
+                : row.Open;
+            FocusManager.Instance.SetCurrentFocusView(target);
+            return true;
+        }
+
+        if (keyName is "Up" or "Down")
+        {
+            if (_tabRows.Count == 0)
+            {
+                return true;
+            }
+
+            if (ReferenceEquals(current, _newTab))
+            {
+                if (keyName == "Up")
+                {
+                    var last = _tabRows[^1];
+                    EnsureTabVisible(last.Index);
+                    FocusManager.Instance.SetCurrentFocusView(last.Open);
+                }
+
+                return true;
+            }
+
+            if (rowIndex < 0)
+            {
+                RestoreWorkspaceFocus(_workspace!);
+                return true;
+            }
+
+            var nextIndex = rowIndex + (keyName == "Up" ? -1 : 1);
+            if (nextIndex < 0)
+            {
+                nextIndex = 0;
+            }
+            else if (nextIndex >= _tabRows.Count)
+            {
+                if (_newTab?.Focusable == true)
+                {
+                    FocusManager.Instance.SetCurrentFocusView(_newTab);
+                }
+
+                return true;
+            }
+
+            var next = _tabRows[nextIndex];
+            var target = ReferenceEquals(current, _tabRows[rowIndex].Close) && next.Close.Focusable ? next.Close : next.Open;
+            EnsureTabVisible(next.Index);
+            FocusManager.Instance.SetCurrentFocusView(target);
+            return true;
+        }
+
+        return false;
     }
 
     private View CreateDisabledControl(

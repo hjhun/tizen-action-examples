@@ -42,6 +42,70 @@ await using (var saveCoordinator = new BrowserSessionCoordinator(saveStore))
 
 Console.WriteLine("PASS: Browser session use cases restore public state and suppress stale serialized save completions.");
 
+await using (var invalidRestoreCoordinator = new BrowserSessionCoordinator(new InMemorySessionStore("{not-json")))
+{
+    var invalidRestore = await invalidRestoreCoordinator.RestoreAsync(CancellationToken.None);
+    if (invalidRestore.Status != BrowserSessionRestoreStatus.InvalidSession || invalidRestore.Snapshot is not null)
+    {
+        throw new InvalidOperationException("Malformed session persistence must fail closed to Home without crashing.");
+    }
+}
+
+var tabCoordinator = new BrowserTabCoordinator(BrowserTabWorkspace.Create("tab-1"));
+var tabStateChanges = 0;
+tabCoordinator.StateChanged += (_, _) => tabStateChanges++;
+tabCoordinator.OpenTabs();
+if (!tabCoordinator.TryCreateTab(out var newTabId) ||
+    !tabCoordinator.TrySelectTab(newTabId, out var selectedHomeTab) ||
+    selectedHomeTab.Page is not null ||
+    tabCoordinator.Current.Surface != BrowserWorkspaceSurface.Page)
+{
+    throw new InvalidOperationException("Tab commands must use one shared state coordinator and select a privacy-safe Home tab.");
+}
+
+var selectedPage = BrowserPage.Create(newTabId, "https://example.com/current", "Current", "Public summary");
+tabCoordinator.UpdateSelectedPage(selectedPage);
+var tabSnapshot = tabCoordinator.CreateSnapshot();
+if (tabSnapshot.SelectedTabId != newTabId || tabSnapshot.Tabs.Single(tab => tab.Id == newTabId).Page != selectedPage ||
+    tabStateChanges < 3)
+{
+    throw new InvalidOperationException("Navigation and persistence must observe the same selected tab state.");
+}
+
+await using (var homeNavigation = new BrowserNavigationCoordinator(new HistoryNavigationRuntime()))
+{
+    await homeNavigation.NavigateInputAsync(newTabId, "https://example.com/current", CancellationToken.None);
+    homeNavigation.ResetToHome();
+    if (homeNavigation.CurrentState.Phase != BrowserNavigationPhase.Home || homeNavigation.CurrentPage is not null)
+    {
+        throw new InvalidOperationException("Selecting a Home tab must clear the previously selected public page projection.");
+    }
+}
+
+Console.WriteLine("PASS: Browser tab coordinator shares selection/page state and malformed persistence fails closed.");
+
+var persistFirstStore = new DelayedFirstSaveStore();
+await using (var sessionCoordinator = new BrowserSessionCoordinator(persistFirstStore))
+{
+    var tabs = new BrowserTabCoordinator(BrowserTabWorkspace.Create("tab-1").OpenTabs());
+    var persistedTabs = new BrowserTabPersistenceCoordinator(tabs, sessionCoordinator);
+    var create = persistedTabs.CreateTabAsync(CancellationToken.None);
+    await persistFirstStore.FirstSaveStarted.Task;
+    if (tabs.Current.Tabs.Count != 1)
+    {
+        throw new InvalidOperationException("A tab mutation must not publish before its desired session snapshot is durable.");
+    }
+
+    persistFirstStore.ReleaseFirstSave();
+    var result = await create;
+    if (!result.Succeeded || tabs.Current.Tabs.Count != 2 || tabs.Current.SelectedTabId != result.CreatedTabId)
+    {
+        throw new InvalidOperationException("A durable tab mutation must publish exactly once after persistence succeeds.");
+    }
+}
+
+Console.WriteLine("PASS: Browser tab mutations persist desired state before in-memory publication.");
+
 var navigationRuntime = new DelayedFirstNavigationRuntime();
 await using (var navigationCoordinator = new BrowserNavigationCoordinator(navigationRuntime))
 {

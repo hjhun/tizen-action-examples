@@ -1,4 +1,5 @@
 using Browser.App;
+using Browser.Domain;
 using Browser.UseCases;
 
 var matrix = new[]
@@ -90,6 +91,27 @@ if (BrowserRecoveryFocusGraph.Move(BrowserRecoveryFocusTarget.Retry, -1) != Brow
     BrowserRecoveryFocusGraph.Move(BrowserRecoveryFocusTarget.EditAddress, 1) != BrowserRecoveryFocusTarget.EditAddress)
 {
     throw new InvalidOperationException("Recovery focus must remain trapped in Retry, Back, Edit address order.");
+}
+
+var homeWorkspace = BrowserTabWorkspace.Create("tab-1");
+var homeWorkspaceVisual = BrowserWorkspaceVisualState.From(homeWorkspace);
+homeWorkspace = homeWorkspace.OpenTabs();
+homeWorkspace.TryCreateTab(out var twoTabs, out var secondWorkspaceTab);
+twoTabs.TryRequestClose(secondWorkspaceTab, out var closeWorkspaceVisualSource);
+var tabsVisual = BrowserWorkspaceVisualState.From(twoTabs);
+var modalVisual = BrowserWorkspaceVisualState.From(closeWorkspaceVisualSource);
+var maxTabsWorkspace = BrowserTabWorkspace.Create("tab-1").OpenTabs();
+for (var index = 1; index < BrowserTabWorkspace.MaximumTabs; index++)
+{
+    maxTabsWorkspace.TryCreateTab(out maxTabsWorkspace, out _);
+}
+var maxTabsVisual = BrowserWorkspaceVisualState.From(maxTabsWorkspace);
+if (!homeWorkspaceVisual.ShowsHome || homeWorkspaceVisual.ShowsTabs ||
+    !tabsVisual.ShowsTabs || tabsVisual.ShowsCloseConfirmation ||
+    !modalVisual.ShowsTabs || !modalVisual.ShowsCloseConfirmation ||
+    modalVisual.PreferredFocus != BrowserWorkspaceFocus.CancelClose || maxTabsVisual.NewTabEnabled)
+{
+    throw new InvalidOperationException("Home, Tabs, and close confirmation must map to exclusive deterministic NUI overlays and focus.");
 }
 
 Console.WriteLine("PASS: Browser NUI shell geometry, safe viewport, navigation/recovery visuals, and deterministic focus contracts.");

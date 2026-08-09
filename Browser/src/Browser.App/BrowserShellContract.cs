@@ -1,3 +1,4 @@
+using Browser.Domain;
 using Browser.UseCases;
 
 namespace Browser.App;
@@ -179,5 +180,27 @@ public static class BrowserRecoveryFocusGraph
     {
         var index = Array.IndexOf(Row, current);
         return Row[Math.Clamp(index + Math.Sign(delta), 0, Row.Length - 1)];
+    }
+}
+
+public sealed record BrowserWorkspaceVisualState(
+    bool ShowsHome,
+    bool ShowsTabs,
+    bool ShowsCloseConfirmation,
+    bool NewTabEnabled,
+    BrowserWorkspaceFocus PreferredFocus,
+    string? PreferredFocusTabId)
+{
+    public static BrowserWorkspaceVisualState From(BrowserTabWorkspace workspace)
+    {
+        ArgumentNullException.ThrowIfNull(workspace);
+        var tabsVisible = workspace.Surface is BrowserWorkspaceSurface.Tabs or BrowserWorkspaceSurface.CloseConfirmation;
+        return new BrowserWorkspaceVisualState(
+            !tabsVisible && workspace.SelectedTab.Page is null,
+            tabsVisible,
+            workspace.Surface == BrowserWorkspaceSurface.CloseConfirmation,
+            workspace.CanCreateTab,
+            workspace.PreferredFocus,
+            workspace.PreferredFocusTabId);
     }
 }

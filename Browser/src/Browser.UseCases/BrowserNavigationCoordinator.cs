@@ -325,6 +325,24 @@ public sealed class BrowserNavigationCoordinator : IAsyncDisposable
         return true;
     }
 
+    public void ResetToHome()
+    {
+        ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
+        var navigationId = Interlocked.Increment(ref _latestNavigationId);
+        CancellationTokenSource? previous;
+        lock (_activeRequestLock)
+        {
+            previous = _activeRequest;
+            _activeRequest = null;
+            _lastRequest = null;
+            _lastPageId = null;
+        }
+
+        previous?.Cancel();
+        Volatile.Write(ref _currentPage, null);
+        Publish(BrowserNavigationState.Initial with { IntentId = navigationId });
+    }
+
     public async ValueTask DisposeAsync()
     {
         if (Interlocked.Exchange(ref _disposed, 1) != 0)
