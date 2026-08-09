@@ -26,6 +26,7 @@ internal sealed class BrowserChromeView
     private readonly TextLabel _url;
     private readonly View _reload;
     private readonly View _tabs;
+    private WebView? _webView;
     private readonly Dictionary<View, Action> _activations = new();
 
     internal BrowserChromeView(Action<string> navigate)
@@ -72,6 +73,8 @@ internal sealed class BrowserChromeView
             BorderlineColor = new Color("#777782FF"),
             AccessibilityName = "Address or search. Press Enter to load.",
         };
+        _address.FocusGained += (_, _) => ApplyAddressFocusStyle(true);
+        _address.FocusLost += (_, _) => ApplyAddressFocusStyle(false);
         header.Add(_address);
 
         _tabs = CreateControl("Tabs", "Open tabs", "Tabs 1", new Position(1560, 27), new Size(150, 66), () => { });
@@ -97,7 +100,9 @@ internal sealed class BrowserChromeView
     internal void AddWebView(WebView webView)
     {
         ArgumentNullException.ThrowIfNull(webView);
+        _webView = webView;
         webView.Name = "BrowserWebContent";
+        webView.Focusable = true;
         webView.Position = new Position(ContentLeft, ContentTop);
         webView.Size = new Size(ContentWidth, ContentHeight);
         Canvas.Add(webView);
@@ -119,6 +124,28 @@ internal sealed class BrowserChromeView
 
     internal bool TryHandleKey(string keyName)
     {
+        if (keyName is "Left" or "Right")
+        {
+            MoveCommandFocus(keyName == "Left" ? -1 : 1);
+            return true;
+        }
+
+        if (keyName == "Down" && IsCommandControl(FocusManager.Instance.GetCurrentFocusView()))
+        {
+            if (_webView is not null)
+            {
+                FocusManager.Instance.SetCurrentFocusView(_webView);
+            }
+
+            return true;
+        }
+
+        if (keyName == "Up" && ReferenceEquals(FocusManager.Instance.GetCurrentFocusView(), _webView))
+        {
+            FocusAddress();
+            return true;
+        }
+
         if (keyName is "Return" or "Enter" or "XF86Select")
         {
             if (ReferenceEquals(FocusManager.Instance.GetCurrentFocusView(), _address))
@@ -138,6 +165,27 @@ internal sealed class BrowserChromeView
     }
 
     internal void FocusAddress() => FocusManager.Instance.SetCurrentFocusView(_address);
+
+    private void MoveCommandFocus(int delta)
+    {
+        var controls = new View[] { _reload, _address, _tabs };
+        var current = FocusManager.Instance.GetCurrentFocusView();
+        var index = Array.FindIndex(controls, control => ReferenceEquals(control, current));
+        var target = index < 0
+            ? _address
+            : controls[Math.Clamp(index + delta, 0, controls.Length - 1)];
+        FocusManager.Instance.SetCurrentFocusView(target);
+    }
+
+    private bool IsCommandControl(View? view) =>
+        ReferenceEquals(view, _reload) || ReferenceEquals(view, _address) || ReferenceEquals(view, _tabs);
+
+    private void ApplyAddressFocusStyle(bool focused)
+    {
+        _address.BackgroundColor = focused ? Color.White : new Color("#F3F3F6FF");
+        _address.BorderlineColor = new Color(focused ? "#134F9EFF" : "#777782FF");
+        _address.BorderlineWidth = focused ? 4.0f : 2.0f;
+    }
 
     private void Reload()
     {
@@ -180,6 +228,8 @@ internal sealed class BrowserChromeView
         };
         control.Add(Label(text, "#1B1B1FFF", 6.0f, new Position(0, 0), size, HorizontalAlignment.Center));
         control.LeaveRequired = true;
+        control.FocusGained += (_, _) => ApplyControlFocusStyle(control, true);
+        control.FocusLost += (_, _) => ApplyControlFocusStyle(control, false);
         control.TouchEvent += (_, eventArgs) =>
         {
             var state = eventArgs.Touch.GetState(0);
@@ -196,6 +246,13 @@ internal sealed class BrowserChromeView
         };
         _activations[control] = activate;
         return control;
+    }
+
+    private static void ApplyControlFocusStyle(View control, bool focused)
+    {
+        control.BorderlineColor = new Color(focused ? "#134F9EFF" : "#DEDEE5FF");
+        control.BorderlineWidth = focused ? 4.0f : 2.0f;
+        control.Scale = focused ? new Vector3(1.025f, 1.025f, 1.0f) : new Vector3(1.0f, 1.0f, 1.0f);
     }
 
     private static TextLabel Label(string text, string color, float pointSize, Position position, Size size, HorizontalAlignment alignment) => new(text)
