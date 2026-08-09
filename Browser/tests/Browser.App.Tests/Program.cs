@@ -79,10 +79,15 @@ var loadingVisual = BrowserNavigationVisualState.From(new BrowserNavigationState
     1, BrowserNavigationPhase.Loading, null, "https://example.com/", null, default));
 var offlineVisual = BrowserNavigationVisualState.From(new BrowserNavigationState(
     2, BrowserNavigationPhase.Offline, null, "https://example.com/", "offline", default));
+var homeVisual = BrowserNavigationVisualState.From(BrowserNavigationState.Initial);
+var invalidVisual = BrowserNavigationVisualState.From(new BrowserNavigationState(
+    3, BrowserNavigationPhase.InvalidInput, null, null, "invalid", default));
 if (!loadingVisual.ShowsProgress || loadingVisual.ShowsRecovery || loadingVisual.ReloadEnabled ||
-    offlineVisual.ShowsProgress || !offlineVisual.ShowsRecovery || offlineVisual.Title != "You're offline")
+    offlineVisual.ShowsProgress || !offlineVisual.ShowsRecovery || offlineVisual.Title != "You're offline" ||
+    homeVisual.Title != "Start page" || homeVisual.Status != "HOME" ||
+    invalidVisual.Title != "Check the address" || invalidVisual.Status != "CHECK")
 {
-    throw new InvalidOperationException("Loading and recovery phases must map to distinct deterministic NUI surfaces.");
+    throw new InvalidOperationException("Home, loading, and recovery phases must use unclipped deterministic NUI labels.");
 }
 
 if (BrowserRecoveryFocusGraph.Move(BrowserRecoveryFocusTarget.Retry, -1) != BrowserRecoveryFocusTarget.Retry ||
@@ -91,6 +96,13 @@ if (BrowserRecoveryFocusGraph.Move(BrowserRecoveryFocusTarget.Retry, -1) != Brow
     BrowserRecoveryFocusGraph.Move(BrowserRecoveryFocusTarget.EditAddress, 1) != BrowserRecoveryFocusTarget.EditAddress)
 {
     throw new InvalidOperationException("Recovery focus must remain trapped in Retry, Back, Edit address order.");
+}
+
+if (BrowserHomeFocusGraph.Move(BrowserHomeFocusTarget.OpenGuide, -1) != BrowserHomeFocusTarget.OpenGuide ||
+    BrowserHomeFocusGraph.Move(BrowserHomeFocusTarget.OpenGuide, 1) != BrowserHomeFocusTarget.EditAddress ||
+    BrowserHomeFocusGraph.Move(BrowserHomeFocusTarget.EditAddress, 1) != BrowserHomeFocusTarget.EditAddress)
+{
+    throw new InvalidOperationException("Home focus must remain trapped in Open guide, Enter address order.");
 }
 
 var homeWorkspace = BrowserTabWorkspace.Create("tab-1");

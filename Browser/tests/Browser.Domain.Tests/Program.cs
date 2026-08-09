@@ -100,4 +100,14 @@ if (longTitleConfirmation.PendingCloseTitle.Length != 80)
     throw new InvalidOperationException("Close confirmation must truncate a page title to 80 characters.");
 }
 
+var untitledPage = BrowserPage.Create("untitled", "https://example.com/untitled", string.Empty, "Public");
+var untitledWorkspace = BrowserTabWorkspace.Restore(
+    [BrowserTab.Create("tab-1"), BrowserTab.Create("untitled", untitledPage)],
+    "untitled").OpenTabs();
+untitledWorkspace.TryRequestClose("untitled", out var untitledConfirmation);
+if (untitledConfirmation.PendingCloseTitle != "New tab")
+{
+    throw new InvalidOperationException("A blank page title must use the bounded New tab confirmation label.");
+}
+
 Console.WriteLine("PASS: Browser tabs enforce stable IDs, max-20, selection, close confirmation, nearest selection, and focus restoration.");

@@ -1,12 +1,12 @@
 # Browser UI parity ledger
 
-갱신일: 2026-08-09 (Stage 2D)
+갱신일: 2026-08-09 (Stage 3 final-partial)
 
 - canonical preview: [`../refs/one-ui-sample.html`](../refs/one-ui-sample.html)
 - Samsung Android 근거: [`SAMSUNG_ANDROID_UI_REFERENCE.md`](SAMSUNG_ANDROID_UI_REFERENCE.md)
 - 제품 요구사항: [`PRODUCT_REQUIREMENTS.md`](PRODUCT_REQUIREMENTS.md)
-- 현재 판정: **Stage 1 HTML 계약 PASS, installed NUI parity 미충족**
-- 증거 경계: 아래 `html-*` 파일은 Playwright Chromium으로 검증한 HTML-only 증거다. Common Emulator, real WebView, Action/View RPC, A2UI 또는 native input을 증명하지 않는다.
+- 현재 판정: **Stage 1 HTML 계약 PASS, Common Emulator native product flow 부분 PASS, RPC/A2UI/offline target gate 차단**
+- 증거 경계: `html-*`는 HTML-only 증거다. `native-browser-*-stage3-*`는 Common Emulator/Aurum 증거이며 TV 제품 승인, typed Action/View RPC 또는 A2UI round trip을 증명하지 않는다. 세부 gate는 [`STAGE3_VALIDATION.md`](STAGE3_VALIDATION.md)에 있다.
 
 ## Stage 1 current HTML evidence
 
@@ -25,16 +25,16 @@
 
 | UI slice | Samsung reference/translation | Stage 1 HTML contract | production NUI/runtime mapping | native evidence/status |
 |---|---|---|---|---|
-| 1920×1080 canvas | phone 화면을 확대하지 않고 TV-distance hierarchy로 번역 | viewport 안에서 centered uniform transform; 4-shape geometry PASS | full-window physical root + one centered NUI ancestor transform, `WindowSize`/`GetInsets()` resize/inset 갱신 | host geometry PASS; non-zero inset native 미검증 |
-| page-first hierarchy | Samsung Browser page + navigation toolbar | 132-unit command band, 92-unit context, 나머지는 content region | 동일 132/92/6 geometry와 1816×806 real content-only `WebView` sibling | source/host PASS; 설치 화면 미검증 |
+| 1920×1080 canvas | phone 화면을 확대하지 않고 TV-distance hierarchy로 번역 | viewport 안에서 centered uniform transform; 4-shape geometry PASS | full-window physical root + one centered NUI ancestor transform, `WindowSize`/`GetInsets()` resize/inset 갱신 | Common 1920×1080 PASS; non-zero inset native 미검증 |
+| page-first hierarchy | Samsung Browser page + navigation toolbar | 132-unit command band, 92-unit context, 나머지는 content region | 동일 132/92/6 geometry와 1816×806 real content-only `WebView` sibling | installed frame/real WebView PASS |
 | Back/Forward/Reload | Samsung 공식 navigation controls | history availability에 따라 Back/Forward disabled, loading/tabs에서 Reload disabled | real WebView Reload/GoBack/GoForward/CanGo*, loading disabled-skip focus | source/host PASS; actual native history 미검증 |
 | address/search | 하나의 address/search surface | URL/search normalization, Enter, local search fixture, invalid input recovery | bounded URL 또는 fixed HTTPS search, credential rejection, public query/fragment redaction | source/host PASS; real target search 미검증 |
-| loading | chrome/context를 잃지 않는 recoverable navigation | progress, loading mask, latest intent state | synchronous Loading state, visible progress, active request cancellation/StopLoading | source/host PASS; native timing/frame 미검증 |
-| page | web content가 가장 큰 surface | privacy-safe local article은 WebView region의 실행형 대체물 | real system WebView만 제품 gate 충족 | real HTTPS success 미검증 |
-| offline/error/timeout | 실패 설명과 직접 recovery | Offline, Engine error, Timeout, Retry/Back/Edit address | typed bounded state, NUI recovery surface, focus trap, stable-page/home Back, 15초 timeout | source/host PASS; native error/timeout 미검증 |
-| tabs manager | 별도 Tabs screen, selected outline, per-tab X, New tab | ordered 1~20 rows, select/new/close, max disabled, scroll focus | bounded workspace, clipped/scrolling NUI rows, selected cue, New tab, stable IDs, session v2 | source/host PASS; native rows/scroll 미검증 |
-| close dialog | Samsung close-all dialog family | individual close safety adaptation, Cancel initial focus, trap, Back cancel, restore | full-canvas NUI modal, 80-char title, Cancel↔Close trap, invoking close/nearest focus | source/host PASS; native modal 미검증 |
-| input | touch Android를 D-pad/keyboard/pointer/touch로 확장 | Arrow/Enter/Escape, click, touch tap가 같은 command를 실행 | one reducer, `FocusManager`, TouchEvent | command-band remote 일부만 과거 검증 |
+| loading | chrome/context를 잃지 않는 recoverable navigation | progress, loading mask, latest intent state | synchronous Loading state, visible progress, active request cancellation/StopLoading | native LOADING/progress frame PASS; ≤100/500ms timing 미측정 |
+| page | web content가 가장 큰 surface | privacy-safe local article은 WebView region의 실행형 대체물 | real system WebView만 제품 gate 충족 | public HTTPS success PASS |
+| offline/error/timeout | 실패 설명과 직접 recovery | Offline, Engine error, Timeout, Retry/Back/Edit address | typed bounded state, NUI recovery surface, focus trap, stable-page/home Back, 15초 timeout | InvalidInput/Retry native PASS; offline capture/engine/timeout 미검증 |
+| tabs manager | 별도 Tabs screen, selected outline, per-tab X, New tab | ordered 1~20 rows, select/new/close, max disabled, scroll focus | bounded workspace, clipped/scrolling NUI rows, selected cue, New tab, stable IDs, session v2 | native 3-tab rows/select/new/close PASS; max-20 native 미검증 |
+| close dialog | Samsung close-all dialog family | individual close safety adaptation, Cancel initial focus, trap, Back cancel, restore | full-canvas NUI modal, 80-char/fallback title, Cancel↔Close trap, invoking close/nearest focus | native trap/cancel/restore/3→2 confirm PASS |
+| input | touch Android를 D-pad/keyboard/pointer/touch로 확장 | Arrow/Enter/Escape, click, touch tap가 같은 command를 실행 | one reducer, `FocusManager`, TouchEvent | remote/OSK/pointer click PASS; tap semantic activation 부분 |
 | privacy | Secret mode/privacy priority는 참조하되 범위 밖 | normal-only 설명, remote asset/request 없음, public fixture만 사용 | body/cookie/form/credential 미게시 | projection target 검증 미실행 |
 | Entity/View/A2UI | 현재 visible page context만 Agent에 제공 | HTML은 semantic state만 preview | transient/secondary/lifecycle suppression, generated Entity `ToJson()`, actual bounds, official canonical producer + named legacy adapter | source/schema/parser PASS; installed RPC/render 미검증 |
 
@@ -54,9 +54,9 @@
 | responsive geometry | PASS — 1920×1080, 1280×720, 1440×1080, 2560×1080 centered uniform transform |
 | screenshot | PASS — PNG 6개 decode, dimensions, non-blank, privacy-safe visual inspection |
 
-## Installed native baseline and remaining differences
+## Installed native Stage 3 evidence and remaining differences
 
-과거 Common Emulator capture는 [`images/native-browser-command-band-1920x1080.png`](images/native-browser-command-band-1920x1080.png), [`images/native-browser-address-focus-1920x1080.png`](images/native-browser-address-focus-1920x1080.png), [`images/native-browser-tabs-focus-1920x1080.png`](images/native-browser-tabs-focus-1920x1080.png)이다. 이들은 zero-inset command band와 address→Tabs remote focus 변화만 증명한다.
+현재 Common Emulator 증거는 Home, Loading, real HTTPS Page, InvalidInput, Tabs, close confirmation 6개이며 [`STAGE3_VALIDATION.md`](STAGE3_VALIDATION.md)에 출처와 gate를 기록했다. 기존 command-band/address-focus/tabs-focus 3개는 역사적 baseline으로만 유지한다.
 
 Stage 2A/2B/2C/2D에서 source/host 기준으로 닫은 차이:
 
@@ -70,10 +70,18 @@ Stage 2A/2B/2C/2D에서 source/host 기준으로 닫은 차이:
 8. current generated Entity `ToJson()` annotation과 measured finite bounds/focus registry를 연결하고 forged/non-current Presentation input을 거부한다.
 9. official v0.9.1 canonical stream과 current DisplayPresentation legacy parser adapter를 한 bounded snapshot에서 분리했다.
 
+Stage 3에서 닫은 차이:
+
+1. Home의 비어 있던 native surface를 실제 WebView/주소 명령과 normal-mode privacy 설명이 있는 content-first hierarchy로 교정했다.
+2. header brand, context/status, Home 설명, privacy card, close modal title/body의 native clipping을 제거했다.
+3. 실제 HTTPS Page, Loading, InvalidInput/Retry, ordered Tabs, modal trap/Back restore/exact-one close를 1920×1080 native frame으로 확인했다.
+
 남은 차이:
 
-1. typography/token의 installed-state parity와 navigation/error/history/tabs/modal pointer·remote, non-zero inset, lifecycle native evidence가 없다.
-2. installed Action/View RPC와 두 legacy DisplayPresentation round trip이 없다. canonical v0.9.1 target render는 negotiated ordered-message transport 부재로 차단되어 있다.
+1. non-zero inset, multi-resolution native, max-20 scroll, real history Back/Forward, engine error/timeout, pause/resume 장면은 host/source만 검증됐다.
+2. Aurum tree는 root 0이므로 accessibility semantic tree는 검증하지 못했다. `tap` status 0도 semantic touch activation 증거로 확대하지 않는다.
+3. offline 전환은 SDB/Aurum transport도 끊어 native offline frame을 캡처하지 못했다.
+4. installed Action/View RPC와 legacy DisplayPresentation round trip은 generated/runtime ABI mismatch로 차단됐다. canonical v0.9.1 target render는 negotiated ordered-message transport 부재로 별도 차단 상태다.
 
 ## Runtime blocker boundary
 

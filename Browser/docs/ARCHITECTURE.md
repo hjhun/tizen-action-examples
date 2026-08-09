@@ -8,7 +8,7 @@ The platform catalogue already supplies `Tizen.Entity.Browser` (`Id`, `Url`, `Ti
 
 ## Feasibility and boundary
 
-The implementation candidate is `Tizen.NUI.BaseComponents.WebView`, whose installed Tizen API reference exposes remote/local content plus `WebEngineType` selection (`UseSystemSetting`, `Chromium`, `LWE`), URL/load/error events, navigation/new-window policy, certificate, HTTP-authentication, and user-media permission hooks. The App will select `UseSystemSetting` initially and place this API behind `IWebRuntime`; it will detect startup/load failure and expose a recoverable unavailable/offline/error state. Actual Common Emulator startup, engine choice, reachable HTTPS navigation, certificate behavior, and keyboard/remote focus remain explicit target gates.
+The implementation uses `Tizen.NUI.BaseComponents.WebView`, whose installed Tizen API reference exposes remote/local content plus `WebEngineType` selection (`UseSystemSetting`, `Chromium`, `LWE`), URL/load/error events, navigation/new-window policy, certificate, HTTP-authentication, and user-media permission hooks. The App selects `UseSystemSetting` and places this API behind `IWebRuntime`; it detects startup/load failure and exposes a recoverable unavailable/offline/error state. Stage 3 proved Common Emulator startup, reachable public HTTPS content, OSK/remote focus, pointer activation, and the bounded InvalidInput recovery surface. Certificate, permission, timeout, and native offline states remain explicit target gates.
 
 ```text
 NUI App / WebView runtime adapter / typed Action providers / View provider
@@ -71,3 +71,7 @@ The physical root paints the full window. A single top-left-pivot 1920×1080 des
 - A web page title and URL can be exposed, but sensitive content must not enter `Details`, annotations, persistence, A2UI, or screenshots used as fixtures.
 - The platform Browser action names retain the `Tv_` prefix; implementation and manifests must use the exact catalogue names, while `org.tizen.browser` remains the sample provider identity.
 - The current `Tizen.Entity.Presentation` ABI and DisplayPresentation parser cannot carry the canonical ordered v0.9.1 lifecycle. Browser retains a source/schema-tested canonical producer and a separately named legacy adapter without claiming target canonical interoperability.
+
+## Stage 3 runtime disposition
+
+[`STAGE3_VALIDATION.md`](STAGE3_VALIDATION.md) is the authoritative package/Common Emulator ledger. The Browser-only product and UI path is installed and operational, but agent interoperability is not target-complete. Provider discovery succeeds; the first typed Browser request reproduces a generated-stub/runtime `HasPrivilegeLocal` ABI mismatch and terminates the app. Because fresh whole-category `actionc` output is byte-identical, the architecture keeps generated sources and platform schemas unchanged and reports Browser/View RPC, resolver, ViewAnnotation, and legacy Display round trips as blocked. Canonical A2UI rendering remains independently blocked by the two-string Presentation transport.

@@ -148,16 +148,26 @@ public sealed record BrowserNavigationVisualState(
         return new BrowserNavigationVisualState(
             state.Phase switch
             {
-                BrowserNavigationPhase.Home => "Start browsing",
+                BrowserNavigationPhase.Home => "Start page",
                 BrowserNavigationPhase.Loading => "Loading page",
                 BrowserNavigationPhase.Page => state.Page?.Title ?? "Web page",
                 BrowserNavigationPhase.Offline => "You're offline",
                 BrowserNavigationPhase.EngineError => "Browser engine unavailable",
                 BrowserNavigationPhase.Timeout => "This page took too long",
-                BrowserNavigationPhase.InvalidInput => "Check the address or search",
+                BrowserNavigationPhase.InvalidInput => "Check the address",
                 _ => "Page unavailable",
             },
-            state.Phase == BrowserNavigationPhase.Page ? "READY" : state.Phase.ToString().ToUpperInvariant(),
+            state.Phase switch
+            {
+                BrowserNavigationPhase.Home => "HOME",
+                BrowserNavigationPhase.Loading => "LOADING",
+                BrowserNavigationPhase.Page => "READY",
+                BrowserNavigationPhase.Offline => "OFFLINE",
+                BrowserNavigationPhase.EngineError => "ERROR",
+                BrowserNavigationPhase.Timeout => "TIMEOUT",
+                BrowserNavigationPhase.InvalidInput => "CHECK",
+                _ => "ERROR",
+            },
             state.Phase == BrowserNavigationPhase.Loading,
             recovery,
             state.Phase != BrowserNavigationPhase.Loading && state.Page is not null);
@@ -177,6 +187,24 @@ public static class BrowserRecoveryFocusGraph
         [BrowserRecoveryFocusTarget.Retry, BrowserRecoveryFocusTarget.Back, BrowserRecoveryFocusTarget.EditAddress];
 
     public static BrowserRecoveryFocusTarget Move(BrowserRecoveryFocusTarget current, int delta)
+    {
+        var index = Array.IndexOf(Row, current);
+        return Row[Math.Clamp(index + Math.Sign(delta), 0, Row.Length - 1)];
+    }
+}
+
+public enum BrowserHomeFocusTarget
+{
+    OpenGuide,
+    EditAddress,
+}
+
+public static class BrowserHomeFocusGraph
+{
+    private static readonly BrowserHomeFocusTarget[] Row =
+        [BrowserHomeFocusTarget.OpenGuide, BrowserHomeFocusTarget.EditAddress];
+
+    public static BrowserHomeFocusTarget Move(BrowserHomeFocusTarget current, int delta)
     {
         var index = Array.IndexOf(Row, current);
         return Row[Math.Clamp(index + Math.Sign(delta), 0, Row.Length - 1)];

@@ -90,7 +90,8 @@ public sealed record BrowserTabWorkspace
     {
         get
         {
-            var title = Tabs.FirstOrDefault(tab => tab.Id == PendingCloseTabId)?.Page?.Title ?? "New tab";
+            var title = Tabs.FirstOrDefault(tab => tab.Id == PendingCloseTabId)?.Page?.Title;
+            title = string.IsNullOrWhiteSpace(title) ? "New tab" : title;
             return title.Length <= 80 ? title : title[..80];
         }
     }
