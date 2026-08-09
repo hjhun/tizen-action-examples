@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+    <NoWarn>CS0108</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Tizen.NET" Version="13.0.0.19198" />
+    <ProjectReference Include="../DisplayPresentation.Domain/DisplayPresentation.Domain.csproj" />
+  </ItemGroup>
+</Project>
