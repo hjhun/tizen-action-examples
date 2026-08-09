@@ -1,4 +1,4 @@
-
+﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
@@ -14,6 +14,8 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PhotoGallery.Domain.Tests", "tests\PhotoGallery.Domain.Tests\PhotoGallery.Domain.Tests.csproj", "{4868A644-02DB-48A4-AB14-3BB10784585F}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PhotoGallery.UseCases.Tests", "tests\PhotoGallery.UseCases.Tests\PhotoGallery.UseCases.Tests.csproj", "{A36E7D04-EFD3-41C9-9A37-F511CA173CFB}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PhotoGallery.Persistence", "src\PhotoGallery.Persistence\PhotoGallery.Persistence.csproj", "{7F381497-6FC9-44CE-96CA-B6EF098500C7}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -40,11 +42,16 @@ Global
 		{A36E7D04-EFD3-41C9-9A37-F511CA173CFB}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A36E7D04-EFD3-41C9-9A37-F511CA173CFB}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A36E7D04-EFD3-41C9-9A37-F511CA173CFB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7F381497-6FC9-44CE-96CA-B6EF098500C7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7F381497-6FC9-44CE-96CA-B6EF098500C7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7F381497-6FC9-44CE-96CA-B6EF098500C7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7F381497-6FC9-44CE-96CA-B6EF098500C7}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{2F7BFD22-151E-43F8-ADEB-4168E95F3CE3} = {69819A6A-B8A9-4238-BA37-26D18883773D}
 		{7690D0B7-02A2-40B3-A35C-89AB20D8F4A4} = {69819A6A-B8A9-4238-BA37-26D18883773D}
 		{4868A644-02DB-48A4-AB14-3BB10784585F} = {4559DFA2-E412-4D43-8396-602EFDFAF3DB}
 		{A36E7D04-EFD3-41C9-9A37-F511CA173CFB} = {4559DFA2-E412-4D43-8396-602EFDFAF3DB}
+		{7F381497-6FC9-44CE-96CA-B6EF098500C7} = {69819A6A-B8A9-4238-BA37-26D18883773D}
 	EndGlobalSection
 EndGlobal
