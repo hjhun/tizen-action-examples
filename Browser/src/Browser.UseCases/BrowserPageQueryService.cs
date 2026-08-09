@@ -8,20 +8,24 @@ namespace Browser.UseCases;
 /// </summary>
 public sealed class BrowserPageQueryService
 {
-    private readonly BrowserNavigationCoordinator _navigation;
+    private readonly BrowserAgentStateRegistry _agentState;
 
-    public BrowserPageQueryService(BrowserNavigationCoordinator navigation)
+    public BrowserPageQueryService(BrowserAgentStateRegistry agentState)
     {
-        _navigation = navigation ?? throw new ArgumentNullException(nameof(navigation));
+        _agentState = agentState ?? throw new ArgumentNullException(nameof(agentState));
     }
 
-    public BrowserPage? GetCurrentPage() => _navigation.CurrentPage;
+    public BrowserAgentSurface CurrentSurface => _agentState.Current.Surface;
+
+    public BrowserAgentSnapshot GetCurrentSnapshot() => _agentState.Current;
+
+    public BrowserPage? GetCurrentPage() => _agentState.Current.Page;
 
     public BrowserPageResolution ResolveByIds(IEnumerable<string> ids)
     {
         ArgumentNullException.ThrowIfNull(ids);
 
-        var currentPage = _navigation.CurrentPage;
+        var currentPage = GetCurrentSnapshot().Page;
         var pages = new List<BrowserPage>();
         var unresolvedIds = new List<string>();
         foreach (var id in ids)

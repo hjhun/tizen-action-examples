@@ -1,4 +1,3 @@
-using System.Text.Json;
 using Browser.Domain;
 using Browser.UseCases;
 using RPCPort.TizenInternalActionViewGenerated;
@@ -52,50 +51,18 @@ public sealed class BrowserViewActionService : TizenInternalActionView.ServiceBa
         out RPCPort.TizenInternalActionViewGenerated.TizenEntityPresentation result)
     {
         result = EmptyPresentation();
-        if (view?.Annotation is null ||
-            view.Annotation.EntityType != BrowserViewProviderState.BrowserEntityType ||
-            !TryCreatePresentation(view.Annotation.EntityInfo, out var presentation))
+        if (!BrowserViewProviderState.TryGetCurrentSnapshot(view, out var snapshot))
         {
             return Failure("invalid_input");
         }
 
+        var presentation = BrowserActionContract.CreateLegacyDisplayPresentation(snapshot.Page);
         result = new TizenEntityPresentation
         {
             Template = presentation.Template,
             Document = presentation.Document,
         };
         return Success();
-    }
-
-    private static bool TryCreatePresentation(string? entityInfo, out BrowserPresentation presentation)
-    {
-        presentation = null!;
-        if (string.IsNullOrWhiteSpace(entityInfo))
-        {
-            return false;
-        }
-
-        try
-        {
-            using var json = JsonDocument.Parse(entityInfo);
-            if (!json.RootElement.TryGetProperty("TizenEntityBrowser", out var browser) ||
-                !browser.TryGetProperty("Id", out var id) ||
-                !browser.TryGetProperty("Url", out var url) ||
-                !browser.TryGetProperty("Title", out var title) ||
-                !browser.TryGetProperty("Details", out var details) ||
-                !BrowserActionContract.TryCreatePage(
-                    id.GetString(), url.GetString(), title.GetString(), details.GetString(), out var page))
-            {
-                return false;
-            }
-
-            presentation = BrowserActionContract.CreatePresentation(page);
-            return true;
-        }
-        catch (JsonException)
-        {
-            return false;
-        }
     }
 
     private static TizenEntityView EmptyView() => new()
@@ -130,52 +97,57 @@ public sealed class BrowserViewActionService : TizenInternalActionView.ServiceBa
 internal static class BrowserViewProviderState
 {
     internal const string BrowserEntityType = "Tizen.Entity.Browser";
-    private static readonly object Gate = new();
-    private static IReadOnlyList<TizenEntityView> _visibleViews = [];
+    private static readonly BrowserVisibleViewRegistry Registry = new();
 
     internal static void PublishVisiblePage(BrowserPageViewSnapshot? snapshot)
     {
-        IReadOnlyList<TizenEntityView> published = snapshot is not null && IsValid(snapshot)
-            ? new[] { ToAnnotatedView(snapshot) }
-            : Array.Empty<TizenEntityView>();
-        lock (Gate)
-        {
-            _visibleViews = published;
-        }
+        Registry.Publish(snapshot);
     }
 
     internal static bool TryFind(string id, out TizenEntityView view)
     {
-        lock (Gate)
-        {
-            view = _visibleViews.FirstOrDefault(candidate => candidate.Id == id) ?? EmptyView();
-            return !string.IsNullOrEmpty(view.Id);
-        }
+        var found = Registry.TryFind(id, out var snapshot);
+        view = found ? ToAnnotatedView(snapshot) : EmptyView();
+        return found;
     }
 
     internal static List<TizenEntityView> GetAnnotatedViews()
     {
-        lock (Gate)
-        {
-            return _visibleViews.ToList();
-        }
+        return Registry.GetAnnotatedViews().Select(ToAnnotatedView).ToList();
     }
 
     internal static bool TryGetFocused(out TizenEntityView view)
     {
-        lock (Gate)
-        {
-            view = _visibleViews.FirstOrDefault(candidate => candidate.IsFocused) ?? EmptyView();
-            return !string.IsNullOrEmpty(view.Id);
-        }
+        var found = Registry.TryGetFocused(out var snapshot);
+        view = found ? ToAnnotatedView(snapshot) : EmptyView();
+        return found;
     }
 
-    private static bool IsValid(BrowserPageViewSnapshot snapshot) =>
-        double.IsFinite(snapshot.ScreenX) && double.IsFinite(snapshot.ScreenY) &&
-        double.IsFinite(snapshot.Width) && double.IsFinite(snapshot.Height) &&
-        snapshot.Width > 0 && snapshot.Height > 0 &&
-        (snapshot.WindowX is null || double.IsFinite(snapshot.WindowX.Value)) &&
-        (snapshot.WindowY is null || double.IsFinite(snapshot.WindowY.Value));
+    internal static bool TryGetCurrentSnapshot(TizenEntityView? requested, out BrowserPageViewSnapshot snapshot)
+    {
+        snapshot = null!;
+        if (requested?.Annotation is null ||
+            requested.Annotation.EntityType != BrowserEntityType ||
+            string.IsNullOrWhiteSpace(requested.Id))
+        {
+            return false;
+        }
+
+        if (Registry.TryFind(requested.Id, out var current))
+        {
+            var generated = ToAnnotatedView(current);
+            if (requested.Annotation.EntityId != generated.Annotation.EntityId ||
+                requested.Annotation.EntityInfo != generated.Annotation.EntityInfo)
+            {
+                return false;
+            }
+
+            snapshot = current;
+            return true;
+        }
+
+        return false;
+    }
 
     private static TizenEntityView ToAnnotatedView(BrowserPageViewSnapshot snapshot)
     {
@@ -191,7 +163,7 @@ internal static class BrowserViewProviderState
 
         return new TizenEntityView
         {
-            Id = $"browser:page:{page.Id}",
+            Id = snapshot.ViewId,
             Extra = string.Empty,
             Type = "Browser.WebView",
             Description = page.Title,

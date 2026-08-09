@@ -84,6 +84,72 @@ await using (var homeNavigation = new BrowserNavigationCoordinator(new HistoryNa
 
 Console.WriteLine("PASS: Browser tab coordinator shares selection/page state and malformed persistence fails closed.");
 
+var agentState = new BrowserAgentStateRegistry();
+var agentQueries = new BrowserPageQueryService(agentState);
+agentState.Publish(BrowserNavigationState.Initial, BrowserWorkspaceSurface.Page, "tab-1", isApplicationVisible: true);
+if (agentQueries.GetCurrentPage() is not null || agentQueries.CurrentSurface != BrowserAgentSurface.Home)
+{
+    throw new InvalidOperationException("Home must have no current Browser Entity.");
+}
+
+var agentPage = BrowserPage.Create("tab-agent", "https://example.com/visible?private=1", "Visible", "Public");
+agentState.Publish(new BrowserNavigationState(1, BrowserNavigationPhase.Page, agentPage, agentPage.Url, null, default), BrowserWorkspaceSurface.Page, "tab-agent", isApplicationVisible: true);
+if (agentQueries.GetCurrentPage() != agentPage || agentQueries.CurrentSurface != BrowserAgentSurface.Page)
+{
+    throw new InvalidOperationException("Only a visible normal Page surface may publish the current Browser Entity.");
+}
+
+agentState.Publish(new BrowserNavigationState(2, BrowserNavigationPhase.Page, agentPage, agentPage.Url, null, default), BrowserWorkspaceSurface.Page, "different-tab", isApplicationVisible: true);
+if (agentQueries.GetCurrentPage() is not null || agentQueries.CurrentSurface != BrowserAgentSurface.Hidden)
+{
+    throw new InvalidOperationException("A tab-selection transition must not expose the previous tab page as current state.");
+}
+
+agentState.Publish(new BrowserNavigationState(3, BrowserNavigationPhase.Loading, agentPage, "https://example.com/next", null, default), BrowserWorkspaceSurface.Page, "tab-agent", isApplicationVisible: true);
+if (agentQueries.GetCurrentPage() is not null || agentQueries.CurrentSurface != BrowserAgentSurface.Loading)
+{
+    throw new InvalidOperationException("Loading must suppress the prior stable Entity instead of exposing stale page metadata.");
+}
+
+agentState.Publish(new BrowserNavigationState(4, BrowserNavigationPhase.Page, agentPage, agentPage.Url, null, default), BrowserWorkspaceSurface.Tabs, "tab-agent", isApplicationVisible: true);
+if (agentQueries.GetCurrentPage() is not null || agentQueries.CurrentSurface != BrowserAgentSurface.Tabs)
+{
+    throw new InvalidOperationException("The Tabs surface must suppress the hidden WebView Entity.");
+}
+
+agentState.Publish(new BrowserNavigationState(5, BrowserNavigationPhase.Page, agentPage, agentPage.Url, null, default), BrowserWorkspaceSurface.Page, "tab-agent", isApplicationVisible: false);
+if (agentQueries.GetCurrentPage() is not null || agentQueries.CurrentSurface != BrowserAgentSurface.Hidden)
+{
+    throw new InvalidOperationException("Pause/termination must atomically clear public Browser state.");
+}
+
+var visibleView = BrowserPageViewSnapshot.TryCreate(agentPage, 10, 20, 2, 3, 800, 600, true, out var measuredView)
+    ? measuredView
+    : throw new InvalidOperationException("Finite positive measured bounds must create a View snapshot.");
+if (visibleView.ViewId != $"browser:page:{agentPage.Id}" || !visibleView.IsFocused || visibleView.Page != agentPage ||
+    BrowserPageViewSnapshot.TryCreate(agentPage, 0, 0, null, null, double.NaN, 100, false, out _) ||
+    BrowserPageViewSnapshot.TryCreate(agentPage, 0, 0, 1, null, 100, 100, false, out _))
+{
+    throw new InvalidOperationException("View snapshots must have a stable identity, current Entity, and complete finite measured geometry.");
+}
+
+var visibleViews = new BrowserVisibleViewRegistry();
+visibleViews.Publish(visibleView);
+if (!visibleViews.TryFind(visibleView.ViewId, out var foundView) || foundView != visibleView ||
+    !visibleViews.TryGetFocused(out var focusedView) || focusedView != visibleView ||
+    !visibleViews.GetAnnotatedViews().SequenceEqual([visibleView]))
+{
+    throw new InvalidOperationException("Find, annotated discovery, and focused lookup must read one immutable measured View snapshot.");
+}
+visibleViews.Publish(null);
+if (visibleViews.GetAnnotatedViews().Count != 0 ||
+    visibleViews.TryFind(visibleView.ViewId, out _) || visibleViews.TryGetFocused(out _))
+{
+    throw new InvalidOperationException("Clearing lifecycle/secondary state must remove stale annotated and focused Views atomically.");
+}
+
+Console.WriteLine("PASS: Browser agent state suppresses transient/hidden metadata and accepts only complete measured View snapshots.");
+
 var persistFirstStore = new DelayedFirstSaveStore();
 await using (var sessionCoordinator = new BrowserSessionCoordinator(persistFirstStore))
 {

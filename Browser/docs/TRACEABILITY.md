@@ -1,6 +1,6 @@
 # Browser 요구사항 추적성
 
-갱신일: 2026-08-09 (Stage 2C)
+갱신일: 2026-08-09 (Stage 2D)
 상태 정의: `문서화`는 구현 완료가 아니며, `부분`은 일부 source/host evidence만 존재하고 target gate가 남았다는 뜻이다.
 
 ## 기능 요구사항
@@ -25,14 +25,14 @@
 | FR-BROWSER-016 | 2C confirm close | aggregate + atomic snapshot | exactly one/nearest/last-tab guard/ID non-reuse PASS | confirm close | post-close native 예정 | host PASS/target 대기 |
 | FR-BROWSER-017 | 2C cancel/restore | immutable cancel + invoking close focus ID + Back hierarchy | order/selected unchanged + focus restoration PASS | modal Back/Cancel | restored-focus native 예정 | host/source PASS/target 대기 |
 | FR-BROWSER-018 | 2C persistence/lifecycle | session v2 tabs, v1 migration, atomic store, persist-first mutation, pause save | round-trip/migration/malformed/unknown/256KiB/stale save/durable-before-publish PASS | pause/terminate/relaunch | relaunch native 예정 | host/source PASS/target 대기 |
-| FR-BROWSER-019 | 2D Action current | `BrowserActionService.GetCurrent` | provider contract test 확장 | positive + `not_found` RPC | RPC JSON/log excerpt in evidence | host 부분/target 차단 |
-| FR-BROWSER-020 | 2D Action Go | `BrowserActionService.Go`, NUI bridge | valid/invalid/unavailable tests 예정 | positive + invalid scheme + postcondition | Action trace + final page frame | host 부분/target 차단 |
+| FR-BROWSER-019 | 2D Action current | atomic `BrowserAgentStateRegistry` + `BrowserActionService.GetCurrent` | visible/transient/Tabs/paused projection PASS; generated adapter build PASS | positive + `not_found`/`unavailable` RPC | RPC JSON/log excerpt 예정 | host PASS/target 차단 |
+| FR-BROWSER-020 | 2D Action Go | `BrowserActionService.Go`, selected-tab target contract, NUI bridge UI-thread recheck | valid/invalid/hidden surface + caller ID ≠ selected tab ID PASS | positive + invalid scheme + postcondition | Action trace + final page frame | host/source PASS/target 차단 |
 | FR-BROWSER-021 | 2D resolver | `BrowserPageCatalog`, `BrowserActionService.GetBrowserByIds` | duplicate/order host PASS | positive + oversized/invalid RPC | resolver output in evidence | host PASS/target 차단 |
-| FR-BROWSER-022 | 2D calendar conversion | current typed unavailable path | initialized output/invalid tests 예정 | unavailable + invalid RPC | Action trace | 부분/target 차단 |
-| FR-BROWSER-023 | 2D View | `BrowserViewActionService`, NUI publish | view registry/mapping tests 예정 | discovery/Find/focus/bounds/lifecycle | focused source native frame | source 부분/target 차단 |
-| FR-BROWSER-024 | 2D A2UI | canonical producer + legacy adapter 예정 | schema/catalog/equivalence/error tests 예정 | both DisplayPresentation round trips | source/render native pair | 미구현/target 차단 |
+| FR-BROWSER-022 | 2D calendar conversion | initialized output + typed unavailable/invalid provider path | source/build inspection PASS | unavailable + invalid RPC | Action trace 예정 | source PASS/target 차단 |
+| FR-BROWSER-023 | 2D View | measured `BrowserVisibleViewRegistry`, generated `ToJson()` mapper, live snapshot validation | finite/incomplete bounds, find/focus/clear registry PASS; adapter build PASS | discovery/Find/focus/bounds/lifecycle | focused source native frame 예정 | host/source PASS/target 차단 |
+| FR-BROWSER-024 | 2D A2UI | `CreatePresentations` canonical v0.9.1 producer + named legacy adapter | official 4-message schema PASS, current Display parser PASS, redaction/bounds PASS | two legacy DisplayPresentation round trips; canonical transport blocked | source/render native pair 예정 | host PASS/legacy target 대기/canonical target 차단 |
 | FR-BROWSER-025 | 1/2A/2B/2C input | HTML reducer + NUI reducer/focus graph | HTML keyboard/pointer suite + reducer tests | remote/keyboard/pointer/touch | state별 HTML/native frame | 일부 command-band remote만 증명 |
-| FR-BROWSER-026 | 2B/2D state consistency | shared immutable navigation state, page projection; A2UI는 2D | phase/public-page projection host PASS | transient Action/View calls | loading/error source/render pair | 2B host PASS/2D·target 대기 |
+| FR-BROWSER-026 | 2B/2D state consistency | navigation/workspace/lifecycle → atomic agent state; same page → View/A2UI | visible/transient/Tabs/hidden/stale-tab suppression PASS | transient Action/View calls | loading/error source/render pair 예정 | host PASS/target 대기 |
 
 ## 품질 요구사항
 
@@ -56,9 +56,9 @@
 | NFR-BROWSER-016 | insets/invalid retention | non-zero inset + invalid/transient retention host matrix PASS, resize+inset event source 연결 | non-zero inset target 예정 | host PASS/target 대기 |
 | NFR-BROWSER-017 | localization | string catalog/longest-string tests 예정 | ko/en frames 예정 | 미구현 |
 | NFR-BROWSER-018 | pause clear/save, resume state/layout republish, terminate cancellation/unsubscribe | session stale save + source lifecycle review PASS | pause/terminate/relaunch | host/source PASS/target 대기 |
-| NFR-BROWSER-019 | generated ABI | fresh generation/order/byte compare Stage 2D/3 | installed runtime compatibility | 기존 source provenance, runtime 차단 |
-| NFR-BROWSER-020 | A2UI v0.9.1/legacy split | schema/profile tests 예정 | DisplayPresentation target | 미구현 |
-| NFR-BROWSER-021 | actual View bounds | mapper/registry tests 예정 | RPC + Aurum | source 부분/target 차단 |
+| NFR-BROWSER-019 | generated ABI | whole-category fresh C# generation byte-identical for Browser/View | installed runtime compatibility | host provenance PASS/runtime 차단 |
+| NFR-BROWSER-020 | A2UI v0.9.1/legacy split | official envelope/catalog schema + actual legacy parser PASS | legacy DisplayPresentation target; canonical transport blocked | host PASS/target 분리 |
+| NFR-BROWSER-021 | actual View bounds | finite positive/complete window geometry + find/focus/clear registry PASS | RPC + Aurum | host PASS/target 차단 |
 | NFR-BROWSER-022 | bounded/redacted logs | log projection tests 예정 | target log scan 예정 | 미구현 |
 | NFR-BROWSER-023 | acceptance completeness | 이 ledger completeness script 예정 | 모든 target gate | Stage 0 문서화 |
 | NFR-BROWSER-024 | separate build gates | Stage 3 commands | package/install separately | 기존 과거 증거만 있음 |
@@ -126,3 +126,16 @@ Playwright Chromium은 direct `file:` open에서 primary/exception flow, scrolle
 | NFR-BROWSER-018 | pause clears View and saves; resume reapplies geometry/state; terminate cancels/unsubscribes | PASS(source) | target lifecycle proof |
 
 Domain/Persistence/UseCases/App RED→GREEN tests와 실행형 host test 5개, clean solution build가 통과했다. 이 gate는 installed tabs, persisted relaunch, native modal, package, RPC, View/A2UI를 증명하지 않는다.
+
+## Stage 2D Entity/View/A2UI gate
+
+| 계약 | source/host 증거 | 결과 | 남은 target 경계 |
+|---|---|---|---|
+| FR-BROWSER-019~022 | one atomic visible-state query, current-only Presentation, bounded provider input, ordered duplicate resolver, initialized failure output | portable contract/state tests + generated adapter build PASS | installed typed Action RPC와 resolver postcondition |
+| FR-BROWSER-023 | stable `browser:page:<id>`, generated Browser `ToJson()`, finite positive screen/window bounds, actual focus, find/focus/clear registry, forged annotation rejection | pure registry tests + source mapper/build PASS | installed provider discovery, measured RPC values, lifecycle/focus 변화 |
+| FR-BROWSER-024 | official v0.9.1 create/components/data/delete + Basic Catalog; separately named legacy Display adapter | 4 official schema validations + current Display parser semantic-tree PASS | 두 legacy RPC→Display native round trip; canonical target transport blocker |
+| FR-BROWSER-026 | navigation + selected tab + workspace + lifecycle의 한 atomic projection | Home/Page/Loading/Tabs/hidden/stale-selected mismatch suppression PASS | 전환 중 installed Action/View query |
+| NFR-BROWSER-009, 020 | query/fragment redaction, 256-char display fields, total 256KiB budget, version/profile non-mixing | private marker/bounds/schema/parser tests PASS | installed payload/log/privacy scan |
+| NFR-BROWSER-019 | whole-category generator provenance | fresh Browser 5-action/View 4-action C# output SHA-256가 tracked source와 byte-identical | installed `StubBase.HasPrivilegeLocal` compatibility |
+
+generated service 객체는 Tizen reference assembly가 host 실행 구현을 제공하지 않아 desktop process에서 직접 생성할 수 없었다. 이 시도를 PASS로 세지 않았다. portable contracts와 current Display parser는 host에서 실행했고 generated adapters는 compile했으며, 실제 dispatch/status/DTO wire는 Stage 3 Common Emulator RPC gate로 남겼다. 현재 두 문자열 `Tizen.Entity.Presentation`과 Display parser에는 ordered canonical v0.9.1 transport가 없으므로 canonical target render는 Browser-only 범위에서 해소할 수 없다. 자세한 경계는 [`A2UI_CONTRACT.md`](A2UI_CONTRACT.md)에 기록했다.

@@ -1,6 +1,6 @@
 # Browser UI parity ledger
 
-갱신일: 2026-08-09 (Stage 2C)
+갱신일: 2026-08-09 (Stage 2D)
 
 - canonical preview: [`../refs/one-ui-sample.html`](../refs/one-ui-sample.html)
 - Samsung Android 근거: [`SAMSUNG_ANDROID_UI_REFERENCE.md`](SAMSUNG_ANDROID_UI_REFERENCE.md)
@@ -36,7 +36,7 @@
 | close dialog | Samsung close-all dialog family | individual close safety adaptation, Cancel initial focus, trap, Back cancel, restore | full-canvas NUI modal, 80-char title, Cancel↔Close trap, invoking close/nearest focus | source/host PASS; native modal 미검증 |
 | input | touch Android를 D-pad/keyboard/pointer/touch로 확장 | Arrow/Enter/Escape, click, touch tap가 같은 command를 실행 | one reducer, `FocusManager`, TouchEvent | command-band remote 일부만 과거 검증 |
 | privacy | Secret mode/privacy priority는 참조하되 범위 밖 | normal-only 설명, remote asset/request 없음, public fixture만 사용 | body/cookie/form/credential 미게시 | projection target 검증 미실행 |
-| Entity/View/A2UI | 현재 visible page context만 Agent에 제공 | HTML은 semantic state만 preview | generated Browser Entity, actual bounds, canonical v0.9.1 + legacy adapter | generated runtime blocker로 target 미검증 |
+| Entity/View/A2UI | 현재 visible page context만 Agent에 제공 | HTML은 semantic state만 preview | transient/secondary/lifecycle suppression, generated Entity `ToJson()`, actual bounds, official canonical producer + named legacy adapter | source/schema/parser PASS; installed RPC/render 미검증 |
 
 ## Browser verification matrix
 
@@ -58,7 +58,7 @@
 
 과거 Common Emulator capture는 [`images/native-browser-command-band-1920x1080.png`](images/native-browser-command-band-1920x1080.png), [`images/native-browser-address-focus-1920x1080.png`](images/native-browser-address-focus-1920x1080.png), [`images/native-browser-tabs-focus-1920x1080.png`](images/native-browser-tabs-focus-1920x1080.png)이다. 이들은 zero-inset command band와 address→Tabs remote focus 변화만 증명한다.
 
-Stage 2A/2B/2C에서 source/host 기준으로 닫은 차이:
+Stage 2A/2B/2C/2D에서 source/host 기준으로 닫은 차이:
 
 1. NUI header/context/progress/content geometry를 HTML의 132/92/6/806 계약과 일치시켰다.
 2. drawable area를 검증한 뒤 physical root 위의 단일 1920×1080 ancestor만 uniform scale/center하도록 분리했다.
@@ -66,11 +66,14 @@ Stage 2A/2B/2C에서 source/host 기준으로 닫은 차이:
 4. URL/search 입력, Loading/Page/Offline/EngineError/Timeout/InvalidInput, Retry/Back/Edit address를 한 navigation state path로 연결했다.
 5. 실제 WebView Reload/Back/Forward와 history availability, 15초 timeout, superseded `StopLoading`을 adapter에 연결했다.
 6. 1~20 normal tabs, privacy-safe Home, selected/close cues, 개별 close confirmation, v2 atomic persistence를 NUI/use-case/domain에 연결했다.
+7. visible normal Page만 Entity/View로 게시하고 loading/error/Tabs/modal/pause/terminate 및 tab-selection 전환에서 이전 snapshot을 제거한다.
+8. current generated Entity `ToJson()` annotation과 measured finite bounds/focus registry를 연결하고 forged/non-current Presentation input을 거부한다.
+9. official v0.9.1 canonical stream과 current DisplayPresentation legacy parser adapter를 한 bounded snapshot에서 분리했다.
 
 남은 차이:
 
 1. typography/token의 installed-state parity와 navigation/error/history/tabs/modal pointer·remote, non-zero inset, lifecycle native evidence가 없다.
-2. current-state canonical A2UI와 두 DisplayPresentation round trip이 없다.
+2. installed Action/View RPC와 두 legacy DisplayPresentation round trip이 없다. canonical v0.9.1 target render는 negotiated ordered-message transport 부재로 차단되어 있다.
 
 ## Runtime blocker boundary
 

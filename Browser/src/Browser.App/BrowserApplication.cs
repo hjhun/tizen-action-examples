@@ -22,6 +22,7 @@ internal sealed class BrowserApplication : NUIApplication
     private BrowserSessionCoordinator? _sessionCoordinator;
     private BrowserTabPersistenceCoordinator? _tabPersistence;
     private BrowserPageQueryService? _queries;
+    private BrowserAgentStateRegistry? _agentState;
     private SynchronizationContext? _uiContext;
     private int _paused;
     private int _tabMutationPending;
@@ -87,7 +88,9 @@ internal sealed class BrowserApplication : NUIApplication
         _navigation = new BrowserNavigationCoordinator(runtime);
         _navigation.StateChanged += OnNavigationStateChanged;
         _tabsCoordinator.StateChanged += OnTabStateChanged;
-        _queries = new BrowserPageQueryService(_navigation);
+        _agentState = new BrowserAgentStateRegistry();
+        PublishAgentState();
+        _queries = new BrowserPageQueryService(_agentState);
 
         BrowserActionProviderHost.Start(_queries, new NuiNavigationBridge(this, _uiContext));
         BrowserViewActionProviderHost.Start();
@@ -114,6 +117,7 @@ internal sealed class BrowserApplication : NUIApplication
         Window.Default.InsetsChanged -= OnWindowResized;
         Window.Default.KeyEvent -= OnKeyEvent;
         _lifetime.Cancel();
+        PublishAgentState(isApplicationVisible: false);
         BrowserViewActionProviderHost.ClearPublishedViews();
 
         if (_webView is not null)
@@ -134,6 +138,7 @@ internal sealed class BrowserApplication : NUIApplication
     protected override void OnPause()
     {
         Volatile.Write(ref _paused, 1);
+        PublishAgentState(isApplicationVisible: false);
         SaveSessionFromUi();
         BrowserViewActionProviderHost.ClearPublishedViews();
         base.OnPause();
@@ -154,6 +159,7 @@ internal sealed class BrowserApplication : NUIApplication
             _chrome?.UpdateWorkspace(_tabsCoordinator.Current);
         }
 
+        PublishAgentState();
         PublishCurrentPageAnnotation();
     }
 
@@ -555,6 +561,7 @@ internal sealed class BrowserApplication : NUIApplication
         }
 
         _chrome?.UpdateNavigationState(state);
+        PublishAgentState();
         PublishCurrentPageAnnotation();
     }
 
@@ -606,13 +613,29 @@ internal sealed class BrowserApplication : NUIApplication
     private void ApplyWorkspaceState(BrowserTabWorkspace workspace)
     {
         _chrome?.UpdateWorkspace(workspace);
+        PublishAgentState();
         PublishCurrentPageAnnotation();
+    }
+
+    private void PublishAgentState(bool? isApplicationVisible = null)
+    {
+        if (_agentState is null || _navigation is null || _tabsCoordinator is null)
+        {
+            return;
+        }
+
+        _agentState.Publish(
+            _navigation.CurrentState,
+            _tabsCoordinator.Current.Surface,
+            _tabsCoordinator.Current.SelectedTabId,
+            isApplicationVisible ?? (Volatile.Read(ref _paused) == 0 && !_lifetime.IsCancellationRequested));
     }
 
     private void PublishCurrentPageAnnotation()
     {
         if (_tabsCoordinator?.Current.Surface != BrowserWorkspaceSurface.Page ||
             _webView is null || _navigation?.CurrentState is not { Phase: BrowserNavigationPhase.Page, Page: { } page } ||
+            _tabsCoordinator.Current.SelectedTabId != page.Id ||
             _lifetime.IsCancellationRequested || Volatile.Read(ref _paused) != 0)
         {
             BrowserViewActionProviderHost.ClearPublishedViews();
@@ -644,8 +667,15 @@ internal sealed class BrowserApplication : NUIApplication
             }
 
             var focused = ReferenceEquals(FocusManager.Instance.GetCurrentFocusView(), _webView);
-            BrowserViewActionProviderHost.PublishVisiblePage(new BrowserPageViewSnapshot(
-                page, bounds.X, bounds.Y, windowX, windowY, bounds.Z, bounds.W, focused));
+            if (BrowserPageViewSnapshot.TryCreate(
+                    page, bounds.X, bounds.Y, windowX, windowY, bounds.Z, bounds.W, focused, out var snapshot))
+            {
+                BrowserViewActionProviderHost.PublishVisiblePage(snapshot);
+            }
+            else
+            {
+                BrowserViewActionProviderHost.ClearPublishedViews();
+            }
         }
         catch
         {
@@ -686,7 +716,13 @@ internal sealed class BrowserApplication : NUIApplication
         public bool RequestNavigation(BrowserPage page)
         {
             ArgumentNullException.ThrowIfNull(page);
-            if (_application._lifetime.IsCancellationRequested)
+            var workspace = _application._tabsCoordinator?.Current;
+            if (_application._lifetime.IsCancellationRequested ||
+                !BrowserActionNavigationTargetContract.TryCreate(
+                    workspace,
+                    Volatile.Read(ref _application._paused) == 0,
+                    page,
+                    out var target))
             {
                 return false;
             }
@@ -695,16 +731,22 @@ internal sealed class BrowserApplication : NUIApplication
                 static state =>
                 {
                     var request = (NavigationRequest)state!;
-                    if (!request.Application._lifetime.IsCancellationRequested)
+                    var currentWorkspace = request.Application._tabsCoordinator?.Current;
+                    if (!request.Application._lifetime.IsCancellationRequested &&
+                        Volatile.Read(ref request.Application._paused) == 0 &&
+                        currentWorkspace?.Surface == BrowserWorkspaceSurface.Page &&
+                        currentWorkspace.SelectedTabId == request.Target.SelectedTabId)
                     {
-                        _ = request.Application.NavigateFromUiAsync(request.Page.Id, request.Page.Url);
+                        _ = request.Application.NavigateFromUiAsync(request.Target.SelectedTabId, request.Target.Url);
                     }
                 },
-                new NavigationRequest(_application, page));
+                new NavigationRequest(_application, target));
             return true;
         }
 
-        private sealed record NavigationRequest(BrowserApplication Application, BrowserPage Page);
+        private sealed record NavigationRequest(
+            BrowserApplication Application,
+            BrowserActionNavigationTarget Target);
     }
 
     private sealed record NavigationStateUpdate(BrowserApplication Application, BrowserNavigationState State);

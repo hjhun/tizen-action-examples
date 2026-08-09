@@ -36,9 +36,9 @@ public sealed class BrowserActionService : TizenActionBrowser.ServiceBase
 
     public override TizenEntityStatus GetCurrent(out TizenEntityBrowser result)
     {
-        var current = _queries.GetCurrentPage();
-        result = current is null ? EmptyBrowser() : ToEntity(current);
-        return current is null ? Failure("not_found") : Success();
+        var snapshot = _queries.GetCurrentSnapshot();
+        result = snapshot.Page is null ? EmptyBrowser() : ToEntity(snapshot.Page);
+        return snapshot.Page is null ? Failure(CurrentFailureReason(snapshot.Surface)) : Success();
     }
 
     public override TizenEntityStatus Go(TizenEntityBrowser browser)
@@ -60,12 +60,25 @@ public sealed class BrowserActionService : TizenActionBrowser.ServiceBase
     public override TizenEntityStatus ToPresentation(TizenEntityBrowser browser, out TizenEntityPresentation result)
     {
         result = EmptyPresentation();
-        if (!TryToPage(browser, out var page))
+        if (!TryToPage(browser, out var requested))
         {
             return Failure("invalid_input");
         }
 
-        var presentation = BrowserActionContract.CreatePresentation(page);
+        var snapshot = _queries.GetCurrentSnapshot();
+        if (snapshot.Page is not { } current)
+        {
+            return Failure(CurrentFailureReason(snapshot.Surface));
+        }
+        if (!BrowserActionContract.RepresentsSamePage(requested, current))
+        {
+            return Failure("not_current");
+        }
+
+        // Tizen.Entity.Presentation currently carries the repository's explicitly named legacy
+        // Template/Document pair. The canonical v0.9.1 stream is produced separately by the
+        // portable contract until a negotiated canonical Presentation transport exists.
+        var presentation = BrowserActionContract.CreateLegacyDisplayPresentation(current);
         result = new TizenEntityPresentation
         {
             Template = presentation.Template,
@@ -136,6 +149,9 @@ public sealed class BrowserActionService : TizenActionBrowser.ServiceBase
     private static TizenEntityStatus Success() => new() { Success = true, Reason = string.Empty };
 
     private static TizenEntityStatus Failure(string reason) => new() { Success = false, Reason = reason };
+
+    private static string CurrentFailureReason(BrowserAgentSurface surface) =>
+        surface == BrowserAgentSurface.Home ? "not_found" : "unavailable";
 }
 
 public interface IBrowserActionNavigation

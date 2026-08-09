@@ -114,6 +114,17 @@ if (!homeWorkspaceVisual.ShowsHome || homeWorkspaceVisual.ShowsTabs ||
     throw new InvalidOperationException("Home, Tabs, and close confirmation must map to exclusive deterministic NUI overlays and focus.");
 }
 
+var actionPage = BrowserPage.Create("agent-page", "https://example.com/action", "Action", "Public");
+var actionWorkspace = BrowserTabWorkspace.Create("selected-tab");
+if (!BrowserActionNavigationTargetContract.TryCreate(
+        actionWorkspace, true, actionPage, out var actionTarget) ||
+    actionTarget.SelectedTabId != "selected-tab" || actionTarget.Url != actionPage.Url ||
+    BrowserActionNavigationTargetContract.TryCreate(homeWorkspace.OpenTabs(), true, actionPage, out _) ||
+    BrowserActionNavigationTargetContract.TryCreate(actionWorkspace, false, actionPage, out _))
+{
+    throw new InvalidOperationException("Action Go must target the visible selected tab ID, not the caller-supplied Entity ID.");
+}
+
 Console.WriteLine("PASS: Browser NUI shell geometry, safe viewport, navigation/recovery visuals, and deterministic focus contracts.");
 
 static bool Near(float actual, float expected) => MathF.Abs(actual - expected) < 0.002f;

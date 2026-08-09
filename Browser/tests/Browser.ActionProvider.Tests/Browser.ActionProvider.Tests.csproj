@@ -7,5 +7,6 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../../src/Browser.UseCases/Browser.UseCases.csproj" />
+    <ProjectReference Include="../../../DisplayPresentation/src/DisplayPresentation.UseCases/DisplayPresentation.UseCases.csproj" />
   </ItemGroup>
 </Project>

@@ -1,4 +1,4 @@
-using Browser.Domain;
+using Browser.UseCases;
 using RPCPort.TizenInternalActionViewGenerated.Stub;
 
 namespace Browser.ViewActionProvider;
@@ -6,16 +6,6 @@ namespace Browser.ViewActionProvider;
 /// <summary>
 /// Owns the generated View listener and the current visible Browser-page snapshot.
 /// </summary>
-public sealed record BrowserPageViewSnapshot(
-    BrowserPage Page,
-    double ScreenX,
-    double ScreenY,
-    double? WindowX,
-    double? WindowY,
-    double Width,
-    double Height,
-    bool IsFocused);
-
 public static class BrowserViewActionProviderHost
 {
     private static TizenInternalActionView? _stub;
