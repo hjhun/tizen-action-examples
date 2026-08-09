@@ -14,6 +14,7 @@ internal sealed class BrowserApplication : NUIApplication
 {
     private static readonly Uri InitialPage = new("https://www.tizen.org/");
     private readonly CancellationTokenSource _lifetime = new();
+    private BrowserChromeView? _chrome;
     private WebView? _webView;
     private NuiWebViewRuntime? _webRuntime;
     private BrowserNavigationCoordinator? _navigation;
@@ -24,9 +25,11 @@ internal sealed class BrowserApplication : NUIApplication
     {
         base.OnCreate();
 
+        _chrome = new BrowserChromeView(NavigateAddressFromUi);
+        Window.Default.GetDefaultLayer().Add(_chrome.Canvas);
+        UpdateReferenceCanvasLayout();
         _webView = NuiWebViewRuntime.CreateSystemWebView();
-        _webView.Size = Window.Default.WindowSize;
-        Window.Default.GetDefaultLayer().Add(_webView);
+        _chrome.AddWebView(_webView);
         Window.Default.Resized += OnWindowResized;
 
         _webRuntime = new NuiWebViewRuntime(_webView, TimeSpan.FromMinutes(2));
@@ -41,6 +44,8 @@ internal sealed class BrowserApplication : NUIApplication
         BrowserActionProviderHost.Start(_queries, new NuiNavigationBridge(this, _uiContext));
         BrowserViewActionProviderHost.Start();
         FocusManager.Instance.FocusChanged += OnFocusChanged;
+        Window.Default.KeyEvent += OnKeyEvent;
+        _chrome.FocusAddress();
         _ = NavigateFromUiAsync(InitialPage);
     }
 
@@ -48,12 +53,18 @@ internal sealed class BrowserApplication : NUIApplication
     {
         FocusManager.Instance.FocusChanged -= OnFocusChanged;
         Window.Default.Resized -= OnWindowResized;
+        Window.Default.KeyEvent -= OnKeyEvent;
         _lifetime.Cancel();
         BrowserViewActionProviderHost.ClearPublishedViews();
 
         if (_webView is not null)
         {
-            Window.Default.GetDefaultLayer().Remove(_webView);
+            _chrome?.Canvas.Remove(_webView);
+        }
+
+        if (_chrome is not null)
+        {
+            Window.Default.GetDefaultLayer().Remove(_chrome.Canvas);
         }
 
         _ = DisposeNavigationAsync();
@@ -63,11 +74,36 @@ internal sealed class BrowserApplication : NUIApplication
 
     private void OnWindowResized(object? sender, EventArgs eventArgs)
     {
-        if (_webView is not null)
+        UpdateReferenceCanvasLayout();
+        PublishCurrentPageAnnotation();
+    }
+
+    private void OnKeyEvent(object? sender, Window.KeyEventArgs eventArgs)
+    {
+        if (eventArgs.Key.State == Key.StateType.Down)
         {
-            _webView.Size = Window.Default.WindowSize;
-            PublishCurrentPageAnnotation();
+            _chrome?.TryHandleKey(eventArgs.Key.KeyPressedName);
         }
+    }
+
+    private void UpdateReferenceCanvasLayout()
+    {
+        if (_chrome is null)
+        {
+            return;
+        }
+
+        var window = Window.Default.WindowSize;
+        var scale = MathF.Min(window.Width / BrowserChromeView.DesignWidth, window.Height / BrowserChromeView.DesignHeight);
+        if (!float.IsFinite(scale) || scale <= 0)
+        {
+            return;
+        }
+
+        _chrome.Canvas.Scale = new Vector3(scale, scale, 1.0f);
+        _chrome.Canvas.Position = new Position(
+            (window.Width - (BrowserChromeView.DesignWidth * scale)) / 2.0f,
+            (window.Height - (BrowserChromeView.DesignHeight * scale)) / 2.0f);
     }
 
     private void OnFocusChanged(object? sender, FocusManager.FocusChangedEventArgs eventArgs) =>
@@ -82,12 +118,26 @@ internal sealed class BrowserApplication : NUIApplication
 
         try
         {
-            await _navigation.NavigateAsync("initial-page", uri.AbsoluteUri, _lifetime.Token);
+            var result = await _navigation.NavigateAsync("initial-page", uri.AbsoluteUri, _lifetime.Token);
+            _chrome?.UpdatePage(result.Page, result.Error);
             PublishCurrentPageAnnotation();
         }
         catch (OperationCanceledException) when (_lifetime.IsCancellationRequested)
         {
             // Application lifecycle ended while an engine request was in flight.
+        }
+    }
+
+    private void NavigateAddressFromUi(string address)
+    {
+        if (Uri.TryCreate(address, UriKind.Absolute, out var uri) &&
+            (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps))
+        {
+            _ = NavigateFromUiAsync(uri);
+        }
+        else
+        {
+            _chrome?.UpdatePage(null, "Enter a complete http:// or https:// address.");
         }
     }
 
