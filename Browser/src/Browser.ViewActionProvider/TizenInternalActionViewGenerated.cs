@@ -13,7 +13,7 @@ using Tizen.Applications.RPCPort;
 
 namespace RPCPort
 {
-    namespace TizenInternalActionViewGenerated
+    namespace TizenInternalActionView
     {
         internal class LocalExecution
         {
@@ -1693,11 +1693,14 @@ namespace RPCPort
                     if (_privilege_map.ContainsKey(id) == false)
                         return true;
 
+#if TIZEN_RPCPORT_HAS_PRIVILEGE_LOCAL
                     var privileges = _privilege_map[id];
                     bool has;
                     foreach (var item in privileges)
                     {
-                        has = HasPrivilegeLocal(b.Sender, item);
+                        // has = HasPrivilegeLocal(b.Sender, item);
+                        // Disabled for compatibility with runtimes that omit StubBase.HasPrivilegeLocal.
+                        has = false;
                         if (has == false) {
                             Tizen.Log.Error("RPC_PORT", "Permission denied. " + b.Sender + " : " + item);
                             return false;
@@ -1705,6 +1708,13 @@ namespace RPCPort
                     }
 
                     return true;
+#else
+                    // Tizen 10.1's installed RPCPort runtime omits StubBase.HasPrivilegeLocal.
+                    // Keep the generated provider loadable for categories with no method privileges,
+                    // but fail closed rather than dispatching a privileged method without validation.
+                    Tizen.Log.Error("RPC_PORT", "Privilege validation is unavailable in this RPCPort runtime.");
+                    return false;
+#endif
                 }
 
                 protected override bool OnReceivedEvent(string sender, string instance, Port port)

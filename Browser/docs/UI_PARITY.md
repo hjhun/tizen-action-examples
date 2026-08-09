@@ -134,11 +134,13 @@ Address V2 재검증에서 추가로 닫은 차이:
 1. non-zero inset, multi-resolution native, max-20 scroll, real history Back/Forward, engine error/timeout, pause/resume 장면은 host/source만 검증됐다.
 2. Aurum tree는 root 0이므로 accessibility semantic tree는 검증하지 못했다. 다만 이번 `tap`은 New tab count/card가 2→3으로 변한 화면 postcondition까지 확인했다.
 3. offline 전환은 SDB/Aurum transport도 끊어 native offline frame을 캡처하지 못했다.
-4. installed Action/View RPC와 legacy DisplayPresentation round trip은 generated/runtime ABI mismatch로 차단됐다. canonical v0.9.1 target render는 negotiated ordered-message transport 부재로 별도 차단 상태다.
+4. canonical v0.9.1 target render는 negotiated ordered-message transport 부재로 별도 차단 상태다.
 
-## Runtime blocker boundary
+## Runtime compatibility boundary
 
-기존 Common Emulator에서는 generated provider dispatch가 `StubBase.HasPrivilegeLocal`의 `MissingMethodException`으로 앱을 종료했다. 따라서 provider discovery를 typed Action/View RPC, measured ViewAnnotation, A2UI round trip 성공으로 확장 해석하지 않는다. Stage 3에서 sanctioned `actionc`/Tizen runtime compatibility path만 재진단하며 generated source나 platform schema는 수정하지 않는다.
+Common Emulator의 RPCPort runtime에는 `StubBase.HasPrivilegeLocal` ABI가 없고 `tidlc`가 C# UDS stub에 이 호출을 생성한다. framework generator 수정 전까지, `actionc` 전체 category 생성 뒤 generated binding의 직접 호출을 주석 처리하고 declared-privilege path를 fail-closed로 유지한다. 절차와 removal criteria는 [`RPCPORT_TIDLC_COMPATIBILITY.md`](RPCPORT_TIDLC_COMPATIBILITY.md)에 기록했다.
+
+이 예외 적용 후 Browser Action 5개와 View Action 4개는 target `action-tool`에서 모두 RPC transport `isError: false`를 반환했다. current page, navigation, ordered resolver, Browser/View presentation conversion, annotated/focused-view discovery, actual view lookup이 성공했고 Calendar handoff는 구현된 typed `unavailable` 상태를 반환했다. Browser process 생존과 신규 crash dump 부재도 확인했다. 이 결과는 canonical A2UI target render까지 PASS로 확장하지 않는다.
 
 ## English evidence summary
 

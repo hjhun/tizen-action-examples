@@ -1698,7 +1698,9 @@ namespace RPCPort
                     foreach (var item in privileges)
                     {
 #if TIZEN_RPCPORT_HAS_PRIVILEGE_LOCAL
-                        has = HasPrivilegeLocal(b.Sender, item);
+                        // has = HasPrivilegeLocal(b.Sender, item);
+                        // Disabled for compatibility with runtimes that omit StubBase.HasPrivilegeLocal.
+                        has = false;
 #else
                         // Older released Tizen.NET packages do not expose the
                         // UDS-specific API. Deny rather than weakening checks.

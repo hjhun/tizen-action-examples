@@ -1,7 +1,7 @@
 #nullable enable
 
 using Browser.UseCases;
-using RPCPort.TizenActionBrowserGenerated.Stub;
+using RPCPort.TizenActionBrowser.Stub;
 
 namespace Browser.ActionProvider;
 

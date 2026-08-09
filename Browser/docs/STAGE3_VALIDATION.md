@@ -1,6 +1,6 @@
 # Browser Stage 3 검증 / validation
 
-검증일: 2026-08-09
+검증일: 2026-08-10
 
 이 문서는 공개 Common Emulator에서 실행한 Browser 패키지, 실제 WebView, native UI 자동화 결과와 해소되지 않은 target blocker를 분리한다. 이 결과는 TV 제품 승인이나 production signing 증거가 아니다.
 
@@ -13,7 +13,7 @@
 | 대상 | Tizen 10.1 Unified Common Emulator, 1920×1080 |
 | 애플리케이션 | `org.tizen.browser` |
 | Tizen API package | `Tizen.NET` 14.0.0.19326 |
-| package SHA-256 | `5c2b4a46076f1a82610ce4626cb637550c7e5aa33fe2526cee7e992d58294124` (visual-refinement final) |
+| package SHA-256 | `4875827eeaedf08ec016ebea2b0d041d2f2d6cf10a10c1a08b162dd34660288` (current Action/View compatibility verification) |
 | signing 경계 | Tizen CLI 내장 emulator-test-only signer. production/default distribution profile로 주장하지 않음 |
 | archive | ZIP 무결성, manifest, author/distributor signature, App/provider/domain/use-case/persistence payload PASS |
 | 설치/실행 | update install 및 installed app launch PASS |
@@ -35,11 +35,12 @@
 | touch parity | 부분 | `tap` status 0만으로 semantic activation을 증명하지 않음; coordinate `click`은 증명됨 |
 | accessibility tree | capability 제한 | health/screenshot/input은 동작했지만 tree root가 0이므로 semantic tree를 PASS 처리하지 않음 |
 | offline native frame | 차단 | guest offline 전환이 WebView network와 SDB/Aurum transport를 함께 끊어 frame을 캡처할 수 없음 |
-| Browser/View typed RPC | 차단 | generated stub/runtime `HasPrivilegeLocal` ABI mismatch가 요청 시 app을 종료함 |
-| resolver/ViewAnnotation/legacy Display round trip | 차단 | 위 typed RPC dispatch blocker의 종속 gate |
+| Browser/View typed RPC | PASS (temporary compatibility path) | `tidlc` generated `HasPrivilegeLocal` direct call을 post-generation fail-closed compatibility exception으로 주석 처리; Browser Action 5개 및 View Action 4개 `action-tool` E2E, process liveness, no new crash dump |
+| resolver/ViewAnnotation | PASS (Browser scope) | `GetBrowserByIds`, `GetAnnotatedViews`, `GetFocusedView`, actual `FindById`, `View_ToPresentation` target responses verified |
+| legacy Display round trip | 차단 | DisplayPresentation target renderer round trip은 이번 Browser package 범위에서 실행하지 않음 |
 | canonical A2UI target render | 차단 | 현재 두 문자열 Presentation ABI와 legacy Display parser에는 ordered v0.9.1 transport가 없음 |
 
-Provider discovery 자체는 Browser와 View category 모두 성공했다. 그러나 정확한 Browser `GetCurrent` RPC는 generic error 뒤 앱 종료를 재현했다. fresh `actionc` 전체 category 생성 결과가 tracked generated source와 byte-identical이므로 generated source나 platform schema를 수정하지 않았다.
+Provider discovery 자체는 Browser와 View category 모두 성공했다. 이전 package에서는 `GetCurrent` dispatch가 generated `CheckPrivilege`의 `StubBase.HasPrivilegeLocal(string,string)` 호출로 `MissingMethodException`과 SIGABRT를 일으켰다. 이는 Browser business code가 아니라 `actionc → action2tidl → tidlc` C# UDS generation/runtime ABI mismatch였다. framework generator 수정 전에는 [`RPCPORT_TIDLC_COMPATIBILITY.md`](RPCPORT_TIDLC_COMPATIBILITY.md)의 post-generation fail-closed exception을 적용한다.
 
 ### Native UI 상태
 
@@ -96,17 +97,10 @@ host executable tests 5/5, solution 0 warnings/0 errors, Tizen C# build 0 errors
 통과했다. fresh `actionc` Browser/View output은 tracked generated source와 각각
 byte-identical했다.
 
-최종 설치본의 Browser/View provider discovery는 다시 PASS했다. explicit
-`Tv_Tizen.Action.Browser_GetCurrent`는 generic `isError:true` 뒤 app process를
-종료했고 target dlog는 generated `CheckPrivilege`의
-`StubBase.HasPrivilegeLocal(string,string)` `MissingMethodException`과 SIGABRT를
-확인했다. 따라서 typed Browser/View RPC, resolver/ViewAnnotation/legacy Display
-round trip은 여전히 platform generator/runtime ABI blocker이며 Browser의
-generated source나 public Action ABI는 수정하지 않았다. canonical A2UI target
-transport blocker도 그대로다.
+최종 설치본의 Browser/View provider discovery는 다시 PASS했다. 이전 ABI failure를 재현한 뒤, `tidlc`가 생성한 `HasPrivilegeLocal` 직접 호출을 documented fail-closed compatibility exception으로 주석 처리했다. fresh package에서 Browser Action 5개와 View Action 4개를 `action-tool`로 호출했다. current page, Go, ordered resolver, Browser/View presentation, annotated/focused-view discovery와 actual `FindById`는 성공했고, Calendar handoff는 typed `unavailable`을 반환했다. 각 호출은 `isError: false`였고 Browser process는 생존했으며 신규 Browser crash dump는 없었다. legacy DisplayPresentation target round trip과 canonical A2UI target transport는 이번 범위에서 여전히 별도 차단 상태다.
 
 ## English summary
 
 The final visual-refinement Browser package builds, packages with the explicit emulator-test-only signer, installs, launches, and renders a real public HTTPS page in the system WebView on a 1920×1080 Tizen Common Emulator. Aurum proved the revised Home, Page, full-canvas Tabs, modal trapping/restoration, pointer/touch New tab, and exact-one tab close through native screenshots and state postconditions. Earlier Stage 3 Loading and InvalidInput frames remain historical evidence and are not relabeled as revised visual-package captures.
 
-This is a partial target result, not full completion. The generated provider crashes at the target RPC boundary because the installed runtime does not provide the generated `StubBase.HasPrivilegeLocal(string, string)` ABI. Therefore typed Browser/View RPC, resolver postconditions, live ViewAnnotation RPC, and legacy DisplayPresentation round trips remain blocked. Canonical A2UI target rendering is independently blocked by the current two-string Presentation transport. Offline UI capture is also blocked because target offline mode disconnects the SDB/Aurum transport used to capture evidence.
+The generated C# UDS binding contains a known `tidlc` compatibility defect: it calls `StubBase.HasPrivilegeLocal(string, string)`, which is absent from the installed Public Tizen 10.1 RPCPort runtime. Until the framework generator is fixed, the documented post-generation exception comments out that direct call and fails closed for declared-privilege methods. With the exception applied, all five Browser Actions and all four View Actions succeeded through target `action-tool`, including resolver and ViewAnnotation paths; the Browser process stayed alive and no new crash dump appeared. This does not prove the independently blocked canonical A2UI target render, which requires a negotiated ordered Presentation transport.

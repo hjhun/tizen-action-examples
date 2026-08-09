@@ -142,7 +142,7 @@ generated service 객체는 Tizen reference assembly가 host 실행 구현을 �
 
 ## Stage 3 Common Emulator gate
 
-패키지, target, screenshot provenance와 blocker 상세는 [`STAGE3_VALIDATION.md`](STAGE3_VALIDATION.md)에 있다. clean host test/build, Tizen build, emulator-only signing/package, archive payload, install/launch, real HTTPS WebView, Home/Loading/Page/InvalidInput/Tabs/modal native states는 독립 PASS다. Browser/View provider discovery는 PASS지만 exact Browser RPC가 generated/runtime ABI mismatch로 앱을 종료하므로 FR-BROWSER-019~024의 target RPC/View/legacy Display gate는 차단 상태를 유지한다. canonical A2UI target transport와 offline capture도 각각 독립 차단 상태다.
+패키지, target, screenshot provenance와 compatibility 상세는 [`STAGE3_VALIDATION.md`](STAGE3_VALIDATION.md)와 [`RPCPORT_TIDLC_COMPATIBILITY.md`](RPCPORT_TIDLC_COMPATIBILITY.md)에 있다. clean host test/build, Tizen build, emulator-only signing/package, archive payload, install/launch, real HTTPS WebView, Home/Loading/Page/InvalidInput/Tabs/modal native states는 독립 PASS다. documented fail-closed generated-binding exception 후 Browser Action 5개 및 View Action 4개 `action-tool` dispatch, resolver/ViewAnnotation result, process liveness와 no-new-crash-dump도 PASS다. legacy Display round trip, canonical A2UI target transport와 offline capture는 각각 독립 차단 상태다.
 
 ## Samsung visual-refinement gate
 
@@ -156,4 +156,4 @@ generated service 객체는 Tizen reference assembly가 host 실행 구현을 �
 
 target에서 persisted blank title이 preview 첫 글자 계산 중 종료되는 문제를 발견해 blank/whitespace→`New tab`, 최대 80자 계약과 App host regression test를 추가했다. 모든 Browser 실행형 host test 5개와 clean solution build가 통과했다. package는 `-s` 없는 emulator-test-only signer로 만들고 archive/manifest/payload/signature를 검사한 뒤 update-install했다.
 
-이 gate는 시각 모듈만 닫는다. Aurum semantic tree는 `root_count: 0`이라 접근성 tree를 PASS로 세지 않는다. generated `HasPrivilegeLocal` ABI mismatch 때문에 typed Browser/View RPC와 종속 resolver/ViewAnnotation/legacy Display round trip은 계속 차단이다. canonical A2UI target render는 two-string Presentation transport 때문에 독립 차단이며 offline mode는 transport를 끊으므로 재실행하지 않았다.
+이 gate는 시각 모듈만 닫는다. Aurum semantic tree는 `root_count: 0`이라 접근성 tree를 PASS로 세지 않는다. generated `HasPrivilegeLocal` direct call은 framework `tidlc` 수정 전 documented fail-closed compatibility exception으로 우회하며, Browser/View Action과 resolver/ViewAnnotation target RPC는 별도 E2E PASS다. legacy Display round trip은 아직 실행하지 않았고 canonical A2UI target render는 two-string Presentation transport 때문에 독립 차단이며 offline mode는 transport를 끊으므로 재실행하지 않았다.

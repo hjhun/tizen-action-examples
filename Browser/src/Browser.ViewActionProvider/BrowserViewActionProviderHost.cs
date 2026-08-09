@@ -1,5 +1,5 @@
 using Browser.UseCases;
-using RPCPort.TizenInternalActionViewGenerated.Stub;
+using RPCPort.TizenInternalActionView.Stub;
 
 namespace Browser.ViewActionProvider;
 

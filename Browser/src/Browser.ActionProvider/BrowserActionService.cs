@@ -1,7 +1,7 @@
 using Browser.Domain;
 using Browser.UseCases;
-using RPCPort.TizenActionBrowserGenerated;
-using RPCPort.TizenActionBrowserGenerated.Stub;
+using RPCPort.TizenActionBrowser;
+using RPCPort.TizenActionBrowser.Stub;
 
 namespace Browser.ActionProvider;
 
