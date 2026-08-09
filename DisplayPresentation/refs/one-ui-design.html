@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>DisplayPresentation — One UI Design Reference</title>
+<style>body{margin:0;background:#101218;color:#f5f5f7;font:16px system-ui,sans-serif;line-height:1.55}.page{max-width:1120px;margin:auto;padding:48px}.hero{padding:40px;border-radius:28px;background:#1a1e28}h1{font-size:42px;margin:0 0 8px}h2{margin-top:42px}.card{background:#202532;border-radius:20px;padding:24px;margin:16px 0}.accent{color:#9fc6ff}.flow{white-space:pre-wrap;background:#151923;padding:20px;border-radius:16px}table{width:100%;border-collapse:collapse}td,th{border-bottom:1px solid #3b4252;padding:12px;text-align:left}</style></head>
+<body><main class="page">
+<section class="hero"><p class="accent">Infrastructure fixture · Tizen.Action.Display</p><h1>DisplayPresentation</h1><p>A calm, deterministic viewing surface for a provider-produced A2UI Presentation. It follows One UI’s large, readable content hierarchy without copying proprietary assets.</p></section>
+<h2>Goal, users, and non-goals</h2><div class="card"><p><b>Users:</b> a person reviewing an agent-selected result and an agent requiring inspectable rendered context. <b>Goal:</b> make a bounded Presentation understandable from a TV distance. <b>Non-goals:</b> web browsing, arbitrary HTML execution, editing source data, network fetching, or persistent document storage.</p></div>
+<h2>Screen inventory and states</h2><table><tr><th>State</th><th>Hierarchy</th><th>Expected result</th></tr><tr><td>Empty</td><td>Large “Ready to display” title, short explanation</td><td>No annotation; a valid Show request replaces it.</td></tr><tr><td>Loading</td><td>Quiet progress label over the previous stable frame</td><td>Superseded request cancels; stale result is ignored.</td></tr><tr><td>Presentation</td><td>Context label → title → subtitle → primary card → bounded fields</td><td>One annotated content card; clear focus ring.</td></tr><tr><td>Detail</td><td>Focused card expands within the same canvas</td><td>Back restores the compact card and focus.</td></tr><tr><td>Malformed</td><td>Plain-language error and retry guidance</td><td>Typed Status failure; last valid content remains recoverable.</td></tr><tr><td>Unsupported</td><td>Component name and safe explanation</td><td>Typed Status failure; no guessed layout.</td></tr></table>
+<h2>Navigation and input</h2><div class="flow">Initial focus: content card (when a presentation is visible)
+D-pad / arrows: retain card focus; move inside expanded fields when present
+Enter / Space / tap: expand or collapse supported detail
+Back / Escape: detail or error → prior valid presentation → application back behavior
+Pointer: activation follows the same card action
+Modal rule: error/detail owns focus until dismissed; dismissal restores the invoking card</div>
+<h2>Visual and accessibility policy</h2><div class="card"><p>Reference canvas: 1920×1080. The physical root covers the window; one top-left design canvas receives the centered uniform inset-aware transform. Content uses 72 px outer safe margins, an 18 px card radius, high contrast near-white text, restrained blue focus/accent, and generous line spacing. Text is bounded and ellipsized before it can overflow. Every interactive card has an accessible label; color is never the sole state signal.</p></div>
+<h2>Agent contract</h2><div class="flow">Show(Presentation{Template, Document})
+  → validate bounded JSON and supported A2UI roots
+  → render immutable snapshot
+  → publish display:presentation:active ViewAnnotation
+  → agent may GetAnnotatedViews / GetFocusedView / FindById
+  → View_ToPresentation returns matching Template + Document JSON</div><p>The nested Annotation carries EntityType, EntityId, and generated Presentation <code>EntityInfo</code>; enclosing View carries actual measured bounds and focus.</p>
+<h2>Acceptance and evidence plan</h2><ul><li>Host: valid, malformed, oversized, unsupported, and mismatched A2UI payloads; viewport and cancellation tests.</li><li>Target: explicit app provider discovery; Show success and negative typed Status; View lookup/focus/A2UI round trip.</li><li>Visual: empty, presentation focused, expanded detail, malformed, and unsupported screens via native Aurum screenshots after state-changing input.</li><li>Profile scope: Common Emulator evidence and TV/product evidence remain separately reported.</li></ul>
+</main></body></html>
