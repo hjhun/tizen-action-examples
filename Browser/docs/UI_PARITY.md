@@ -1,12 +1,24 @@
 # Browser UI parity ledger
 
-갱신일: 2026-08-09 (Samsung visual refinement, refs-first)
+갱신일: 2026-08-09 (Samsung Modernization V2, user-approved direction A)
 
 - canonical preview: [`../refs/one-ui-sample.html`](../refs/one-ui-sample.html)
+- approved V2 design: [`SAMSUNG_MODERNIZATION_V2.md`](SAMSUNG_MODERNIZATION_V2.md)
 - Samsung Android 근거: [`SAMSUNG_ANDROID_UI_REFERENCE.md`](SAMSUNG_ANDROID_UI_REFERENCE.md)
 - 제품 요구사항: [`PRODUCT_REQUIREMENTS.md`](PRODUCT_REQUIREMENTS.md)
-- 현재 판정: **revised HTML와 Common Emulator 1920×1080 native visual parity PASS, semantic tree/RPC/A2UI/offline gate 차단**
-- 증거 경계: `html-*`는 HTML-only 증거다. `native-browser-*-visual-*`는 최종 visual-refinement TPK의 Common Emulator/Aurum 증거이며 TV 제품 승인, typed Action/View RPC, semantic accessibility tree 또는 A2UI round trip을 증명하지 않는다. 세부 gate는 [`STAGE3_VALIDATION.md`](STAGE3_VALIDATION.md)에 있다.
+- 현재 판정: **V2 HTML contract PASS; Common Emulator NUI parity 재구현·재검증 대기**
+- 증거 경계: 최신 `html-browser-*`는 승인된 A안의 HTML-only 증거다. 기존 `native-browser-*-visual-*`는 이전 `8234b09` package 증거이므로 V2 native parity를 증명하지 않는다. semantic tree/RPC/A2UI/offline gate는 계속 별도 차단 상태다.
+
+## Modernization V2 HTML evidence
+
+Playwright는 기존 `Browser` product label, 118px header, 92px dock, oversized typography, full-width tab rows가 남은 상태에서 먼저 실패했다. 승인된 A안 구현 후 Home→Page→Home→Page→Tabs→close modal→Back 복원→new tab→Offline과 네 viewport geometry를 통과했다.
+
+- top bar: 84px, `Internet` product context, 58px address/Reload
+- bottom dock: 64px, safe offset 28px, Back/Forward/Home/Tabs
+- Home: 52px 이하 title, 26px body, 세 개 privacy-safe quick-access cards
+- Tabs: 2-column preview-card grid, 52px 이하 screen title, 28px card title
+- Dialog: 38px title, integrated split actions, 3px focus outline
+- Playwright: 1 passed; console/page errors 0; requests는 local `file:` 문서만 관찰
 
 ## Visual refinement current HTML evidence
 

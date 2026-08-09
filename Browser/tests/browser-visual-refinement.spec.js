@@ -24,15 +24,35 @@ test('Browser Samsung visual refinement interaction and evidence', async ({ brow
   page.on('request', request => requests.push(request.url()));
   await page.goto(sample);
 
+  await expect(page.locator('.product-name')).toContainText('Internet');
   await expect(page.locator('#address')).toBeFocused();
   await expect(page.locator('#back')).toBeDisabled();
   await expect(page.locator('#forward')).toBeDisabled();
+  await expect(page.locator('#home')).toBeEnabled();
+  await expect(page.locator('.quick-access-card')).toHaveCount(3);
+  await expect(page.getByRole('button', { name: 'Open Tizen Docs' })).toBeVisible();
+  const homeTypography = await page.locator('.home-state').evaluate(element => ({
+    title: Number.parseFloat(getComputedStyle(element.querySelector('h1')).fontSize),
+    body: Number.parseFloat(getComputedStyle(element.querySelector('.lead')).fontSize),
+    product: Number.parseFloat(getComputedStyle(document.querySelector('.product-name')).fontSize),
+    address: Number.parseFloat(getComputedStyle(document.querySelector('#address')).fontSize),
+  }));
+  expect(homeTypography.title).toBeLessThanOrEqual(56);
+  expect(homeTypography.body).toBeLessThanOrEqual(28);
+  expect(homeTypography.product).toBeLessThanOrEqual(24);
+  expect(homeTypography.address).toBeLessThanOrEqual(24);
+  const shellGeometry = await page.evaluate(() => {
+    const header = document.querySelector('.browser-header').getBoundingClientRect();
+    const dock = document.querySelector('.bottom-dock').getBoundingClientRect();
+    return { headerHeight: header.height, dockHeight: dock.height, dockBottom: 1080 - dock.bottom };
+  });
+  expect(shellGeometry).toEqual({ headerHeight: 84, dockHeight: 64, dockBottom: 28 });
   await page.screenshot({ path: path.join(images, 'html-browser-home-1920x1080.png') });
 
   await page.keyboard.press('ArrowRight');
   await expect(page.locator('#reload')).toBeFocused();
   await page.keyboard.press('ArrowDown');
-  await expect(page.getByRole('button', { name: 'Open Tizen guide' })).toBeFocused();
+  await expect(page.getByRole('button', { name: 'Open Tizen Docs' })).toBeFocused();
   await page.keyboard.press('ArrowUp');
   await expect(page.locator('#address')).toBeFocused();
 
@@ -48,9 +68,18 @@ test('Browser Samsung visual refinement interaction and evidence', async ({ brow
   await expect.poll(async () => (await state(page)).mode).toBe('page');
   await page.screenshot({ path: path.join(images, 'html-browser-page-1920x1080.png') });
 
+  await page.locator('#home').click();
+  await expect.poll(async () => (await state(page)).mode).toBe('home');
+  await expect(page.locator('#address')).toHaveValue('');
+  await page.locator('#address').fill('https://docs.tizen.org/');
+  await page.keyboard.press('Enter');
+  await expect.poll(async () => (await state(page)).mode).toBe('page');
+
   await page.keyboard.press('ArrowDown');
   await expect(page.locator('.fixture-page')).toBeFocused();
   await page.keyboard.press('ArrowDown');
+  await expect(page.locator('#home')).toBeFocused();
+  await page.keyboard.press('ArrowRight');
   await expect(page.locator('#tabs')).toBeFocused();
   await page.keyboard.press('Enter');
   await expect.poll(async () => (await state(page)).mode).toBe('tabs');
@@ -58,12 +87,28 @@ test('Browser Samsung visual refinement interaction and evidence', async ({ brow
   await expect(page.locator('.tab-open').first()).toBeFocused();
 
   await page.evaluate(() => window.__browserPreview.seedTabs(3));
+  await expect(page.locator('.tab-grid')).toBeVisible();
+  const tabsVisual = await page.evaluate(() => {
+    const grid = document.querySelector('.tab-grid');
+    const title = document.querySelector('.tabs-heading h1');
+    const cardTitle = document.querySelector('.tab-open strong');
+    return {
+      columns: getComputedStyle(grid).gridTemplateColumns.split(' ').length,
+      titleSize: Number.parseFloat(getComputedStyle(title).fontSize),
+      cardTitleSize: Number.parseFloat(getComputedStyle(cardTitle).fontSize),
+    };
+  });
+  expect(tabsVisual.columns).toBe(2);
+  expect(tabsVisual.titleSize).toBeLessThanOrEqual(56);
+  expect(tabsVisual.cardTitleSize).toBeLessThanOrEqual(30);
   await page.screenshot({ path: path.join(images, 'html-browser-tabs-1920x1080.png') });
   await page.keyboard.press('ArrowRight');
   await expect(page.locator('.tab-close').first()).toBeFocused();
   await page.keyboard.press('Enter');
   await expect.poll(async () => (await state(page)).modalOpen).toBe(true);
   await expect(page.locator('#modal-cancel')).toBeFocused();
+  const modalTitleSize = await page.locator('#modal-title').evaluate(element => Number.parseFloat(getComputedStyle(element).fontSize));
+  expect(modalTitleSize).toBeLessThanOrEqual(40);
   await page.screenshot({ path: path.join(images, 'html-browser-close-confirmation-1920x1080.png') });
   await page.setViewportSize({ width: 1440, height: 1080 });
   await expectCanvasScale(page, .75);

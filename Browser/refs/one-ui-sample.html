@@ -8,17 +8,30 @@
 :root {
   color-scheme: light;
   --ink: #17171b;
-  --muted: #5d5d66;
+  --muted: #66666f;
   --quiet: #85858e;
-  --line: #d8d8df;
+  --line: #dedee5;
   --surface: #ffffff;
-  --canvas: #f6f6f8;
-  --soft: #eeeeF2;
-  --blue: #0877e8;
-  --focus: #0868d7;
-  --danger: #d92d2d;
+  --canvas: #f7f7fa;
+  --soft: #f0f1f5;
+  --blue: #0b76e8;
+  --focus: #0b76e8;
+  --focus-soft: #e9f3ff;
+  --danger: #e3262e;
   --success: #256d3b;
   --scale: 1;
+  --type-product: 24px;
+  --type-address: 24px;
+  --type-kicker: 16px;
+  --type-home-title: 52px;
+  --type-body: 26px;
+  --type-card-title: 24px;
+  --type-card-meta: 18px;
+  --type-tabs-title: 52px;
+  --type-tab-title: 28px;
+  --type-tab-meta: 20px;
+  --type-dialog-title: 38px;
+  --type-action: 22px;
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; }
@@ -47,49 +60,49 @@ button, input { font: inherit; }
   background: var(--canvas);
 }
 .browser-header {
-  height: 118px;
-  padding: 24px 52px;
+  height: 84px;
+  padding: 12px 40px;
   display: grid;
-  grid-template-columns: 226px minmax(720px, 1fr) 72px;
-  gap: 20px;
+  grid-template-columns: 210px minmax(720px, 1fr) 58px;
+  gap: 16px;
   align-items: center;
   background: var(--canvas);
 }
 .product-name {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 12px;
   min-width: 0;
-  font-size: 27px;
-  font-weight: 760;
-  letter-spacing: -.8px;
+  font-size: var(--type-product);
+  font-weight: 720;
+  letter-spacing: -.5px;
 }
 .product-mark {
-  width: 44px;
-  height: 44px;
-  border: 3px solid var(--ink);
-  border-radius: 14px 14px 18px 18px;
+  width: 36px;
+  height: 36px;
+  border: 2px solid var(--ink);
+  border-radius: 11px 11px 14px 14px;
   position: relative;
 }
 .product-mark::after {
   content: "";
   position: absolute;
-  left: 9px;
-  right: 9px;
-  top: 11px;
-  height: 3px;
+  left: 8px;
+  right: 8px;
+  top: 9px;
+  height: 2px;
   border-radius: 9px;
   background: var(--blue);
-  box-shadow: 0 8px 0 var(--blue);
+  box-shadow: 0 7px 0 var(--blue);
 }
 .control {
-  height: 66px;
-  border: 2px solid var(--line);
-  border-radius: 16px;
+  height: 58px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
   background: var(--surface);
   color: var(--ink);
-  font-size: 22px;
-  font-weight: 720;
+  font-size: var(--type-action);
+  font-weight: 680;
   cursor: pointer;
   transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease, background 120ms ease;
 }
@@ -100,23 +113,23 @@ button, input { font: inherit; }
   cursor: default;
 }
 .address-shell {
-  height: 70px;
+  height: 58px;
   border: 2px solid transparent;
-  border-radius: 27px;
-  background: #e9e9ed;
+  border-radius: 22px;
+  background: #ececf1;
   display: grid;
-  grid-template-columns: 34px minmax(0, 1fr) auto;
-  gap: 13px;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  gap: 11px;
   align-items: center;
-  padding: 0 20px;
+  padding: 0 18px;
   transition: background 120ms ease, box-shadow 120ms ease, border-color 120ms ease;
 }
 .address-shell:focus-within {
   background: var(--surface);
   border-color: var(--focus);
-  box-shadow: 0 0 0 5px rgba(8, 104, 215, .18), 0 10px 25px rgba(25, 38, 64, .10);
+  box-shadow: 0 0 0 3px rgba(11, 118, 232, .16), 0 8px 22px rgba(25, 38, 64, .08);
 }
-.address-icon { color: var(--muted); font-size: 25px; }
+.address-icon { color: var(--muted); font-size: 22px; }
 #address {
   width: 100%;
   min-width: 0;
@@ -124,24 +137,27 @@ button, input { font: inherit; }
   outline: 0;
   background: transparent;
   color: var(--ink);
-  font-size: 25px;
-  letter-spacing: -.3px;
+  font-size: var(--type-address);
+  letter-spacing: -.25px;
 }
-.security-label { color: var(--success); font-size: 17px; font-weight: 700; }
-.reload-control { width: 70px; height: 70px; border-radius: 25px; font-size: 27px; }
-.tabs-control { padding: 0 20px; display: flex; align-items: center; justify-content: center; gap: 12px; }
+.security-label { color: var(--success); font-size: 16px; font-weight: 680; }
+.reload-control { width: 58px; height: 58px; border-radius: 19px; font-size: 24px; }
+.tabs-control { display: flex; align-items: center; justify-content: center; gap: 7px; }
 .tab-count {
-  min-width: 30px;
-  height: 30px;
-  border: 2px solid currentColor;
-  border-radius: 9px;
+  min-width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--blue);
+  color: #fff;
   display: inline-grid;
   place-items: center;
-  font-size: 16px;
+  font-size: 13px;
+  font-weight: 760;
 }
 .workspace {
-  height: 962px;
-  padding: 0 40px 32px;
+  height: 996px;
+  padding: 0 40px 20px;
   display: grid;
   grid-template-rows: 6px minmax(0, 1fr);
 }
@@ -169,37 +185,38 @@ button, input { font: inherit; }
   z-index: 12;
   left: 50%;
   bottom: 28px;
-  width: 592px;
-  height: 92px;
-  padding: 10px;
+  width: 440px;
+  height: 64px;
+  padding: 6px;
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
   transform: translateX(-50%);
-  border: 1px solid #d7d7dc;
-  border-radius: 34px;
-  background: #fff;
-  box-shadow: 0 18px 44px rgba(27, 28, 34, .17);
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, .98);
+  box-shadow: 0 12px 32px rgba(27, 28, 34, .14);
 }
 .dock-control {
-  height: 70px;
+  height: 52px;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 12px;
+  gap: 7px;
   border: 0;
-  border-radius: 25px;
+  border-radius: 18px;
   background: transparent;
   color: var(--ink);
-  font-size: 20px;
-  font-weight: 740;
+  font-size: var(--type-action);
+  font-weight: 680;
 }
-.dock-control .dock-icon { font-size: 27px; font-weight: 500; }
+.dock-control .dock-icon { font-size: 24px; font-weight: 500; }
 .dock-control[disabled] { color: #aaaab2; background: #f4f4f6; }
+.dock-control.current { background: var(--focus-soft); color: var(--blue); }
 #surface { position: absolute; inset: 0; overflow: hidden; }
 .state-page { position: absolute; inset: 0; }
 .home-state {
-  padding: 110px 122px 170px;
+  padding: 92px 150px 126px;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -207,25 +224,38 @@ button, input { font: inherit; }
   text-align: center;
   background: var(--surface);
 }
-.eyebrow { color: var(--blue); font-size: 18px; font-weight: 800; letter-spacing: 1.8px; text-transform: uppercase; }
-.home-state h1, .fixture-page h1, .recovery h1, .tabs-view h1 {
-  margin: 16px 0 24px;
+.eyebrow { color: var(--blue); font-size: var(--type-kicker); font-weight: 780; letter-spacing: 2px; text-transform: uppercase; }
+.home-state h1, .fixture-page h1, .recovery h1 {
+  margin: 14px 0 16px;
   color: var(--ink);
-  font-size: 64px;
-  line-height: 1.08;
-  letter-spacing: -2.2px;
+  font-size: var(--type-home-title);
+  line-height: 1.12;
+  letter-spacing: -1.5px;
 }
-.lead { margin: 0; max-width: 1040px; color: #45454d; font-size: 27px; line-height: 1.52; letter-spacing: -.25px; }
-.home-actions { margin-top: 42px; display: flex; gap: 16px; }
+.lead { margin: 0; max-width: 980px; color: var(--muted); font-size: var(--type-body); line-height: 1.45; letter-spacing: -.2px; }
+.quick-access-grid { margin-top: 34px; display: grid; grid-template-columns: repeat(3, 248px); gap: 16px; }
+.quick-access-card {
+  height: 108px;
+  padding: 20px 22px;
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  background: #f2f3f7;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+}
+.quick-access-card strong { display: block; font-size: var(--type-card-title); font-weight: 700; letter-spacing: -.4px; }
+.quick-access-card span { display: block; margin-top: 7px; color: var(--muted); font-size: var(--type-card-meta); }
+.home-actions { margin-top: 34px; display: flex; gap: 14px; }
 .action-button {
-  min-height: 68px;
-  padding: 0 28px;
-  border: 2px solid var(--line);
-  border-radius: 17px;
+  min-height: 58px;
+  padding: 0 24px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
   background: var(--surface);
   color: var(--ink);
-  font-size: 21px;
-  font-weight: 760;
+  font-size: var(--type-action);
+  font-weight: 680;
   cursor: pointer;
 }
 .action-button.primary { background: var(--blue); color: #fff; border-color: var(--blue); }
@@ -271,53 +301,58 @@ button, input { font: inherit; }
 .tabs-open .workspace { position: absolute; inset: 0; width: 1920px; height: 1080px; padding: 0; display: block; }
 .tabs-open .progress-track { display: none; }
 .tabs-open .web-shell { position: absolute; inset: 0; border: 0; border-radius: 0; }
-.tabs-view { padding: 48px 110px 52px; height: 100%; overflow: hidden; background: #f7f7f9; }
-.tabs-heading { height: 104px; display: grid; grid-template-columns: 76px 1fr auto; gap: 24px; align-items: center; }
-.tabs-back { width: 66px; height: 66px; border-radius: 23px; }
-.tabs-heading h1 { margin: 0; font-size: 58px; letter-spacing: -2px; }
-.tabs-heading p { margin: 0; padding: 12px 18px; border-radius: 999px; background: #ececf0; color: var(--muted); font-size: 18px; font-weight: 720; }
-.tab-list { width: 1320px; margin: 34px auto 0; display: grid; gap: 14px; max-height: 680px; overflow-y: auto; padding: 6px 12px 6px 8px; scrollbar-width: thin; }
+.tabs-view { padding: 38px 110px 42px; height: 100%; overflow: hidden; background: var(--canvas); }
+.tabs-heading { height: 84px; display: grid; grid-template-columns: 58px 1fr auto; gap: 20px; align-items: center; }
+.tabs-back { width: 58px; height: 58px; border-radius: 19px; }
+.tabs-heading h1 { margin: 0; font-size: var(--type-tabs-title); line-height: 1.08; letter-spacing: -1.5px; }
+.tabs-heading p { margin: 0; padding: 10px 16px; border-radius: 999px; background: #ececf0; color: var(--muted); font-size: var(--type-tab-meta); font-weight: 660; }
+.tab-grid { width: 1500px; margin: 24px auto 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; max-height: 730px; overflow-y: auto; padding: 6px 10px 8px; scrollbar-width: thin; }
 .tab-row {
   position: relative;
-  min-height: 142px;
+  height: 214px;
   display: grid;
-  grid-template-columns: 150px 1fr 92px;
+  grid-template-columns: 196px minmax(0, 1fr) 70px;
   align-items: stretch;
-  border: 2px solid #dedee4;
-  border-radius: 26px;
+  border: 1px solid var(--line);
+  border-radius: 24px;
   background: var(--surface);
   overflow: hidden;
 }
-.tab-row.selected { border-color: #b7d7fb; background: #edf5ff; box-shadow: inset 9px 0 0 var(--blue); }
-.tab-preview { margin: 17px 8px 17px 24px; border-radius: 18px; background: #e7edf6; display: grid; place-items: center; color: var(--blue); font-size: 31px; font-weight: 800; }
+.tab-row.selected { border-color: #b7d7fb; background: var(--focus-soft); box-shadow: inset 7px 0 0 var(--blue); }
+.tab-preview { margin: 16px 8px 16px 20px; border-radius: 18px; background: #f3f4f8; border: 1px solid #e6e7ec; overflow: hidden; }
+.preview-chrome { height: 26px; padding: 8px 10px 0; display: flex; gap: 5px; background: #e7e9ee; }
+.preview-chrome i { width: 5px; height: 5px; border-radius: 50%; background: #a8aab3; }
+.preview-page { padding: 18px 16px; }
+.preview-page b { display: block; width: 58%; height: 10px; border-radius: 9px; background: #79b9ff; }
+.preview-page i { display: block; width: 82%; height: 7px; margin-top: 12px; border-radius: 9px; background: #d5d9e2; box-shadow: 0 14px 0 #d5d9e2, 0 28px 0 #e4e6eb; }
 .tab-row.selected .tab-preview { background: #fff; }
 .tab-open {
   min-width: 0;
-  padding: 28px 26px;
+  padding: 46px 18px 30px;
   border: 0;
   border-radius: 18px 0 0 18px;
   background: transparent;
   text-align: left;
   cursor: pointer;
 }
-.tab-open strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink); font-size: 27px; }
-.tab-open span { display: block; margin-top: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font-size: 19px; }
-.tab-close { align-self: center; width: 66px; height: 66px; margin-right: 18px; border-radius: 50%; font-size: 27px; }
-.tabs-footer { width: 1320px; margin: 24px auto 0; display: flex; justify-content: space-between; align-items: center; }
-.limit-note { color: var(--quiet); font-size: 18px; }
+.tab-open strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink); font-size: var(--type-tab-title); font-weight: 700; }
+.tab-open span { display: block; margin-top: 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font-size: var(--type-tab-meta); }
+.tab-close { align-self: center; width: 52px; height: 52px; margin-right: 14px; border-radius: 50%; font-size: 23px; }
+.tabs-footer { width: 1500px; margin: 20px auto 0; display: flex; justify-content: flex-end; gap: 18px; align-items: center; }
+.limit-note { color: var(--quiet); font-size: var(--type-card-meta); }
 .modal-layer { position: absolute; inset: 0; z-index: 20; display: grid; place-items: center; padding: 60px; background: rgba(17, 17, 20, .48); }
 .modal {
-  width: 760px;
-  padding: 46px 0 0;
+  width: 680px;
+  padding: 38px 0 0;
   overflow: hidden;
-  border-radius: 34px;
+  border-radius: 28px;
   background: var(--surface);
-  box-shadow: 0 28px 72px rgba(0, 0, 0, .28);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, .25);
 }
-.modal h2 { margin: 0; padding: 0 48px; font-size: 39px; letter-spacing: -1.1px; }
-.modal p { margin: 18px 0 38px; padding: 0 48px; color: var(--muted); font-size: 22px; line-height: 1.5; }
-.modal-actions { height: 104px; display: grid; grid-template-columns: 1fr 1fr; border-top: 1px solid var(--line); }
-.modal-action { border: 0; border-radius: 0; background: transparent; font-size: 23px; font-weight: 760; }
+.modal h2 { margin: 0; padding: 0 42px; font-size: var(--type-dialog-title); letter-spacing: -.9px; }
+.modal p { margin: 14px 0 30px; padding: 0 42px; color: var(--muted); font-size: var(--type-action); line-height: 1.45; }
+.modal-actions { height: 88px; display: grid; grid-template-columns: 1fr 1fr; border-top: 1px solid var(--line); }
+.modal-action { border: 0; border-radius: 0; background: transparent; font-size: var(--type-action); font-weight: 680; }
 .modal-action + .modal-action { border-left: 1px solid var(--line); }
 .modal-action.danger { color: var(--danger); }
 .verification-tray {
@@ -340,20 +375,20 @@ button, input { font: inherit; }
 button:focus-visible, [tabindex="0"]:focus-visible {
   position: relative;
   z-index: 2;
-  outline: 5px solid var(--focus);
-  outline-offset: 4px;
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
   border-color: var(--focus);
-  box-shadow: 0 12px 28px rgba(18, 34, 59, .18);
-  transform: scale(1.025);
+  box-shadow: 0 10px 24px rgba(18, 34, 59, .14);
+  transform: scale(1.015);
 }
 .tab-open:focus-visible {
   border-radius: 16px;
-  outline-offset: -6px;
-  background: #edf4ff;
-  box-shadow: inset 0 0 0 5px var(--focus);
+  outline-offset: -5px;
+  background: var(--focus-soft);
+  box-shadow: inset 0 0 0 3px var(--focus);
   transform: none;
 }
-.modal-action:focus-visible { outline-offset: -8px; border-radius: 18px; transform: none; }
+.modal-action:focus-visible { outline-offset: -6px; border-radius: 14px; transform: none; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
@@ -363,7 +398,7 @@ button:focus-visible, [tabindex="0"]:focus-visible {
 <div id="viewport">
   <main id="app" aria-label="Browser preview">
     <header class="browser-header">
-      <div class="product-name" aria-label="Browser"><span class="product-mark" aria-hidden="true"></span><span>Browser</span></div>
+      <div class="product-name" aria-label="Internet"><span class="product-mark" aria-hidden="true"></span><span>Internet</span></div>
       <label class="address-shell" aria-label="Address or search">
         <span class="address-icon" aria-hidden="true">⌕</span>
         <input id="address" data-row="0" data-col="0" aria-label="Address or search. Press Enter to load." placeholder="Search or enter address" autocomplete="off" spellcheck="false">
@@ -378,9 +413,10 @@ button:focus-visible, [tabindex="0"]:focus-visible {
       </section>
     </section>
     <nav class="bottom-dock" aria-label="Browser navigation">
-      <button class="dock-control" id="back" data-row="2" data-col="0" aria-label="Back" disabled><span class="dock-icon" aria-hidden="true">←</span><span>Back</span></button>
-      <button class="dock-control" id="forward" data-row="2" data-col="1" aria-label="Forward" disabled><span class="dock-icon" aria-hidden="true">→</span><span>Forward</span></button>
-      <button class="dock-control tabs-control" id="tabs" data-row="2" data-col="2" aria-label="Open tabs"><span class="dock-icon" aria-hidden="true">▣</span><span>Tabs</span><span class="tab-count" id="tab-count">1</span></button>
+      <button class="dock-control" id="back" data-row="2" data-col="0" aria-label="Back" disabled><span class="dock-icon" aria-hidden="true">←</span><span class="sr-only">Back</span></button>
+      <button class="dock-control" id="forward" data-row="2" data-col="1" aria-label="Forward" disabled><span class="dock-icon" aria-hidden="true">→</span><span class="sr-only">Forward</span></button>
+      <button class="dock-control current" id="home" data-row="2" data-col="2" aria-label="Home"><span class="dock-icon" aria-hidden="true">⌂</span><span class="sr-only">Home</span></button>
+      <button class="dock-control tabs-control" id="tabs" data-row="2" data-col="3" aria-label="Open tabs"><span class="dock-icon" aria-hidden="true">▣</span><span class="sr-only">Tabs</span><span class="tab-count" id="tab-count">1</span></button>
     </nav>
     <div class="modal-layer hidden" id="modal-layer">
       <section class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title" aria-describedby="modal-copy">
@@ -468,6 +504,9 @@ button:focus-visible, [tabindex="0"]:focus-visible {
     $("back").disabled = state.mode === "tabs" || tab.historyIndex <= 0;
     $("forward").disabled = state.mode === "tabs" || tab.historyIndex < 0 || tab.historyIndex >= tab.history.length - 1;
     $("reload").disabled = state.mode === "loading" || state.mode === "tabs";
+    $("home").disabled = state.mode === "tabs";
+    $("home").classList.toggle("current", state.mode === "home");
+    $("tabs").classList.toggle("current", state.mode === "tabs");
     $("security-label").textContent = url.startsWith("https://") ? "HTTPS" : "Web";
   }
 
@@ -479,14 +518,14 @@ button:focus-visible, [tabindex="0"]:focus-visible {
     setChrome("Start page", "Normal browsing · local start surface", "Ready");
     surface.innerHTML = `
       <section class="state-page home-state" aria-label="Start page">
-        <div class="eyebrow">Start page</div>
-        <h1>Browse the web.</h1>
-        <p class="lead">Search or enter an address above. Pages open in the system WebView. Use remote, keyboard, pointer, or touch.</p>
-        <div class="home-actions">
-          <button class="action-button primary" data-command="fixture" data-row="1" data-col="0">Open Tizen guide</button>
-          <button class="action-button" data-command="focus-address" data-row="1" data-col="1">Enter an address</button>
+        <div class="eyebrow">Quick access</div>
+        <h1>Where would you like to go?</h1>
+        <p class="lead">Search with the address bar or choose a private local shortcut.</p>
+        <div class="quick-access-grid">
+          <button class="quick-access-card" data-command="quick-docs" data-row="1" data-col="0" aria-label="Open Tizen Docs"><strong>Tizen Docs</strong><span>docs.tizen.org</span></button>
+          <button class="quick-access-card" data-command="quick-tizen" data-row="1" data-col="1" aria-label="Open Tizen.org"><strong>Tizen.org</strong><span>www.tizen.org</span></button>
+          <button class="quick-access-card" data-command="new-tab-home" data-row="1" data-col="2" aria-label="Open a new tab"><strong>New tab</strong><span>Private local start page</span></button>
         </div>
-        <div class="privacy-line"><span class="shield" aria-hidden="true">✓</span><span>Normal browsing only · public title and address metadata</span></div>
       </section>`;
   }
 
@@ -577,19 +616,23 @@ button:focus-visible, [tabindex="0"]:focus-visible {
           <h1>Tabs</h1>
           <p>${state.tabs.length} normal · maximum 20</p>
         </div>
-        <div class="tab-list">
-          ${visibleTabs.map((tab, index) => `
+        <div class="tab-grid">
+          ${visibleTabs.map((tab, index) => {
+            const gridRow = Math.floor(index / 2) + 1;
+            const gridColumn = (index % 2) * 2;
+            return `
             <article class="tab-row ${tab.id === state.selectedTabId ? "selected" : ""}">
-              <div class="tab-preview" aria-hidden="true">${escapeHtml(tabLabel(tab).slice(0, 1).toUpperCase())}</div>
-              <button class="tab-open" data-command="select-tab" data-tab-id="${tab.id}" data-row="${index + 1}" data-col="1" aria-label="Open ${escapeHtml(tabLabel(tab))}${tab.id === state.selectedTabId ? ", current tab" : ""}">
+              <div class="tab-preview" aria-hidden="true"><div class="preview-chrome"><i></i><i></i><i></i></div><div class="preview-page"><b></b><i></i></div></div>
+              <button class="tab-open" data-command="select-tab" data-tab-id="${tab.id}" data-row="${gridRow}" data-col="${gridColumn}" aria-label="Open ${escapeHtml(tabLabel(tab))}${tab.id === state.selectedTabId ? ", current tab" : ""}">
                 <strong>${escapeHtml(tabLabel(tab))}</strong><span>${escapeHtml(tabUrl(tab))}</span>
               </button>
-              <button class="control tab-close" data-command="request-close" data-tab-id="${tab.id}" data-row="${index + 1}" data-col="2" aria-label="Close ${escapeHtml(tabLabel(tab))}">×</button>
-            </article>`).join("")}
+              <button class="control tab-close" data-command="request-close" data-tab-id="${tab.id}" data-row="${gridRow}" data-col="${gridColumn + 1}" aria-label="Close ${escapeHtml(tabLabel(tab))}">×</button>
+            </article>`;
+          }).join("")}
         </div>
         <div class="tabs-footer">
-          <button class="action-button primary" data-command="new-tab" data-row="${state.tabs.length + 1}" data-col="1" ${state.tabs.length >= 20 ? "disabled" : ""}>New tab</button>
           <span class="limit-note">${state.tabs.length >= 20 ? "Tab limit reached" : `${20 - state.tabs.length} tabs available`}</span>
+          <button class="action-button primary" data-command="new-tab" data-row="${Math.ceil(state.tabs.length / 2) + 1}" data-col="0" ${state.tabs.length >= 20 ? "disabled" : ""}>New tab</button>
         </div>
       </section>`;
     queueMicrotask(() => surface.querySelector(`[data-tab-id="${focusTabId}"][data-command="select-tab"]`)?.focus());
@@ -668,13 +711,31 @@ button:focus-visible, [tabindex="0"]:focus-visible {
     announce("Close cancelled");
   }
 
-  function newTab() {
+  function goHome() {
+    if (state.navigationTimer) clearTimeout(state.navigationTimer);
+    state.navigationTimer = null;
+    state.navigationIntent += 1;
+    const tab = selectedTab();
+    tab.history = [];
+    tab.historyIndex = -1;
+    address.value = "";
+    renderHome();
+    queueMicrotask(() => address.focus());
+    announce("Start page opened");
+  }
+
+  function newTab(openManager = true) {
     if (state.tabs.length >= 20) return;
     const id = `tab-${Date.now()}`;
     state.tabs.push(createTab(id));
     state.selectedTabId = id;
     address.value = "";
-    renderTabs(id);
+    if (openManager) {
+      renderTabs(id);
+    } else {
+      renderHome();
+      queueMicrotask(() => address.focus());
+    }
   }
 
   function selectTab(tabId) {
@@ -687,7 +748,9 @@ button:focus-visible, [tabindex="0"]:focus-visible {
 
   function activateCommand(target) {
     const command = target.dataset.command;
-    if (command === "fixture") { address.value = "https://docs.tizen.org/"; navigate(address.value); }
+    if (command === "fixture" || command === "quick-docs") { address.value = "https://docs.tizen.org/"; navigate(address.value); }
+    else if (command === "quick-tizen") { address.value = "https://www.tizen.org/"; navigate(address.value); }
+    else if (command === "new-tab-home") newTab(false);
     else if (command === "focus-address") address.focus();
     else if (command === "retry") navigate(address.value || "https://www.tizen.org/");
     else if (command === "recovery-back") handleBack();
@@ -788,6 +851,7 @@ button:focus-visible, [tabindex="0"]:focus-visible {
     if (!target || target.disabled) return;
     if (target.id === "back") historyMove(-1);
     else if (target.id === "forward") historyMove(1);
+    else if (target.id === "home") goHome();
     else if (target.id === "reload") navigate(address.value || currentPage()?.url || "https://www.tizen.org/");
     else if (target.id === "tabs") renderTabs();
     else if (target.id === "modal-cancel") dismissModal(false);
