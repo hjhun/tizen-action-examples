@@ -75,3 +75,19 @@
 | `SAMSUNG_ANDROID_UI_REFERENCE.md` | official URL, app/screen/version/date, direct/adaptation 구분 | 작성 완료, 검증 예정 |
 | `TRACEABILITY.md` | FR/NFR ID 누락·중복 검사 | 작성 완료, 검증 예정 |
 | `DESIGN_REVIEW.md` | explicit verdict/gap/correction plan | 작성 완료, 검증 예정 |
+
+## Stage 1 HTML contract gate
+
+| 요구사항 | HTML 증거 | 결과 | production 경계 |
+|---|---|---|---|
+| FR-BROWSER-001, 003 | home initial focus, search normalization | PASS | NUI search/home은 Stage 2 |
+| FR-BROWSER-002, 004, 005 | submit/loading/page/reload semantic state | PASS | real WebView completion은 Stage 2/3 |
+| FR-BROWSER-006~009 | offline/engine-error/timeout/retry/stale intent fixture | PASS | NUI/runtime test는 Stage 2B |
+| FR-BROWSER-010, 011 | history disabled state와 Back hierarchy | PASS | real WebView history는 Stage 2B |
+| FR-BROWSER-012~017 | 1~20 tabs, select/new/close, confirm/cancel/trap/restore | PASS | domain/persistence/NUI는 Stage 2C |
+| FR-BROWSER-025 | D-pad/keyboard/pointer/touch command parity | PASS | installed input parity는 Stage 3 |
+| NFR-BROWSER-011~014 | labels, two-cue focus, graph/trap/input | PASS(HTML) | Aurum tree/input은 Stage 3 |
+| NFR-BROWSER-015 | four-shape centered uniform transform | PASS(HTML) | NUI inset/resize는 Stage 2A/3 |
+| NFR-BROWSER-026 | current HTML PNG 6개 decode/dimension/non-blank/privacy review | PASS(HTML) | native image set은 Stage 3 |
+
+Playwright Chromium은 direct `file:` open에서 primary/exception flow, scrolled 10th tab focus, modal confirm/cancel, max-tab disabled, pointer/touch를 실행했고 console/page error는 0이었다. 외부 request는 없었다. 이 결과는 HTML-only이며 FR-BROWSER-019~024 target Action/Entity/View/A2UI 상태를 변경하지 않는다.

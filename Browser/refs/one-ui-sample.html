@@ -5,38 +5,840 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Browser — executable NUI preview</title>
 <style>
-:root{color-scheme:light;--ink:#1b1b1f;--muted:#61616a;--line:#dedee5;--surface:#fff;--canvas:#f7f7fa;--active:#0b57d0;--focus:#134f9e;--danger:#b3261e;--scale:1}
-*{box-sizing:border-box}body{margin:0;min-height:100vh;background:#202124;display:grid;place-items:center;font-family:"Noto Sans KR","Segoe UI",sans-serif;color:var(--ink)}
-#frame{width:min(100vw,calc(100vh * 1.7778));aspect-ratio:16/9;background:var(--canvas);overflow:hidden;position:relative;box-shadow:0 10px 32px #0008;transform:translateZ(0)}
-.app{width:1920px;height:1080px;transform:scale(var(--scale));transform-origin:top left;position:absolute;background:var(--canvas);display:flex;flex-direction:column}
-.header{height:120px;background:var(--surface);display:flex;gap:10px;align-items:center;padding:24px 52px;border-bottom:1px solid var(--line)}
-.brand{width:190px;font-size:30px;font-weight:750;letter-spacing:-.7px}.controls{display:flex;gap:10px}.icon,.tabs{height:66px;min-width:66px;border:1px solid var(--line);border-radius:14px;background:#fff;font-size:19px;font-weight:700;color:var(--ink)}.tabs{margin-left:10px;padding:0 24px;min-width:150px}.icon[disabled]{color:#aaa;background:#f4f4f6;border-color:#e8e8ec}
-.address{height:66px;min-width:0;flex:1;border:2px solid #777782;border-radius:16px;background:#f3f3f6;display:flex;align-items:center;gap:15px;padding:0 20px}.address:focus-within{border-color:var(--focus);background:#fff;box-shadow:0 0 0 4px #134f9e33}.address span{color:var(--muted);font-size:24px}.address input{border:0;outline:0;background:transparent;min-width:0;flex:1;font-size:25px;color:var(--ink)}
-main{padding:28px 52px 44px;flex:1;min-height:0;display:flex;flex-direction:column;gap:22px}.context{height:45px;display:flex;align-items:center;gap:18px;color:var(--muted);font-size:21px}.context strong{color:var(--ink);font-size:25px}.loadbar{height:5px;background:transparent}.loadbar i{display:block;height:5px;width:0;background:var(--active);transition:width .35s ease}.surface{flex:1;background:#fff;border:1px solid var(--line);border-radius:20px;overflow:hidden;position:relative}.page{height:100%;padding:78px 90px;display:flex;flex-direction:column;align-items:flex-start}.page h1{font-size:52px;line-height:1.1;letter-spacing:-1.8px;margin:0 0 22px}.page p{font-size:26px;line-height:1.55;max-width:920px;margin:0 0 30px;color:#45454e}.page .rule{width:96px;height:6px;background:var(--active);margin-bottom:38px}.page small{font-size:20px;color:var(--muted)}
-button,[data-focus]{cursor:pointer}button:focus-visible,[data-focus].focus{outline:5px solid var(--focus);outline-offset:3px;box-shadow:0 7px 15px #0002;transform:scale(1.025)}.tabs-view{padding:55px 90px}.tabs-view h1{font-size:44px;margin:0 0 36px}.tab-row{width:100%;height:120px;background:#fff;border:1px solid var(--line);border-radius:16px;display:grid;grid-template-columns:1fr auto;align-items:center;padding:20px 22px;margin:14px 0;text-align:left}.tab-row.selected{border:3px solid var(--active)}.tab-title{font-size:26px;font-weight:700}.tab-url{font-size:19px;color:var(--muted);margin-top:7px}.close{height:62px;padding:0 20px;border:1px solid var(--line);border-radius:12px;background:#fff;font-size:20px}.new-tab{margin-top:20px;height:68px;padding:0 28px;border:1px solid var(--line);border-radius:14px;background:#fff;font-size:22px;font-weight:700}
-.overlay{position:absolute;inset:0;background:#0006;display:grid;place-items:center;padding:50px}.modal{width:680px;background:#fff;border-radius:22px;padding:42px;box-shadow:0 20px 50px #0007}.modal h2{font-size:38px;margin:0 0 16px}.modal p{font-size:23px;line-height:1.45;color:#4f4f59;margin:0 0 34px}.actions{display:flex;justify-content:flex-end;gap:14px}.actions button{height:64px;border-radius:13px;padding:0 26px;font-size:21px;font-weight:750;border:1px solid var(--line);background:#fff}.actions .primary{background:var(--active);color:#fff;border-color:var(--active)}.actions .danger{background:var(--danger);border-color:var(--danger);color:#fff}.hidden{display:none!important}.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
-@media(max-width:700px){body{place-items:start}#frame{width:100vw;height:100vh;aspect-ratio:auto}.header{padding:18px 32px}.brand{display:none}main{padding:22px 32px}.controls{gap:7px}.icon{min-width:58px}.tabs{min-width:100px;padding:0 14px}}
-@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+:root {
+  color-scheme: light;
+  --ink: #17171b;
+  --muted: #5d5d66;
+  --quiet: #85858e;
+  --line: #d8d8df;
+  --surface: #ffffff;
+  --canvas: #f7f7f9;
+  --soft: #eeeeF2;
+  --blue: #0b57d0;
+  --focus: #0b4da2;
+  --danger: #ba1a1a;
+  --success: #256d3b;
+  --scale: 1;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; }
+body {
+  background: #17181b;
+  color: var(--ink);
+  font-family: "SamsungOne", "Noto Sans KR", "Segoe UI", sans-serif;
+  display: grid;
+  place-items: center;
+}
+button, input { font: inherit; }
+#viewport {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background: #17181b;
+}
+#app {
+  position: absolute;
+  width: 1920px;
+  height: 1080px;
+  transform: scale(var(--scale));
+  transform-origin: top left;
+  overflow: hidden;
+  background: var(--canvas);
+}
+.command-band {
+  height: 132px;
+  padding: 25px 52px;
+  display: grid;
+  grid-template-columns: 188px 222px minmax(600px, 1fr) 164px;
+  gap: 18px;
+  align-items: center;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+}
+.product-name {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+  font-size: 29px;
+  font-weight: 760;
+  letter-spacing: -.8px;
+}
+.product-mark {
+  width: 42px;
+  height: 42px;
+  border: 3px solid var(--ink);
+  border-radius: 14px 14px 18px 18px;
+  position: relative;
+}
+.product-mark::after {
+  content: "";
+  position: absolute;
+  left: 9px;
+  right: 9px;
+  top: 11px;
+  height: 3px;
+  border-radius: 9px;
+  background: var(--blue);
+  box-shadow: 0 8px 0 var(--blue);
+}
+.nav-controls { display: grid; grid-template-columns: repeat(3, 66px); gap: 10px; }
+.control {
+  height: 66px;
+  border: 2px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 22px;
+  font-weight: 720;
+  cursor: pointer;
+  transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease, background 120ms ease;
+}
+.control[disabled] {
+  color: #a0a0a8;
+  background: #f1f1f4;
+  border-color: #e6e6ea;
+  cursor: default;
+}
+.address-shell {
+  height: 70px;
+  border: 2px solid #777780;
+  border-radius: 20px;
+  background: #f0f0f3;
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  gap: 13px;
+  align-items: center;
+  padding: 0 20px;
+  transition: background 120ms ease, box-shadow 120ms ease, border-color 120ms ease;
+}
+.address-shell:focus-within {
+  background: var(--surface);
+  border-color: var(--focus);
+  box-shadow: 0 0 0 5px rgba(11, 77, 162, .20), 0 10px 25px rgba(25, 38, 64, .11);
+}
+.address-icon { color: var(--muted); font-size: 25px; }
+#address {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--ink);
+  font-size: 25px;
+  letter-spacing: -.3px;
+}
+.security-label { color: var(--success); font-size: 17px; font-weight: 700; }
+.tabs-control { padding: 0 21px; display: flex; align-items: center; justify-content: center; gap: 12px; }
+.tab-count {
+  min-width: 30px;
+  height: 30px;
+  border: 2px solid currentColor;
+  border-radius: 9px;
+  display: inline-grid;
+  place-items: center;
+  font-size: 16px;
+}
+.workspace {
+  height: 948px;
+  padding: 0 52px 44px;
+  display: grid;
+  grid-template-rows: 92px 6px minmax(0, 1fr);
+}
+.page-context {
+  display: grid;
+  grid-template-columns: minmax(220px, auto) minmax(0, 1fr) auto;
+  gap: 20px;
+  align-items: center;
+}
+#page-title { font-size: 27px; font-weight: 760; letter-spacing: -.55px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#page-url { font-size: 20px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#state-label {
+  min-width: 112px;
+  padding: 9px 16px;
+  border-radius: 999px;
+  background: var(--soft);
+  color: var(--muted);
+  font-size: 17px;
+  font-weight: 730;
+  text-align: center;
+}
+.progress-track { height: 6px; background: transparent; overflow: hidden; }
+#progress {
+  display: block;
+  height: 100%;
+  width: 0;
+  background: var(--blue);
+  transform-origin: left;
+  transition: width 180ms ease;
+}
+#progress.loading { width: 72%; animation: progress-pulse 900ms ease-in-out infinite alternate; }
+@keyframes progress-pulse { from { transform: scaleX(.74); opacity: .78; } to { transform: scaleX(1); opacity: 1; } }
+.web-shell {
+  position: relative;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  background: var(--surface);
+}
+#surface { position: absolute; inset: 0; overflow: hidden; }
+.state-page { position: absolute; inset: 0; }
+.home-state {
+  padding: 98px 110px;
+  display: grid;
+  grid-template-columns: minmax(0, 1.16fr) minmax(420px, .84fr);
+  gap: 88px;
+  align-items: center;
+  background: var(--surface);
+}
+.eyebrow { color: var(--blue); font-size: 18px; font-weight: 800; letter-spacing: 1.8px; text-transform: uppercase; }
+.home-state h1, .fixture-page h1, .recovery h1, .tabs-view h1 {
+  margin: 16px 0 24px;
+  color: var(--ink);
+  font-size: 56px;
+  line-height: 1.08;
+  letter-spacing: -2.2px;
+}
+.lead { margin: 0; max-width: 850px; color: #45454d; font-size: 27px; line-height: 1.55; letter-spacing: -.25px; }
+.home-actions { margin-top: 42px; display: flex; gap: 16px; }
+.action-button {
+  min-height: 68px;
+  padding: 0 28px;
+  border: 2px solid var(--line);
+  border-radius: 17px;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 21px;
+  font-weight: 760;
+  cursor: pointer;
+}
+.action-button.primary { background: var(--blue); color: #fff; border-color: var(--blue); }
+.action-button.danger { background: var(--danger); color: #fff; border-color: var(--danger); }
+.privacy-card {
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  padding: 34px 36px;
+  background: #fafafa;
+}
+.privacy-card .shield {
+  width: 58px;
+  height: 66px;
+  margin-bottom: 28px;
+  border: 4px solid var(--success);
+  border-radius: 28px 28px 34px 34px;
+  display: grid;
+  place-items: center;
+  color: var(--success);
+  font-size: 27px;
+  font-weight: 800;
+}
+.privacy-card h2 { margin: 0 0 14px; font-size: 27px; }
+.privacy-card p { margin: 0; color: var(--muted); font-size: 20px; line-height: 1.55; }
+.fixture-page { padding: 74px 92px; background: var(--surface); }
+.fixture-page .article-rule { width: 92px; height: 7px; margin-bottom: 34px; border-radius: 99px; background: var(--blue); }
+.fixture-page .article-grid { display: grid; grid-template-columns: minmax(0, 1fr) 410px; gap: 92px; }
+.fixture-page p { max-width: 970px; margin: 0 0 24px; color: #424249; font-size: 25px; line-height: 1.62; }
+.fixture-page aside { border-left: 1px solid var(--line); padding-left: 38px; }
+.fixture-page aside strong { display: block; margin-bottom: 16px; font-size: 22px; }
+.fixture-page aside span { color: var(--muted); font-size: 19px; line-height: 1.55; }
+.loading-mask { position: absolute; inset: 0; background: rgba(255, 255, 255, .78); display: grid; place-items: center; }
+.loading-card { width: 610px; text-align: center; }
+.loading-ring { width: 62px; height: 62px; margin: 0 auto 26px; border: 6px solid #d9dfea; border-top-color: var(--blue); border-radius: 50%; animation: spin 900ms linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-card h2 { margin: 0 0 10px; font-size: 34px; }
+.loading-card p { margin: 0; color: var(--muted); font-size: 21px; }
+.recovery {
+  padding: 92px 110px;
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr);
+  gap: 44px;
+  align-content: center;
+  background: #fbfbfc;
+}
+.recovery-icon {
+  width: 106px;
+  height: 106px;
+  border: 3px solid #c3c3ca;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  font-size: 46px;
+  font-weight: 700;
+}
+.recovery h1 { margin-top: 0; }
+.recovery p { max-width: 900px; margin: 0; color: var(--muted); font-size: 25px; line-height: 1.55; }
+.recovery .home-actions { grid-column: 2; }
+.tabs-view { padding: 54px 74px 48px; height: 100%; overflow: hidden; background: #f9f9fb; }
+.tabs-heading { height: 84px; display: flex; align-items: center; justify-content: space-between; }
+.tabs-heading h1 { margin: 0; font-size: 48px; }
+.tabs-heading p { margin: 0; color: var(--muted); font-size: 19px; }
+.tab-list { margin-top: 26px; display: grid; gap: 14px; max-height: 538px; overflow-y: auto; padding: 6px 10px 6px 6px; scrollbar-width: thin; }
+.tab-row {
+  min-height: 118px;
+  display: grid;
+  grid-template-columns: 1fr 80px;
+  align-items: stretch;
+  border: 2px solid var(--line);
+  border-radius: 20px;
+  background: var(--surface);
+}
+.tab-row.selected { border-color: var(--blue); box-shadow: inset 6px 0 0 var(--blue); }
+.tab-open {
+  min-width: 0;
+  padding: 21px 28px 21px 34px;
+  border: 0;
+  border-radius: 18px 0 0 18px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+.tab-open strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink); font-size: 25px; }
+.tab-open span { display: block; margin-top: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font-size: 18px; }
+.tab-close { margin: 24px 18px 24px 0; height: 68px; border-radius: 18px; font-size: 25px; }
+.tabs-footer { margin-top: 22px; display: flex; justify-content: space-between; align-items: center; }
+.limit-note { color: var(--quiet); font-size: 18px; }
+.modal-layer { position: absolute; inset: 0; z-index: 20; display: grid; place-items: center; padding: 60px; background: rgba(17, 17, 20, .48); }
+.modal {
+  width: 720px;
+  padding: 44px;
+  border-radius: 28px;
+  background: var(--surface);
+  box-shadow: 0 28px 72px rgba(0, 0, 0, .28);
+}
+.modal .eyebrow { color: var(--danger); }
+.modal h2 { margin: 14px 0 14px; font-size: 39px; letter-spacing: -1.1px; }
+.modal p { margin: 0; color: var(--muted); font-size: 22px; line-height: 1.5; }
+.modal-actions { margin-top: 36px; display: flex; justify-content: flex-end; gap: 14px; }
+.verification-tray {
+  position: absolute;
+  right: 22px;
+  bottom: 20px;
+  z-index: 30;
+  display: flex;
+  flex-wrap: wrap;
+  width: 710px;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid #333;
+  border-radius: 14px;
+  background: rgba(17, 17, 20, .92);
+}
+.verification-tray button { height: 36px; border: 0; border-radius: 9px; padding: 0 12px; background: #fff; color: #111; font-size: 14px; }
+.hidden { display: none !important; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+button:focus-visible, [tabindex="0"]:focus-visible {
+  position: relative;
+  z-index: 2;
+  outline: 5px solid var(--focus);
+  outline-offset: 4px;
+  border-color: var(--focus);
+  box-shadow: 0 12px 28px rgba(18, 34, 59, .18);
+  transform: scale(1.025);
+}
+.tab-open:focus-visible {
+  border-radius: 16px;
+  outline-offset: -6px;
+  background: #edf4ff;
+  box-shadow: inset 0 0 0 5px var(--focus);
+  transform: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
 </style>
 </head>
 <body>
-<div id="frame"><div class="app" id="app" aria-label="Browser preview">
-<header class="header"><div class="brand">Browser</div><div class="controls"><button class="icon" id="back" aria-label="Back" disabled>←</button><button class="icon" id="forward" aria-label="Forward" disabled>→</button><button class="icon" id="reload" aria-label="Reload">↻</button></div><label class="address" aria-label="Address or search"><span>⌕</span><input id="address" data-focus value="https://www.tizen.org/" aria-label="Address or search"><span class="sr">Press Enter to load</span></label><button class="tabs" id="tabs" aria-label="Open tabs">Tabs <b id="count">1</b></button></header>
-<main><div class="context"><strong id="title">Tizen</strong><span id="url">https://www.tizen.org/</span></div><div class="loadbar" aria-label="Loading"><i id="progress"></i></div><section class="surface" id="surface" tabindex="-1" aria-label="Current web page"></section></main>
-<div class="overlay hidden" id="modal-layer"><section class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title"><h2 id="modal-title"></h2><p id="modal-copy"></p><div class="actions" id="modal-actions"></div></section></div>
-</div></div>
+<div id="viewport">
+  <main id="app" aria-label="Browser preview">
+    <header class="command-band">
+      <div class="product-name" aria-label="Browser"><span class="product-mark" aria-hidden="true"></span><span>Browser</span></div>
+      <nav class="nav-controls" aria-label="Page navigation">
+        <button class="control" id="back" data-row="0" data-col="0" aria-label="Back" disabled>←</button>
+        <button class="control" id="forward" data-row="0" data-col="1" aria-label="Forward" disabled>→</button>
+        <button class="control" id="reload" data-row="0" data-col="2" aria-label="Reload current page">↻</button>
+      </nav>
+      <label class="address-shell" aria-label="Address or search">
+        <span class="address-icon" aria-hidden="true">⌕</span>
+        <input id="address" data-row="0" data-col="3" aria-label="Address or search. Press Enter to load." placeholder="Search or enter address" autocomplete="off" spellcheck="false">
+        <span class="security-label" id="security-label">Web</span>
+      </label>
+      <button class="control tabs-control" id="tabs" data-row="0" data-col="4" aria-label="Open tabs"><span>Tabs</span><span class="tab-count" id="tab-count">1</span></button>
+    </header>
+    <section class="workspace">
+      <div class="page-context">
+        <strong id="page-title">Start page</strong>
+        <span id="page-url">Normal browsing · local start surface</span>
+        <span id="state-label">Ready</span>
+      </div>
+      <div class="progress-track" aria-hidden="true"><i id="progress"></i></div>
+      <section class="web-shell" aria-label="Browser content region">
+        <div id="surface"></div>
+      </section>
+    </section>
+    <div class="modal-layer hidden" id="modal-layer">
+      <section class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title" aria-describedby="modal-copy">
+        <div class="eyebrow">Tab manager</div>
+        <h2 id="modal-title">Close this tab?</h2>
+        <p id="modal-copy"></p>
+        <div class="modal-actions">
+          <button class="action-button" id="modal-cancel" data-row="0" data-col="0">Cancel</button>
+          <button class="action-button danger" id="modal-confirm" data-row="0" data-col="1">Close tab</button>
+        </div>
+      </section>
+    </div>
+    <aside class="verification-tray hidden" id="verification-tray" aria-label="Preview verification states"></aside>
+    <div class="sr-only" id="live-status" aria-live="polite"></div>
+  </main>
+</div>
 <script>
-(()=>{const $=id=>document.getElementById(id), frame=$("frame"), app=$("app"), address=$("address"), surface=$("surface"), modal=$("modal-layer");let view="page",lastFocus=address,modalState=null;let tabs=[{title:"Tizen",url:"https://www.tizen.org/"}],selected=0;let focusables=[];
-function scale(){const w=frame.clientWidth,h=frame.clientHeight;app.style.setProperty('--scale',Math.min(w/1920,h/1080));}new ResizeObserver(scale).observe(frame);scale();
-function current(){return tabs[selected]}function setButtons(){ $('back').disabled=true;$('forward').disabled=true;$('count').textContent=tabs.length;}
-function renderPage(kind='page'){view='page';const t=current();$('title').textContent=t.title;$('url').textContent=t.url;surface.innerHTML=kind==='offline'?`<div class="page"><div class="rule"></div><h1>You’re offline</h1><p>Check the connection and try again. Your address is still ready to edit.</p><small>Offline state from the planned WebView load-error mapping.</small></div>`:kind==='error'?`<div class="page"><div class="rule"></div><h1>This page can’t open</h1><p>The browser engine could not complete this request. Try again or return to the previous screen.</p><small>Bounded WebView error text only; no page body is exposed.</small></div>`:`<div class="page"><div class="rule"></div><h1>${escape(t.title)}</h1><p>Current page content is rendered by the target system WebView. This local preview represents the same content region and navigation state without remote content.</p><small>${escape(t.url)}</small></div>`;setButtons();refreshFocus();}
-function renderTabs(){view='tabs';surface.innerHTML=`<div class="tabs-view"><h1>Tabs</h1>${tabs.map((t,i)=>`<div class="tab-row ${i===selected?'selected':''}" data-tab="${i}" tabindex="0" aria-label="${escape(t.title)}, ${i===selected?'current tab':''}"><div><div class="tab-title">${escape(t.title)}</div><div class="tab-url">${escape(t.url)}</div></div><button class="close" data-close="${i}" aria-label="Close ${escape(t.title)}">Close</button></div>`).join('')}<button class="new-tab" id="newtab">New tab</button></div>`;setButtons();refreshFocus();}
-function escape(s){return s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
-function load(){const raw=address.value.trim();if(!raw)return;lastFocus=address;$('progress').style.width='26%';setTimeout(()=>{$('progress').style.width='78%'},120);setTimeout(()=>{$('progress').style.width='100%';if(raw.includes('offline')){renderPage('offline')}else if(raw.includes('error')){renderPage('error')}else{const url=/^https?:\/\//.test(raw)?raw:'https://search.local/?q='+encodeURIComponent(raw);tabs[selected]={title:url.includes('search.local')?'Search results':'Tizen',url};renderPage()}setTimeout(()=>$('progress').style.width='0',220)},420)}
-function dialog(type,index){modalState={type,index};modal.classList.remove('hidden');$('modal-title').textContent=type==='close'?'Close this tab?':type==='offline'?'Connection unavailable':'Browser engine unavailable';$('modal-copy').textContent=type==='close'?'The current normal-mode tab will be closed.':'Retry keeps the address available and returns to this loading state.';$('modal-actions').innerHTML=type==='close'?'<button id="cancel">Cancel</button><button class="danger" id="confirm">Close tab</button>':'<button id="cancel">Back</button><button class="primary" id="confirm">Retry</button>';refreshFocus();$('cancel').focus();}
-function dismiss(confirm=false){const state=modalState;modal.classList.add('hidden');modalState=null;if(confirm&&state.type==='close'){tabs.splice(state.index,1);if(!tabs.length)tabs=[{title:'New tab',url:'https://www.tizen.org/'}];selected=Math.min(selected,tabs.length-1);renderTabs();setTimeout(()=>$('[data-tab="'+selected+'"]')?.focus(),0)}else if(confirm){load()}else{(lastFocus||address).focus()}refreshFocus()}
-function refreshFocus(){focusables=[...app.querySelectorAll('button:not([disabled]),input,[data-tab]')].filter(x=>!x.closest('.hidden'));}
-function activate(e){const target=e.target.closest('button,[data-tab]');if(!target)return;if(target.id==='tabs'){lastFocus=target;renderTabs();setTimeout(()=>app.querySelector('[data-tab="'+selected+'"]').focus(),0)}else if(target.id==='reload')load();else if(target.id==='newtab'){tabs.push({title:'New tab',url:'https://www.tizen.org/'});selected=tabs.length-1;renderTabs();setTimeout(()=>app.querySelector('[data-tab="'+selected+'"]').focus(),0)}else if(target.dataset.close!==undefined){lastFocus=target;dialog('close',+target.dataset.close)}else if(target.dataset.tab!==undefined){selected=+target.dataset.tab;renderPage();address.focus()}else if(target.id==='cancel')dismiss(false);else if(target.id==='confirm')dismiss(true)}app.addEventListener('click',activate);address.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();load()}});document.addEventListener('keydown',e=>{if(e.key==='Escape'){e.preventDefault();if(!modal.classList.contains('hidden'))dismiss(false);else if(view==='tabs'){renderPage();$('tabs').focus()}else if(!$('back').disabled)$('back').click();return}if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key)){e.preventDefault();refreshFocus();let i=focusables.indexOf(document.activeElement);if(i<0)i=0;const delta=e.key==='ArrowLeft'||e.key==='ArrowUp'?-1:1;focusables[(i+delta+focusables.length)%focusables.length]?.focus()}if(e.key==='Enter'&&document.activeElement!==address){document.activeElement.click?.()}});renderPage();address.focus();
-window.__browserPreview={load,renderTabs,renderPage,dialog};})();
+(() => {
+  "use strict";
+
+  const $ = id => document.getElementById(id);
+  const viewport = $("viewport");
+  const app = $("app");
+  const surface = $("surface");
+  const address = $("address");
+  const modalLayer = $("modal-layer");
+  const focusMemory = new Map();
+  const state = {
+    mode: "home",
+    tabs: [createTab("tab-1")],
+    selectedTabId: "tab-1",
+    pendingCloseId: null,
+    lastWorkspaceMode: "home",
+    navigationTimer: null,
+    navigationIntent: 0,
+    exitRequested: false,
+  };
+
+  function createTab(id, page = null) {
+    return { id, history: page ? [page] : [], historyIndex: page ? 0 : -1 };
+  }
+
+  function selectedTab() {
+    return state.tabs.find(tab => tab.id === state.selectedTabId) || state.tabs[0];
+  }
+
+  function currentPage(tab = selectedTab()) {
+    return tab.historyIndex >= 0 ? tab.history[tab.historyIndex] : null;
+  }
+
+  function scaleCanvas() {
+    const scale = Math.min(viewport.clientWidth / 1920, viewport.clientHeight / 1080);
+    app.style.setProperty("--scale", String(scale));
+    app.style.left = `${(viewport.clientWidth - 1920 * scale) / 2}px`;
+    app.style.top = `${(viewport.clientHeight - 1080 * scale) / 2}px`;
+  }
+
+  function escapeHtml(value) {
+    return String(value).replace(/[&<>"']/g, character => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;"
+    })[character]);
+  }
+
+  function publicUrl(value) {
+    try {
+      const parsed = new URL(value);
+      return `${parsed.origin}${parsed.pathname}`;
+    } catch {
+      return value;
+    }
+  }
+
+  function announce(message) {
+    $("live-status").textContent = message;
+  }
+
+  function setChrome(title, url, label) {
+    $("page-title").textContent = title;
+    $("page-url").textContent = url;
+    $("state-label").textContent = label;
+    $("tab-count").textContent = String(state.tabs.length);
+    const tab = selectedTab();
+    $("back").disabled = state.mode === "tabs" || tab.historyIndex <= 0;
+    $("forward").disabled = state.mode === "tabs" || tab.historyIndex < 0 || tab.historyIndex >= tab.history.length - 1;
+    $("reload").disabled = state.mode === "loading" || state.mode === "tabs";
+    $("security-label").textContent = url.startsWith("https://") ? "HTTPS" : "Web";
+  }
+
+  function renderHome() {
+    state.mode = "home";
+    state.lastWorkspaceMode = "home";
+    $("progress").className = "";
+    setChrome("Start page", "Normal browsing · local start surface", "Ready");
+    surface.innerHTML = `
+      <section class="state-page home-state" aria-label="Start page">
+        <div>
+          <div class="eyebrow">Browse the open web</div>
+          <h1>A clear place to start.</h1>
+          <p class="lead">Enter an address or search above. The installed app maps this content region to the system WebView and keeps navigation controls available for remote, keyboard, pointer, and touch.</p>
+          <div class="home-actions">
+            <button class="action-button primary" data-command="fixture" data-row="1" data-col="0">Open Tizen guide</button>
+            <button class="action-button" data-command="focus-address" data-row="1" data-col="1">Enter an address</button>
+          </div>
+        </div>
+        <aside class="privacy-card">
+          <div class="shield" aria-hidden="true">✓</div>
+          <h2>Normal browsing only</h2>
+          <p>This sample stores bounded public page metadata. It does not publish cookies, credentials, form values, page bodies, or a private-mode history.</p>
+        </aside>
+      </section>`;
+  }
+
+  function renderPage(page = currentPage()) {
+    if (!page) { renderHome(); return; }
+    state.mode = "page";
+    state.lastWorkspaceMode = "page";
+    $("progress").className = "";
+    address.value = page.url;
+    setChrome(page.title, publicUrl(page.url), "Loaded");
+    surface.innerHTML = `
+      <article class="state-page fixture-page" tabindex="0" data-row="1" data-col="0" aria-label="Current web page. ${escapeHtml(page.title)}">
+        <div class="article-rule"></div>
+        <div class="article-grid">
+          <div>
+            <div class="eyebrow">Local privacy-safe fixture</div>
+            <h1>${escapeHtml(page.title)}</h1>
+            <p>The installed Browser renders reachable content through the target system WebView. This executable preview uses a local article so UI behavior can be tested without copying a remote page or exposing browsing data.</p>
+            <p>Address, title, loading state, focus, and recovery actions follow the same bounded product contract planned for NUI.</p>
+          </div>
+          <aside><strong>Current page context</strong><span>${escapeHtml(publicUrl(page.url))}<br><br>Normal tab · public metadata only</span></aside>
+        </div>
+      </article>`;
+    announce(`${page.title} loaded`);
+  }
+
+  function renderLoading(target) {
+    state.mode = "loading";
+    $("progress").className = "loading";
+    setChrome("Loading", publicUrl(target), "Loading");
+    surface.innerHTML = `
+      <section class="state-page fixture-page" aria-hidden="true">
+        <div class="article-rule"></div><div class="article-grid"><div><div class="eyebrow">Browser</div><h1>Keeping your place</h1><p>The command band stays available while the newest navigation intent runs.</p></div></div>
+      </section>
+      <div class="loading-mask" role="status"><div class="loading-card"><div class="loading-ring"></div><h2>Opening page</h2><p>${escapeHtml(publicUrl(target))}</p></div></div>`;
+    announce(`Loading ${publicUrl(target)}`);
+  }
+
+  function renderRecovery(kind) {
+    state.mode = kind;
+    state.lastWorkspaceMode = kind;
+    $("progress").className = "";
+    const copy = {
+      offline: ["You’re offline", "The connection could not reach this page. Check the network, then retry without retyping the address.", "Offline", "⌁"],
+      "engine-error": ["This page can’t open", "The browser engine could not complete the request. Your address remains available and no page body is exposed.", "Engine error", "!"],
+      timeout: ["The page took too long", "The request reached the navigation limit. Retry starts one new request and stale completions are ignored.", "Timeout", "◷"],
+      "invalid-input": ["Enter a valid address or search", "Use an HTTP or HTTPS address, or enter a search phrase. Empty input does not start navigation.", "Input needed", "i"],
+    }[kind];
+    const target = address.value.trim() || "Address is ready to edit";
+    setChrome(copy[0], publicUrl(target), copy[2]);
+    surface.innerHTML = `
+      <section class="state-page recovery" aria-label="${escapeHtml(copy[2])}">
+        <div class="recovery-icon" aria-hidden="true">${copy[3]}</div>
+        <div><div class="eyebrow">Browser recovery</div><h1>${copy[0]}</h1><p>${copy[1]}</p></div>
+        <div class="home-actions">
+          <button class="action-button primary" data-command="retry" data-row="1" data-col="0">Retry</button>
+          <button class="action-button" data-command="recovery-back" data-row="1" data-col="1">Back</button>
+          <button class="action-button" data-command="focus-address" data-row="1" data-col="2">Edit address</button>
+        </div>
+      </section>`;
+    queueMicrotask(() => surface.querySelector('[data-command="retry"]')?.focus());
+    announce(copy[0]);
+  }
+
+  function tabLabel(tab) {
+    const page = currentPage(tab);
+    return page ? page.title : "Start page";
+  }
+
+  function tabUrl(tab) {
+    const page = currentPage(tab);
+    return page ? publicUrl(page.url) : "Local start surface";
+  }
+
+  function renderTabs(focusTabId = state.selectedTabId) {
+    state.mode = "tabs";
+    $("progress").className = "";
+    setChrome("Tabs", `${state.tabs.length} normal-mode tab${state.tabs.length === 1 ? "" : "s"}`, "Manage");
+    const visibleTabs = state.tabs;
+    surface.innerHTML = `
+      <section class="state-page tabs-view" aria-label="Tabs manager">
+        <div class="tabs-heading"><h1>Tabs</h1><p>Ordered normal browsing tabs · maximum 20</p></div>
+        <div class="tab-list">
+          ${visibleTabs.map((tab, index) => `
+            <article class="tab-row ${tab.id === state.selectedTabId ? "selected" : ""}">
+              <button class="tab-open" data-command="select-tab" data-tab-id="${tab.id}" data-row="${index + 1}" data-col="0" aria-label="Open ${escapeHtml(tabLabel(tab))}${tab.id === state.selectedTabId ? ", current tab" : ""}">
+                <strong>${escapeHtml(tabLabel(tab))}</strong><span>${escapeHtml(tabUrl(tab))}</span>
+              </button>
+              <button class="control tab-close" data-command="request-close" data-tab-id="${tab.id}" data-row="${index + 1}" data-col="1" aria-label="Close ${escapeHtml(tabLabel(tab))}">×</button>
+            </article>`).join("")}
+        </div>
+        <div class="tabs-footer">
+          <button class="action-button primary" data-command="new-tab" data-row="${state.tabs.length + 1}" data-col="0" ${state.tabs.length >= 20 ? "disabled" : ""}>New tab</button>
+          <span class="limit-note">${state.tabs.length >= 20 ? "Tab limit reached" : `${20 - state.tabs.length} tabs available`}</span>
+        </div>
+      </section>`;
+    queueMicrotask(() => surface.querySelector(`[data-tab-id="${focusTabId}"][data-command="select-tab"]`)?.focus());
+    announce("Tabs manager opened");
+  }
+
+  function normalizeInput(raw) {
+    const value = raw.trim();
+    if (!value) return null;
+    if (/^https?:\/\//i.test(value)) {
+      try {
+        const url = new URL(value);
+        return { url: url.href, title: url.hostname.replace(/^www\./, "") || "Web page" };
+      } catch { return { invalid: true }; }
+    }
+    if (/^[a-z][a-z0-9+.-]*:\/\//i.test(value)) return { invalid: true };
+    return { url: `https://search.local/?q=${encodeURIComponent(value)}`, title: `Search: ${value.slice(0, 60)}` };
+  }
+
+  function navigate(raw, forcedOutcome = null) {
+    const normalized = normalizeInput(raw);
+    if (!normalized || normalized.invalid) { renderRecovery("invalid-input"); return; }
+    if (state.navigationTimer) clearTimeout(state.navigationTimer);
+    const intent = ++state.navigationIntent;
+    renderLoading(normalized.url);
+    const lower = raw.toLowerCase();
+    const outcome = forcedOutcome || (lower.includes("offline") ? "offline" : lower.includes("engine-error") ? "engine-error" : lower.includes("timeout") ? "timeout" : "page");
+    state.navigationTimer = setTimeout(() => {
+      if (intent !== state.navigationIntent) return;
+      state.navigationTimer = null;
+      if (outcome !== "page") { renderRecovery(outcome); return; }
+      const tab = selectedTab();
+      tab.history = tab.history.slice(0, tab.historyIndex + 1);
+      tab.history.push({ title: normalized.title, url: normalized.url });
+      tab.historyIndex = tab.history.length - 1;
+      renderPage();
+    }, 620);
+  }
+
+  function historyMove(delta) {
+    const tab = selectedTab();
+    const next = tab.historyIndex + delta;
+    if (next < -1 || next >= tab.history.length) return;
+    tab.historyIndex = next;
+    if (next === -1) { address.value = ""; renderHome(); } else { renderPage(); }
+  }
+
+  function openCloseDialog(tabId) {
+    const tab = state.tabs.find(candidate => candidate.id === tabId);
+    if (!tab) return;
+    focusMemory.set("modal", document.activeElement);
+    state.pendingCloseId = tabId;
+    $("modal-copy").textContent = `“${tabLabel(tab).slice(0, 80)}” will be removed from this normal browsing session.`;
+    modalLayer.classList.remove("hidden");
+    queueMicrotask(() => $("modal-cancel").focus());
+    announce("Close tab confirmation opened");
+  }
+
+  function dismissModal(confirmClose) {
+    const pending = state.pendingCloseId;
+    modalLayer.classList.add("hidden");
+    state.pendingCloseId = null;
+    if (confirmClose && pending) {
+      const index = state.tabs.findIndex(tab => tab.id === pending);
+      if (index >= 0) state.tabs.splice(index, 1);
+      if (!state.tabs.length) state.tabs.push(createTab(`tab-${Date.now()}`));
+      if (!state.tabs.some(tab => tab.id === state.selectedTabId)) {
+        state.selectedTabId = state.tabs[Math.min(index, state.tabs.length - 1)].id;
+      }
+      renderTabs(state.selectedTabId);
+      announce("Tab closed");
+      return;
+    }
+    const restore = focusMemory.get("modal");
+    if (restore instanceof HTMLElement && restore.isConnected) restore.focus();
+    announce("Close cancelled");
+  }
+
+  function newTab() {
+    if (state.tabs.length >= 20) return;
+    const id = `tab-${Date.now()}`;
+    state.tabs.push(createTab(id));
+    state.selectedTabId = id;
+    address.value = "";
+    renderTabs(id);
+  }
+
+  function selectTab(tabId) {
+    if (!state.tabs.some(tab => tab.id === tabId)) return;
+    state.selectedTabId = tabId;
+    const page = currentPage();
+    if (page) renderPage(page); else { address.value = ""; renderHome(); }
+    queueMicrotask(() => address.focus());
+  }
+
+  function activateCommand(target) {
+    const command = target.dataset.command;
+    if (command === "fixture") { address.value = "https://docs.tizen.org/"; navigate(address.value); }
+    else if (command === "focus-address") address.focus();
+    else if (command === "retry") navigate(address.value || "https://www.tizen.org/");
+    else if (command === "recovery-back") handleBack();
+    else if (command === "select-tab") selectTab(target.dataset.tabId);
+    else if (command === "request-close") openCloseDialog(target.dataset.tabId);
+    else if (command === "new-tab") newTab();
+  }
+
+  function handleBack() {
+    if (!modalLayer.classList.contains("hidden")) { dismissModal(false); return; }
+    if (state.mode === "tabs") {
+      const page = currentPage();
+      if (page) renderPage(page); else renderHome();
+      queueMicrotask(() => $("tabs").focus());
+      return;
+    }
+    if (["offline", "engine-error", "timeout", "invalid-input"].includes(state.mode)) {
+      const page = currentPage();
+      if (page) renderPage(page); else renderHome();
+      queueMicrotask(() => address.focus());
+      return;
+    }
+    const tab = selectedTab();
+    if (tab.historyIndex > 0) { historyMove(-1); return; }
+    if (tab.historyIndex === 0) { tab.historyIndex = -1; address.value = ""; renderHome(); return; }
+    state.exitRequested = true;
+    announce("Back would exit the installed application");
+  }
+
+  function focusablesForCurrentScope() {
+    const root = modalLayer.classList.contains("hidden") ? app : modalLayer;
+    return [...root.querySelectorAll('button:not([disabled]), input:not([disabled]), [tabindex="0"]')]
+      .filter(element => !element.closest(".hidden") && element.getClientRects().length > 0);
+  }
+
+  function moveFocus(direction) {
+    const focusables = focusablesForCurrentScope();
+    if (!focusables.length) return;
+    const current = document.activeElement;
+    const currentRow = Number(current?.dataset?.row ?? 0);
+    const currentCol = Number(current?.dataset?.col ?? 0);
+    if (direction === "down" && currentRow === 0 && state.mode !== "tabs" && modalLayer.classList.contains("hidden")) {
+      const bodyTargets = focusables
+        .filter(element => Number(element.dataset.row ?? 0) > 0)
+        .sort((a, b) => Number(a.dataset.row) - Number(b.dataset.row) || Number(a.dataset.col) - Number(b.dataset.col));
+      bodyTargets[0]?.focus();
+      return;
+    }
+    if (direction === "up" && currentRow > 0 && state.mode !== "tabs" && modalLayer.classList.contains("hidden")) {
+      address.focus();
+      return;
+    }
+    let candidates;
+    if (direction === "left" || direction === "right") {
+      candidates = focusables.filter(element => Number(element.dataset.row ?? 0) === currentRow);
+      candidates.sort((a, b) => Number(a.dataset.col ?? 0) - Number(b.dataset.col ?? 0));
+      let index = Math.max(0, candidates.indexOf(current));
+      index = Math.max(0, Math.min(candidates.length - 1, index + (direction === "left" ? -1 : 1)));
+      candidates[index]?.focus();
+      return;
+    }
+    const rows = [...new Set(focusables.map(element => Number(element.dataset.row ?? 0)))].sort((a, b) => a - b);
+    let rowIndex = Math.max(0, rows.indexOf(currentRow));
+    rowIndex = Math.max(0, Math.min(rows.length - 1, rowIndex + (direction === "up" ? -1 : 1)));
+    candidates = focusables.filter(element => Number(element.dataset.row ?? 0) === rows[rowIndex]);
+    candidates.sort((a, b) => Math.abs(Number(a.dataset.col ?? 0) - currentCol) - Math.abs(Number(b.dataset.col ?? 0) - currentCol));
+    candidates[0]?.focus();
+  }
+
+  function seedTabs(count) {
+    const bounded = Math.max(1, Math.min(20, Number(count) || 1));
+    state.tabs = Array.from({ length: bounded }, (_, index) => createTab(`fixture-${index + 1}`, {
+      title: index === 0 ? "Tizen documentation" : `Reference page ${index + 1}`,
+      url: `https://fixture.local/page-${index + 1}`,
+    }));
+    state.selectedTabId = state.tabs[0].id;
+    renderTabs();
+  }
+
+  function showState(name) {
+    if (state.navigationTimer) { clearTimeout(state.navigationTimer); state.navigationTimer = null; }
+    state.navigationIntent += 1;
+    if (name === "home") { address.value = ""; renderHome(); }
+    else if (name === "page") {
+      const tab = selectedTab();
+      const page = { title: "Tizen documentation", url: "https://docs.tizen.org/" };
+      tab.history = [page]; tab.historyIndex = 0; address.value = page.url; renderPage(page);
+    } else if (name === "loading") { address.value = "https://docs.tizen.org/"; renderLoading(address.value); }
+    else if (["offline", "engine-error", "timeout", "invalid-input"].includes(name)) { address.value = name === "offline" ? "https://offline.example/" : "https://example.invalid/"; renderRecovery(name); }
+    else if (name === "tabs") { seedTabs(3); }
+    else if (name === "max-tabs") { seedTabs(20); }
+    else if (name === "modal") { seedTabs(3); queueMicrotask(() => openCloseDialog(state.selectedTabId)); }
+  }
+
+  app.addEventListener("click", event => {
+    const target = event.target.closest("button,[data-command]");
+    if (!target || target.disabled) return;
+    if (target.id === "back") historyMove(-1);
+    else if (target.id === "forward") historyMove(1);
+    else if (target.id === "reload") navigate(address.value || currentPage()?.url || "https://www.tizen.org/");
+    else if (target.id === "tabs") renderTabs();
+    else if (target.id === "modal-cancel") dismissModal(false);
+    else if (target.id === "modal-confirm") dismissModal(true);
+    else activateCommand(target);
+  });
+
+  address.addEventListener("keydown", event => {
+    if (event.key === "Enter") { event.preventDefault(); navigate(address.value); }
+  });
+
+  document.addEventListener("keydown", event => {
+    if (event.key === "Escape" || event.key === "BrowserBack") { event.preventDefault(); handleBack(); return; }
+    if (!modalLayer.classList.contains("hidden") && event.key === "Tab") {
+      event.preventDefault();
+      moveFocus(event.shiftKey ? "left" : "right");
+      return;
+    }
+    const directions = { ArrowLeft: "left", ArrowRight: "right", ArrowUp: "up", ArrowDown: "down" };
+    if (directions[event.key]) { event.preventDefault(); moveFocus(directions[event.key]); return; }
+    if (event.key === "Enter" && document.activeElement !== address) {
+      const active = document.activeElement;
+      if (active instanceof HTMLElement && (active.matches("button") || active.dataset.command)) {
+        event.preventDefault(); active.click();
+      }
+    }
+  });
+
+  const query = new URLSearchParams(location.search);
+  if (query.get("verify") === "1") {
+    const tray = $("verification-tray");
+    tray.classList.remove("hidden");
+    ["home", "loading", "page", "offline", "engine-error", "timeout", "tabs", "modal", "max-tabs"].forEach(name => {
+      const button = document.createElement("button");
+      button.textContent = name;
+      button.addEventListener("click", () => showState(name));
+      tray.append(button);
+    });
+  }
+
+  window.__browserPreview = {
+    getState: () => ({
+      mode: state.mode,
+      selectedTabId: state.selectedTabId,
+      tabCount: state.tabs.length,
+      modalOpen: !modalLayer.classList.contains("hidden"),
+      activeLabel: document.activeElement?.getAttribute("aria-label") || document.activeElement?.textContent?.trim() || "",
+      disabled: { back: $("back").disabled, forward: $("forward").disabled, reload: $("reload").disabled },
+      exitRequested: state.exitRequested,
+    }),
+    showState,
+    seedTabs,
+    handleBack,
+    navigate,
+  };
+
+  new ResizeObserver(scaleCanvas).observe(viewport);
+  addEventListener("resize", scaleCanvas);
+  scaleCanvas();
+  renderHome();
+  address.focus();
+})();
 </script>
-</body></html>
+</body>
+</html>

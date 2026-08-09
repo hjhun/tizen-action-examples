@@ -1,40 +1,71 @@
 # Browser UI parity ledger
 
-- Korean parity guide: pending after native evidence exists. This technical ledger is intentionally English until its bilingual documentation counterpart is created with the implemented product.
-- Canonical preview: [`../refs/one-ui-sample.html`](../refs/one-ui-sample.html)
-- Reference/adaptation record: [`ONE_UI_REFERENCE.md`](ONE_UI_REFERENCE.md)
-- Status: **HTML reference baseline browser-verified; installed NUI parity is blocked and must not be inferred.**
-- Validated HTML captures: [`images/html-browser-command-band-1280x720.png`](images/html-browser-command-band-1280x720.png), [`images/html-browser-home-1280x720.png`](images/html-browser-home-1280x720.png), and [`images/html-browser-offline-1264x625.png`](images/html-browser-offline-1264x625.png). These are preview evidence only, never native/Aurum evidence.
-- Native Common Emulator captures: [`images/native-browser-command-band-1920x1080.png`](images/native-browser-command-band-1920x1080.png), [`images/native-browser-address-focus-1920x1080.png`](images/native-browser-address-focus-1920x1080.png), and [`images/native-browser-tabs-focus-1920x1080.png`](images/native-browser-tabs-focus-1920x1080.png). Aurum decoded the new retained frame as 1920×1080 PNG after two identical post-input frames. It follows an actual Right-key address-to-Tabs transition; the command-band difference bounds are `(494,24)`–`(1714,96)`, covering the intentionally changing address and Tabs focus treatments. This proves target input response and stable capture, not a completed visual comparison.
+갱신일: 2026-08-09 (Stage 1)
 
-## Current mapping
+- canonical preview: [`../refs/one-ui-sample.html`](../refs/one-ui-sample.html)
+- Samsung Android 근거: [`SAMSUNG_ANDROID_UI_REFERENCE.md`](SAMSUNG_ANDROID_UI_REFERENCE.md)
+- 제품 요구사항: [`PRODUCT_REQUIREMENTS.md`](PRODUCT_REQUIREMENTS.md)
+- 현재 판정: **Stage 1 HTML 계약 PASS, installed NUI parity 미충족**
+- 증거 경계: 아래 `html-*` 파일은 Playwright Chromium으로 검증한 HTML-only 증거다. Common Emulator, real WebView, Action/View RPC, A2UI 또는 native input을 증명하지 않는다.
 
-| Sample surface/control/state | Planned NUI/runtime mapping | Command or contract | Annotation / A2UI | Native parity evidence |
+## Stage 1 current HTML evidence
+
+| 상태 | viewport | 증거 | 검증 결과 |
+|---|---:|---|---|
+| launch/home + address initial focus | 1920×1080 | [`images/html-browser-home-1920x1080.png`](images/html-browser-home-1920x1080.png) | PNG/RGB, 1920×1080, local fixture, initial focus cue 확인 |
+| loading + disabled Reload + progress | 1280×720 | [`images/html-browser-loading-1280x720.png`](images/html-browser-loading-1280x720.png) | PNG/RGB, 1280×720, centered uniform scale 확인 |
+| current page/search result | 1920×1080 | [`images/html-browser-page-1920x1080.png`](images/html-browser-page-1920x1080.png) | PNG/RGB, 1920×1080, public title/URL context와 content region 확인 |
+| offline + Retry initial focus | 1280×720 | [`images/html-browser-offline-1280x720.png`](images/html-browser-offline-1280x720.png) | PNG/RGB, 1280×720, Retry/Back/Edit address 확인 |
+| tabs list/select/new/close | 1920×1080 | [`images/html-browser-tabs-1920x1080.png`](images/html-browser-tabs-1920x1080.png) | PNG/RGB, 1920×1080, selected+focused two-cue와 ordered rows 확인 |
+| close confirmation + modal trap | 1440×1080 | [`images/html-browser-close-confirmation-1440x1080.png`](images/html-browser-close-confirmation-1440x1080.png) | PNG/RGB, 1440×1080, 0.75 scale/135px letterbox와 Cancel focus 확인 |
+
+기존 `html-browser-command-band-1280x720.png`, `html-browser-home-1280x720.png`, `html-browser-offline-1264x625.png`는 이전 sample의 역사적 HTML 증거이며 current parity 판정에는 사용하지 않는다.
+
+## Samsung reference → HTML → NUI mapping
+
+| UI slice | Samsung reference/translation | Stage 1 HTML contract | production NUI/runtime mapping | native evidence/status |
 |---|---|---|---|---|
-| Full 1920×1080 canvas scaled in its host frame | Full-window physical root plus one centered uniform NUI reference canvas, with the real `WebView` mounted only in the content rectangle | App render policy; `Window.Default.WindowSize` and `GetInsets()` calculate the safe viewport and retain the prior frame during transient invalid geometry | Bounds must be measured after final transform | Aurum capture retained at 1920×1080; non-zero-inset geometry comparison remains open |
-| Header: Back, Forward, Reload, address/search, Tabs | Persistent NUI command band with discrete Back/Forward disabled controls, Reload, `TextField`, and Tabs control above `WebView` | Reload and submitted absolute URL use the shared navigation coordinator; command-band Left/Right is explicit (`Reload` → address → `Tabs`), Down enters WebView, and Up restores address focus; Back/Forward/Tabs remain local follow-up commands | Chrome itself is not currently published; selected page is the planned annotated surface | Common Emulator Right from the launched address field reached a stable native Tabs-focus frame. The NUI focus cue is a 4px outline plus 1.025 scale; target semantic tree remains empty, so focus is evidenced by input-plus-frame transition rather than element IDs. Typography and pointer parity remain open. |
-| Current title/URL context and WebView content region | `TextLabel` page context plus a real system `WebView` content rectangle | `BrowserNavigationCoordinator` / `IWebRuntime` completion updates chrome state | `Tizen.Entity.Browser` uses generated `ToJson()` in `Annotation.EntityInfo` | Host compiled; native layout/annotation still unverified |
-| Loading band | NUI progress view driven by `PageLoadStarted` / completion/error | `NuiWebViewRuntime` async outcome | Current A2UI must include page/load state derived from same entity/render state | Not implemented visually; no capture |
-| Offline and engine-error pages; Retry/Back | NUI recovery overlay or content state with focus trap/restoration | WebView failed/timeout outcome; retry uses same navigation reducer | Error state belongs in current A2UI Template/Document | Not implemented; no capture |
-| Tabs manager: select, new tab, close | NUI tab list with discrete remote-focus rows and close controls | Planned local tab commands; no extra public Action justified | Selected normal-mode public page only; private data excluded | Not implemented; no capture |
-| Close-tab dialog with Cancel/Close and Back cancellation | NUI modal overlay, modal focus trap, restored invoking tab focus | Planned local close confirmation command | No stale annotations while modal hides/replaces an annotated page | Not implemented; no capture |
-| Keyboard arrows/Enter/Escape and pointer/touch | NUI focus graph, remote key handling, pointer down/up-inside parity | Same reducer/commands for remote, keyboard, pointer, touch | Focus snapshot must come from actual NUI `FocusManager` | Not verified on target |
-| Browser `ToPresentation` / `View_ToPresentation` | Current-state A2UI producer + Samsung One UI `DisplayPresentation` renderer | Existing `Tv_Tizen.Action.Browser_ToPresentation`; `Tizen.Internal.Action.View_ToPresentation` | Separate valid `surfaceUpdate` Template and `dataModelUpdate` Document from the same generated Browser entity and rendered state | Source compiles, but target RPC is blocked by generated `HasPrivilegeLocal` mismatch; renderer round trips not run |
+| 1920×1080 canvas | phone 화면을 확대하지 않고 TV-distance hierarchy로 번역 | viewport 안에서 centered uniform transform; 4-shape geometry PASS | physical root + one NUI ancestor canvas, `WindowSize`/`GetInsets()` | 과거 1920×1080 frame만 있음; non-zero inset 미검증 |
+| page-first hierarchy | Samsung Browser page + navigation toolbar | 132-unit command band, 92-unit context, 나머지는 content region | real content-only `WebView`, chrome sibling | 기존 command-band frame은 구조 일부만 증명 |
+| Back/Forward/Reload | Samsung 공식 navigation controls | history availability에 따라 Back/Forward disabled, loading/tabs에서 Reload disabled | WebView history adapter와 shared reducer | Back/Forward production은 미구현 |
+| address/search | 하나의 address/search surface | URL/search normalization, Enter, local search fixture, invalid input recovery | `TextField` + navigation normalizer + real HTTPS WebView | production은 absolute URL만 지원하므로 차이 열림 |
+| loading | chrome/context를 잃지 않는 recoverable navigation | progress, loading mask, latest intent state | `PageLoadStarted`/completion/error reducer | NUI 시각 상태 미구현 |
+| page | web content가 가장 큰 surface | privacy-safe local article은 WebView region의 실행형 대체물 | real system WebView만 제품 gate 충족 | real HTTPS success 미검증 |
+| offline/error/timeout | 실패 설명과 직접 recovery | Offline, Engine error, Timeout, Retry/Back/Edit address | bounded error state와 `StopLoading`/retry | NUI 미구현 |
+| tabs manager | 별도 Tabs screen, selected outline, per-tab X, New tab | ordered 1~20 rows, select/new/close, max disabled, scroll focus | bounded tab aggregate + persistence + NUI rows | NUI 미구현 |
+| close dialog | Samsung close-all dialog family | individual close safety adaptation, Cancel initial focus, trap, Back cancel, restore | NUI modal overlay와 invoking focus registry | NUI 미구현 |
+| input | touch Android를 D-pad/keyboard/pointer/touch로 확장 | Arrow/Enter/Escape, click, touch tap가 같은 command를 실행 | one reducer, `FocusManager`, TouchEvent | command-band remote 일부만 과거 검증 |
+| privacy | Secret mode/privacy priority는 참조하되 범위 밖 | normal-only 설명, remote asset/request 없음, public fixture만 사용 | body/cookie/form/credential 미게시 | projection target 검증 미실행 |
+| Entity/View/A2UI | 현재 visible page context만 Agent에 제공 | HTML은 semantic state만 preview | generated Browser Entity, actual bounds, canonical v0.9.1 + legacy adapter | generated runtime blocker로 target 미검증 |
 
-## Required evidence loop
+## Browser verification matrix
 
-For each row before it can be marked **matched**:
+| 항목 | 결과 |
+|---|---|
+| direct `file:` open / build step 없음 | PASS |
+| 외부 network request | PASS — document `file:` request 1개만 관찰 |
+| console error / page error | PASS — 각각 0 |
+| primary flow | PASS — home → search submit → loading → page |
+| exceptional flow | PASS — offline, engine-error, timeout, invalid-input |
+| D-pad/keyboard | PASS — header/body, Tabs, scrolled 10th tab, Enter, Back/Escape |
+| pointer/touch | PASS — Tabs/New tab activation |
+| modal | PASS — Cancel initial focus, Tab/Shift+Tab trap, Back cancel, invoking Close focus restore, confirm close 1개 제거 |
+| disabled/bounds | PASS — Back/Forward/Reload state, 20 tabs, New tab disabled |
+| responsive geometry | PASS — 1920×1080, 1280×720, 1440×1080, 2560×1080 centered uniform transform |
+| screenshot | PASS — PNG 6개 decode, dimensions, non-blank, privacy-safe visual inspection |
 
-1. Capture the equivalent sample state from the canonical HTML preview and retain it under `Browser/docs/images/` only after validating dimensions and content.
-2. Implement the mapped NUI slice; build, package, install, and reach the same state using actual Aurum remote/pointer input.
-3. Capture and validate the native screenshot under `Browser/docs/images/`.
-4. Compare hierarchy, geometry, typography, spacing, color, controls, content density, state, focus, and scaling. Record both image paths and either close the difference or state an intentional target adaptation.
-5. For Entity/Presentation rows, separately prove Action → Presentation → DisplayPresentation and ViewAnnotation → View_ToPresentation → DisplayPresentation with current state, not canned data.
+## Installed native baseline and remaining differences
 
-## Known difference and blocker
+과거 Common Emulator capture는 [`images/native-browser-command-band-1920x1080.png`](images/native-browser-command-band-1920x1080.png), [`images/native-browser-address-focus-1920x1080.png`](images/native-browser-address-focus-1920x1080.png), [`images/native-browser-tabs-focus-1920x1080.png`](images/native-browser-tabs-focus-1920x1080.png)이다. 이들은 zero-inset command band와 address→Tabs remote focus 변화만 증명한다.
 
-The sample command band was corrected from an implicit four-item CSS grid to the intended one-row Browser hierarchy: 190-unit brand region, 218-unit navigation cluster, flexible address field, and 150-unit Tabs control. Its current capture is retained above. The matching NUI root now calculates its centered reference canvas inside actual window insets and preserves the last valid frame on transient invalid geometry. The selected emulator's retained native frames prove the zero-inset command-band launch plus deterministic address-to-Tabs remote-focus response; non-zero-inset geometry, typography review, and pointer parity remain open.
+Stage 2에서 닫아야 할 차이:
 
-The source now has the first persistent command-band/current-context slice over a real content-only system `WebView`, but it still lacks the sample's loading band, recovery overlay, tabs manager, confirmation flow, and full native focus/pointer coverage. This is an open product difference, not an acceptable parity match.
+1. NUI에 search normalization, actual history availability, loading/recovery state가 없다.
+2. Tabs 제어는 NUI에서 no-op이며 tab aggregate/persistence/modal이 없다.
+3. HTML 132-unit header와 current NUI 120-unit header, content geometry, typography/token이 다르다.
+4. pointer/touch, modal trap/restore, non-zero inset, lifecycle state의 native evidence가 없다.
+5. current-state canonical A2UI와 두 DisplayPresentation round trip이 없다.
 
-Additionally, the selected Common Emulator dispatches the generated provider until `StubBase.HasPrivilegeLocal` then terminates with `MissingMethodException`. Provider discovery and ordinary Aurum UI screenshots are proven, but typed Action/View RPC, provider-backed ViewAnnotation verification, current A2UI payload validation, and DisplayPresentation round trips remain blocked. See the Goal `BLOCKERS.md` for the reproducible condition.
+## Runtime blocker boundary
+
+기존 Common Emulator에서는 generated provider dispatch가 `StubBase.HasPrivilegeLocal`의 `MissingMethodException`으로 앱을 종료했다. 따라서 provider discovery를 typed Action/View RPC, measured ViewAnnotation, A2UI round trip 성공으로 확장 해석하지 않는다. Stage 3에서 sanctioned `actionc`/Tizen runtime compatibility path만 재진단하며 generated source나 platform schema는 수정하지 않는다.
