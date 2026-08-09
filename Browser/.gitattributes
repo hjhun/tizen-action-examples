@@ -1,0 +1,3 @@
+# actionc/tidlc output is retained byte-for-byte for provenance; its whitespace is generator-owned.
+src/Browser.ActionProvider/TizenActionBrowserGenerated.cs whitespace=-trailing-space,-blank-at-eof
+src/Browser.ViewActionProvider/TizenInternalActionViewGenerated.cs whitespace=-trailing-space,-blank-at-eof

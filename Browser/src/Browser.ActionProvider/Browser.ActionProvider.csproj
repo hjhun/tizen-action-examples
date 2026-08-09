@@ -5,6 +5,7 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
+    <PackageReference Include="Tizen.NET" Version="14.0.0.19326" />
     <ProjectReference Include="../Browser.Domain/Browser.Domain.csproj" />
     <ProjectReference Include="../Browser.UseCases/Browser.UseCases.csproj" />
   </ItemGroup>
