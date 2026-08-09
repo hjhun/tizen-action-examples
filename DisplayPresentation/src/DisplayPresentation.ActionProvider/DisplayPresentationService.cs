@@ -11,16 +11,16 @@ namespace DisplayPresentation.ActionProvider;
 /// </summary>
 public sealed class DisplayPresentationService : TizenActionDisplay.ServiceBase
 {
-    private readonly A2UiPresentationParser _parser;
+    private readonly PresentationRenderCoordinator _renderer;
 
     public DisplayPresentationService()
-        : this(new A2UiPresentationParser())
+        : this(DisplayPresentationActionProviderState.Renderer)
     {
     }
 
-    internal DisplayPresentationService(A2UiPresentationParser parser)
+    internal DisplayPresentationService(PresentationRenderCoordinator renderer)
     {
-        _parser = parser ?? throw new ArgumentNullException(nameof(parser));
+        _renderer = renderer ?? throw new ArgumentNullException(nameof(renderer));
     }
 
     public override void OnCreate()
@@ -38,7 +38,7 @@ public sealed class DisplayPresentationService : TizenActionDisplay.ServiceBase
             return Failure("A Presentation payload is required.");
         }
 
-        var outcome = _parser.Parse(new PresentationInput(presentation.Template, presentation.Document));
+        var outcome = _renderer.Submit(new PresentationInput(presentation.Template, presentation.Document));
         return outcome.IsSuccess
             ? Success()
             : Failure(outcome.Failure!.Message);

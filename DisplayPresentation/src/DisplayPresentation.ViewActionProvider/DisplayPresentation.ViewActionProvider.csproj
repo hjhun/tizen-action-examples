@@ -8,5 +8,6 @@
   <ItemGroup>
     <PackageReference Include="Tizen.NET" Version="13.0.0.19198" />
     <ProjectReference Include="../DisplayPresentation.Domain/DisplayPresentation.Domain.csproj" />
+    <ProjectReference Include="../DisplayPresentation.ActionProvider/DisplayPresentation.ActionProvider.csproj" />
   </ItemGroup>
 </Project>

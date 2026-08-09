@@ -2,14 +2,19 @@ namespace DisplayPresentation.Domain;
 
 public sealed record PresentationInput(string Template, string Document);
 
-public sealed record RenderField(string Label, string Value);
+/// <summary>
+/// A profile-validated, renderer-agnostic A2UI tree. It contains resolved bounded values only;
+/// untrusted JSON never reaches NUI composition.
+/// </summary>
+public sealed record SemanticSurface(string SurfaceId, SemanticNode Root);
 
-public sealed record RenderPlan(
-    string SurfaceId,
-    string Title,
-    string Subtitle,
-    string Body,
-    IReadOnlyList<RenderField> Fields);
+public abstract record SemanticNode(string Id);
+
+public sealed record VerticalGroup(string Id, IReadOnlyList<SemanticNode> Children) : SemanticNode(Id);
+
+public sealed record TextValue(string Id, string Role, string Value) : SemanticNode(Id);
+
+public sealed record RenderPlan(SemanticSurface Surface);
 
 public enum RenderFailureKind
 {
