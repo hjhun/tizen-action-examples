@@ -29,7 +29,59 @@ catch (OperationCanceledException)
 {
 }
 
+var coordinatorLibrary = new BlockingThenResultLibrary(
+    [PhotoRecord.Create("fresh", "Ocean", new DateTimeOffset(2026, 8, 4, 0, 0, 0, TimeSpan.Zero), string.Empty, "/media/fresh", string.Empty)]);
+using (var coordinator = new PhotoLibraryRefreshCoordinator(coordinatorLibrary))
+{
+    var supersededRefresh = coordinator.RefreshAsync(CancellationToken.None);
+    await coordinatorLibrary.WaitForFirstReadAsync();
+    var currentRefresh = coordinator.RefreshAsync(CancellationToken.None);
+
+    await AssertCancelledAsync(supersededRefresh, "A new refresh must cancel its superseded media read.");
+    var refreshed = await currentRefresh;
+    if (!refreshed.IsCurrent || refreshed.Photos.Single().Id != "fresh")
+    {
+        throw new InvalidOperationException("The newest refresh must be the only current snapshot.");
+    }
+}
+
+var invalidatedLibrary = new BlockingThenResultLibrary(Array.Empty<PhotoRecord>());
+using (var coordinator = new PhotoLibraryRefreshCoordinator(invalidatedLibrary))
+{
+    var invalidatedRefresh = coordinator.RefreshAsync(CancellationToken.None);
+    await invalidatedLibrary.WaitForFirstReadAsync();
+    coordinator.Invalidate();
+    await AssertCancelledAsync(invalidatedRefresh, "Invalidation must cancel an obsolete media read.");
+}
+
+var disposedLibrary = new BlockingThenResultLibrary(Array.Empty<PhotoRecord>());
+var disposedCoordinator = new PhotoLibraryRefreshCoordinator(disposedLibrary);
+var disposedRefresh = disposedCoordinator.RefreshAsync(CancellationToken.None);
+await disposedLibrary.WaitForFirstReadAsync();
+disposedCoordinator.Dispose();
+await AssertCancelledAsync(disposedRefresh, "Disposal must cancel an active media read.");
+try
+{
+    await disposedCoordinator.RefreshAsync(CancellationToken.None);
+    throw new InvalidOperationException("A disposed coordinator must reject new refreshes.");
+}
+catch (ObjectDisposedException)
+{
+}
+
 Console.WriteLine("PhotoGallery.UseCases.Tests PASS");
+
+static async Task AssertCancelledAsync(Task task, string failureMessage)
+{
+    try
+    {
+        await task;
+        throw new InvalidOperationException(failureMessage);
+    }
+    catch (OperationCanceledException)
+    {
+    }
+}
 
 sealed class SequencedLibrary : IPhotoLibrary
 {
@@ -58,5 +110,31 @@ sealed class SequencedLibrary : IPhotoLibrary
     {
         _firstStarted.SetResult();
         return await _first.WaitAsync(cancellationToken);
+    }
+}
+
+sealed class BlockingThenResultLibrary : IPhotoLibrary
+{
+    private readonly IReadOnlyList<PhotoRecord> _result;
+    private readonly TaskCompletionSource _firstStarted = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private int _reads;
+
+    public BlockingThenResultLibrary(IReadOnlyList<PhotoRecord> result)
+    {
+        _result = result;
+    }
+
+    public Task WaitForFirstReadAsync() => _firstStarted.Task;
+
+    public async Task<IReadOnlyList<PhotoRecord>> ReadSnapshotAsync(CancellationToken cancellationToken)
+    {
+        if (Interlocked.Increment(ref _reads) == 1)
+        {
+            _firstStarted.SetResult();
+            await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+        }
+
+        cancellationToken.ThrowIfCancellationRequested();
+        return _result;
     }
 }
