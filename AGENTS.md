@@ -116,7 +116,11 @@ For each advertised Action, test at least one successful invocation and one mean
 - Treat `Calendar/` as the current reference implementation, not as a template that must be copied wholesale.
 - Consult `docs/TIZEN_ACTION_DOMAIN_DEVELOPMENT_GUIDE.md` for detailed engineering and validation guidance.
 - Follow `.agents/workflows/NUI_SCALING_AND_UI_EVIDENCE.md` when implementing reference-canvas scaling, capturing native UI states, or publishing README screenshot evidence.
-- Apply `.agents/skills/tizen-action-product-development/SKILL.md` before designing, implementing, or materially expanding any example app; use its product, One UI design-reference, Agent contract, Aurum, screenshot, and bilingual documentation gates.
+- Apply `.agents/skills/tizen-action-product-development/SKILL.md` and `docs/ONE_UI_PRODUCT_UI_POLICY.md` before designing, implementing, or materially expanding any example app.
+- Treat `<App>/refs/one-ui-sample.html` as an executable browser-hosted preview of the NUI app, not a requirements/design document. Keep requirements in Markdown; keep one canonical sample, remove obsolete HTML, and continuously compare sample states with installed Aurum screenshots in `<App>/docs/UI_PARITY.md`.
+- Base One UI decisions on an authoritative Samsung/reference app and recorded adaptation evidence. Do not label arbitrary gradients, floating docks, glass cards, generic dashboards, or invented navigation as One UI.
+- Any app that exposes or consumes `Presentation`, implements `ToPresentation` or `View_ToPresentation`, or integrates with DisplayPresentation must implement current-state A2UI and verify both Action-to-display and View-to-presentation round trips on target.
+- `DisplayPresentation` is specifically the Samsung One UI A2UI reference renderer: parse a bounded semantic A2UI tree, map its versioned supported profile to reusable One UI-adapted NUI components/tokens/focus/input, and test with real cross-app Presentation fixtures. A generic title/body card, arbitrary payload skin, or DisplayPresentation-only canned fixture is not sufficient.
 - Consult `docs/TIZEN_ACTION_2_0_DOMAIN_APP_CATALOG.md` for planned application domains and minimum scenarios.
 - Keep application-specific documentation beside its application when practical.
 - Preserve existing untracked files, local patches, generated artifacts, and development records unless the task explicitly covers them.

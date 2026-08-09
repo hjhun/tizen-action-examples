@@ -16,7 +16,7 @@ metadata:
 
 Use this skill for every new or materially expanded app in this repository. An example app is a real, independently useful product flow that exposes Action, Entity, and ViewAnnotation capabilities to an Agent; it is not a screen mockup or a provider that returns canned data.
 
-Read the repository `AGENTS.md`, `docs/DASHBOARD.md`, `docs/TIZEN_ACTION_DOMAIN_DEVELOPMENT_GUIDE.md`, and `.agents/workflows/NUI_SCALING_AND_UI_EVIDENCE.md` before changing an app. Use the adjacent `tizen-aurum-ui-automation` skill for native UI verification and screenshots.
+Read the repository `AGENTS.md`, `docs/DASHBOARD.md`, `docs/ONE_UI_PRODUCT_UI_POLICY.md`, `docs/TIZEN_ACTION_DOMAIN_DEVELOPMENT_GUIDE.md`, and `.agents/workflows/NUI_SCALING_AND_UI_EVIDENCE.md` before changing an app. Use the adjacent `tizen-aurum-ui-automation` skill for native UI verification and screenshots. Product completeness and verification quality take priority over model-token economy.
 
 ## Required Application Layout
 
@@ -27,12 +27,13 @@ For every new application, create a top-level `<Name>/` directory before impleme
 ├── README.md
 ├── README_Eng.md
 ├── refs/
-│   └── one-ui-design.html
+│   └── one-ui-sample.html          # executable browser-hosted app preview
 ├── docs/
 │   ├── README.md
 │   ├── README_Eng.md
 │   ├── DEVELOPMENT_GUIDE.md
 │   ├── DEVELOPMENT_GUIDE_Eng.md
+│   ├── UI_PARITY.md
 │   └── images/
 ├── src/
 │   ├── <Name>.App/
@@ -65,24 +66,23 @@ Do not put `actionexample` or `actionexamples` in newly created IDs. Do not reus
 
 Complete an Architect stage before implementation. It must record functional requirements, non-functional requirements, product flows, quality attributes, risks, domain model, UI/provider/use-case/persistence boundaries, and measurable acceptance criteria.
 
-Treat Galaxy One UI as the interaction reference:
+Treat Galaxy One UI as a source-backed interaction model, not a label or a license to invent a visual style:
 
-- Use calm, content-first hierarchy, restrained accent colors, clear typography, predictable navigation, meaningful empty/loading/error states, and confirmation for destructive actions.
-- Adapt Galaxy patterns to Tizen NUI, remote/D-pad, keyboard, pointer, and touch rather than reproducing proprietary screens or assets.
-- Define initial focus, directional focus order, Enter activation, Back behavior, modal focus trapping, and focus restoration for every primary page and overlay.
-- Make localization, scalable text, contrast, bounded data, and accessible labels part of the initial product design.
+- Identify an authoritative Samsung/One UI reference app or official source for the product category and record what was actually verified.
+- Extract its information architecture, hierarchy, navigation, states, and component posture; adapt those patterns to Tizen NUI remote/D-pad, keyboard, pointer, and touch without cloning branding or proprietary assets.
+- When no direct Samsung reference exists, use a familiar category-defining Android/iOS app and document the One UI/Tizen adaptation.
+- Reject arbitrary gradients, glassmorphism, floating docks, generic rounded-card dashboards, decorative controls, and invented navigation unless the reference and product need justify them.
+- Define initial focus, directional order, Enter, Back, modal trapping/restoration, localization, scalable text, contrast, bounded data, and accessible labels before implementation.
 
-Before source code, create `refs/one-ui-design.html`. It is the detailed, app-specific design reference, not a decorative mockup. It must cover:
+Before production UI code, create `refs/one-ui-sample.html` and browser-verify it. This file is an executable preview of the actual app, not a requirements document, architecture report, style board, or disconnected mockup collection. Requirements and decision rationale belong in Markdown.
 
-1. Product goal, target users, non-goals, and One UI reference rationale.
-2. Screen inventory and information architecture.
-3. Every primary page, empty/loading/error state, editor/detail/confirmation overlay, and navigation transition.
-4. Remote/D-pad, keyboard, pointer, and touch interaction and focus rules.
-5. Typography, spacing, color, elevation, component states, accessibility, and responsive/reference-canvas scaling rules.
-6. Action-to-product mapping, Entity identity/context, and ViewAnnotation surfaces.
-7. Testable acceptance criteria and screenshot coverage plan.
+The sample must render the same app-sized canvas, screens, controls, hierarchy, content density, focus states, transitions, loading/empty/error/offline/confirmation states, and responsive scaling intended for NUI. Pointer/touch and keyboard-emulated D-pad/Enter/Back must exercise the primary flow. Use local privacy-safe fixtures, not remote stock images, fake profiles/weather, proprietary assets, or decorative data. Every visible control must map to an implementable NUI component, real runtime surface, domain command/state, or typed Action/View interaction.
 
-When meaningful design alternatives exist, document at least two options and the selected trade-off before coding.
+Maintain `<Name>/docs/UI_PARITY.md`. For every UI slice, capture the HTML state, implement and install the NUI state, capture it through Aurum, compare them side by side for hierarchy, geometry, typography, spacing, color, controls, content density, state, focus, and scaling, then close or explicitly justify every difference before advancing. Follow `docs/ONE_UI_PRODUCT_UI_POLICY.md` for the complete contract.
+
+Keep one canonical executable sample per app. Inventory and remove obsolete concept HTML, design-document HTML, duplicate variants, remote-asset explorations, and files that do not map to the current NUI product.
+
+When meaningful design alternatives exist, document at least two options and the selected source-backed trade-off before coding.
 
 ## Product-Realism Gate
 
@@ -126,7 +126,12 @@ ViewAnnotation is Agent-facing contextual state. Publish only meaningful, curren
 - Set `Annotation.EntityInfo` from the generated Entity `ToJson()` snapshot; do not hand-build a parallel JSON projection.
 - Derive `ScreenBounds`, optional `WindowBounds`, visibility, and focus from the real NUI view where the platform provides a stable seam. Bounds belong to the enclosing View, not the nested Annotation.
 - Synchronize publication with rendering, data changes, focus transitions, overlay lifecycle, pause/resume, and removal. Do not expose stale or invisible views.
-- Implement applicable `GetAnnotatedViews`, `GetFocusedView`, `FindById`, and `View_ToPresentation` paths consistently. `View_ToPresentation` must return separate valid JSON `surfaceUpdate` template and `dataModelUpdate` document that correspond to the same Entity context.
+- Implement applicable `GetAnnotatedViews`, `GetFocusedView`, and `FindById` paths consistently.
+- If an app exposes or consumes a `Presentation`, implements a domain `ToPresentation`, implements `View_ToPresentation`, advertises DisplayPresentation integration, or renders provider-produced Presentation content, it supports DisplayPresentation and A2UI is mandatory—not optional polish.
+- Mandatory A2UI must return separate valid `surfaceUpdate` Template JSON and `dataModelUpdate` Document JSON derived from the same current generated Entity snapshot and rendered state. It must represent current content, loading/error, focus/selection, and available controls where applicable; a canned fixture unrelated to the current UI is forbidden.
+- `DisplayPresentation` is the reference Samsung One UI A2UI renderer. It must parse bounded A2UI into a semantic component tree and map a versioned supported-component profile to reusable One UI-adapted NUI components/tokens, state, focus, and input—not flatten every payload into an arbitrary title/body card or allow payload-defined styling to bypass the profile.
+- Maintain `DisplayPresentation/docs/A2UI_ONE_UI_PROFILE.md` with the supported A2UI component/property matrix, NUI mapping, One UI treatment, interaction/state behavior, privacy bounds, and typed unsupported behavior. Its executable HTML sample and NUI implementation must consume the same local A2UI fixtures, including real Browser and PhotoGallery outputs.
+- Verify both app Action → Presentation → DisplayPresentation rendering and ViewAnnotation → `View_ToPresentation` round trips on the Common Emulator, including malformed, unsupported, oversized, stale, and privacy-bounded cases. Capture the source focused/annotated state and rendered DisplayPresentation state with Aurum.
 - Include an Agent-task matrix in the guide: natural-language user goal → discovery Action → Entity/Annotation context → control Action → observable UI/postcondition.
 
 ## NUI Scaling and Input
@@ -184,12 +189,13 @@ Validate every Markdown link, fenced JSON/YAML example, image decode/dimensions,
 
 ## Completion Checklist
 
-- [ ] `<Name>/` exists before implementation, and its app docs map it to the applicable `Tizen.Action.<Name>` category; detailed `refs/one-ui-design.html` exists.
-- [ ] Architect analysis establishes product-level functional/non-functional requirements and acceptance criteria.
+- [ ] `<Name>/` exists before implementation, and its app docs map it to the applicable `Tizen.Action.<Name>` category; browser-verified executable `refs/one-ui-sample.html` exists and obsolete HTML has been removed.
+- [ ] Architect analysis establishes product-level functional/non-functional requirements, authoritative reference sources, adaptation decisions, and acceptance criteria.
+- [ ] `docs/UI_PARITY.md` compares each approved HTML state to an installed native NUI screenshot and closes or justifies every difference.
 - [ ] Product core is real on the chosen target, or an explicit simulator/capability limitation is documented.
 - [ ] Actions, Entities, resolver/search behavior, typed failures, and postconditions are tested.
 - [ ] Custom Actions, if any, use an app-owned `Tizen.Action.<Name>Custom_<Verb>` contract with documentation and E2E.
-- [ ] Current NUI views publish useful, correct ViewAnnotation context and applicable A2UI presentation.
+- [ ] Current NUI views publish useful, correct ViewAnnotation context; every app that supports DisplayPresentation implements current-state A2UI and passes both Presentation round trips on target.
 - [ ] NUI scaling and all supported input/focus flows are verified on a rendered target.
 - [ ] Aurum evidence covers each page and interaction state; screenshots are valid and repository-stable.
 - [ ] Korean and English docs are separate, mutually linked, equivalent, and include the final screenshot gallery.

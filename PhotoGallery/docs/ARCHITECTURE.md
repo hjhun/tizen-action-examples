@@ -63,7 +63,7 @@ UI와 provider는 동일한 `PhotoQueryService`/library instance를 DI로 공유
 
 ## 5. One UI 제품 흐름과 CX
 
-상세 화면 정의는 [`../refs/one-ui-design.html`](../refs/one-ui-design.html)에 있다. pre-existing [`../refs/photo-gallery-design.html`](../refs/photo-gallery-design.html)은 preserved visual exploration이며 외부 stock image를 제품 asset이나 runtime dependency로 채택하지 않는다.
+실행 가능한 화면 계약은 [`../refs/one-ui-sample.html`](../refs/one-ui-sample.html)로 다시 작성한다. 이 HTML은 요구사항 문서가 아니라 실제 NUI 화면·상태·포커스·입력 흐름을 브라우저에서 실행하는 샘플이어야 하며, native 구현과의 차이는 `UI_PARITY.md`에 기록한다. 기존 `one-ui-design.html`과 adoption-era `photo-gallery-design.html`은 새 정책에 맞지 않는 문서형/remote-asset exploration으로 감사 후 제거했다.
 
 | 화면 | 정상 상태 | 예외/empty | Back 및 focus |
 |---|---|---|---|
