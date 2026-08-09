@@ -6,15 +6,22 @@ This policy applies to every Tizen NUI product example in this repository.
 
 Do not reduce architecture analysis, One UI research, prototype fidelity, implementation, tests, target validation, or screenshot comparison to save model tokens. Keep work bounded for correctness, but choose the amount of work required to produce a credible product.
 
-## 2. Use a real reference model
+## 2. Android Samsung stock apps are the primary UI reference
 
 Before designing an app surface:
 
 1. Name the primary user task and surface type.
-2. Select an authoritative Samsung Galaxy/One UI product reference where one exists, such as Samsung Internet or Samsung Gallery.
-3. Inspect official screenshots, official help, an available reference app, or platform guidance. Record the source and date.
-4. Extract information architecture, hierarchy, navigation, focus, loading/empty/error behavior, and component posture. Do not copy trademarks, proprietary assets, personal data, or branding.
-5. When no direct Samsung app exists, use a familiar Android/iOS category reference and adapt it to One UI and Tizen input constraints. Do not invent an arbitrary “One UI-inspired” layout.
+2. Select the matching **Android Samsung stock application** as the primary reference wherever one exists. Examples include Samsung Internet for Browser and Samsung Gallery for PhotoGallery. For generic components and system states, inspect the relevant current Samsung Android applications and One UI system surfaces rather than inventing an app-specific visual language.
+3. Inspect official Samsung screenshots/help, an available current Android Samsung app, or official One UI guidance. Record the app, screen, source, One UI/app version when known, access date, and which behavior was directly verified.
+4. Extract the Samsung app's information architecture, navigation, content hierarchy, component family, typography posture, spacing, shape, state treatment, dialogs, empty/loading/error behavior, and interaction model. Reuse the design principles and recognizable Samsung component behavior without copying trademarks, account data, copyrighted media, or proprietary assets.
+5. Adapt the Android touch layout to Tizen NUI viewport, safe areas, remote/D-pad, keyboard, pointer, and touch. Preserve the Samsung app's mental model and component hierarchy; do not merely stretch a phone screenshot or replace it with TV-style invented chrome.
+6. Use a non-Samsung Android or iOS reference only when no relevant Samsung application or One UI system surface exists. Document why the fallback was necessary and how it was translated back into One UI conventions.
+
+App-specific baselines for the active batch:
+
+- Browser: current Android Samsung Internet information architecture, navigation, address/search, tabs, loading/error, and privacy-state patterns.
+- PhotoGallery: current Android Samsung Gallery Pictures/albums/search/detail/selection/delete-confirmation patterns.
+- DisplayPresentation: current One UI component behavior synthesized from Android Samsung stock apps appropriate to each semantic A2UI component; it must not invent a separate DisplayPresentation visual brand.
 
 ## 3. HTML is an executable application sample
 

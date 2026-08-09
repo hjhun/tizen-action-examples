@@ -66,12 +66,13 @@ Do not put `actionexample` or `actionexamples` in newly created IDs. Do not reus
 
 Complete an Architect stage before implementation. It must record functional requirements, non-functional requirements, product flows, quality attributes, risks, domain model, UI/provider/use-case/persistence boundaries, and measurable acceptance criteria.
 
-Treat Galaxy One UI as a source-backed interaction model, not a label or a license to invent a visual style:
+Treat current Android Samsung stock applications and One UI system surfaces as the primary source-backed interaction model, not merely inspiration and not a license to invent a visual style:
 
-- Identify an authoritative Samsung/One UI reference app or official source for the product category and record what was actually verified.
-- Extract its information architecture, hierarchy, navigation, states, and component posture; adapt those patterns to Tizen NUI remote/D-pad, keyboard, pointer, and touch without cloning branding or proprietary assets.
-- When no direct Samsung reference exists, use a familiar category-defining Android/iOS app and document the One UI/Tizen adaptation.
-- Reject arbitrary gradients, glassmorphism, floating docks, generic rounded-card dashboards, decorative controls, and invented navigation unless the reference and product need justify them.
+- Select the matching Android Samsung application wherever one exists (for example Samsung Internet for Browser and Samsung Gallery for PhotoGallery), and record the exact app/screen/source/version/date and directly verified behavior.
+- Extract its information architecture, hierarchy, navigation, component family, typography posture, spacing, shape, dialogs, states, and interaction model; adapt those patterns to Tizen NUI remote/D-pad, keyboard, pointer, touch, viewport, and safe areas without copying branding or proprietary assets.
+- Preserve the Samsung app's mental model and recognizable component behavior. Do not stretch a phone screenshot blindly, replace it with invented TV chrome, or create a separate visual brand for the example app.
+- Use non-Samsung Android/iOS references only when no relevant Samsung app or One UI system surface exists, and document the fallback and One UI translation.
+- Reject arbitrary gradients, glassmorphism, floating docks, generic rounded-card dashboards, decorative controls, and invented navigation unless directly justified by the recorded Samsung reference and product need.
 - Define initial focus, directional order, Enter, Back, modal trapping/restoration, localization, scalable text, contrast, bounded data, and accessible labels before implementation.
 
 Before production UI code, create `refs/one-ui-sample.html` and browser-verify it. This file is an executable preview of the actual app, not a requirements document, architecture report, style board, or disconnected mockup collection. Requirements and decision rationale belong in Markdown.
