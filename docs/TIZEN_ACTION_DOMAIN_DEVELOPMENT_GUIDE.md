@@ -10,6 +10,8 @@
 - Public Common Emulator 초기 검증 후 TV 또는 제품 target으로 확장하는 프로젝트
 
 > 이 문서의 명령과 결과는 개발 기준이다. 실제 source, target capability, 현재 Action schema, 그리고 fresh command output이 최종 진실이다.
+>
+> UI/UX 기준은 [UI/UX 개발 가이드](UI_UX_DEVELOPMENT_GUIDELINES.md)를 함께 적용한다. `tidlc`가 생성하는 C# UDS `HasPrivilegeLocal` 문제의 명시적 임시 예외는 [ActionC binding generation workflow](../.agents/workflows/actionc-generation.md)를 따른다.
 
 ---
 
@@ -43,7 +45,7 @@ TV profile validation: NOT VERIFIED (Common emulator only)
 1. `git status --short`와 branch를 기록한다.
 2. 기존 untracked tree, local patch, `.dev/`, `.hermes/`를 삭제/clean/reset하지 않는다.
 3. 사용자가 요청하지 않는 commit/push를 하지 않는다.
-4. generated code는 직접 수정하지 않는다. generator input 또는 template을 수정하고 재생성한다.
+4. generated code는 원칙적으로 generator input 또는 template을 수정하고 재생성한다. 단, `tidlc` C# UDS `HasPrivilegeLocal` bug는 framework 수정 전까지 `.agents/workflows/actionc-generation.md`의 post-generation fail-closed exception을 적용한다.
 5. Platform-owned Action schema와 application-owned implementation을 섞지 않는다.
 6. `action.seq`의 기존 method order는 ABI다. 기존 항목을 재정렬하지 않고 추가만 한다.
 
@@ -600,9 +602,9 @@ UI 기능은 구현 전 다음 관점의 review를 수행한다.
 
 합의한 결정은 `docs/specs/YYYY-MM-DD-<topic>.md`에 저장한다. UI reference app이 없으면 Android/iOS의 널리 알려진 interaction model을 참고하되 Tizen remote/focus 제약을 별도로 명시한다.
 
-Calendar 기준 design spec:
+Calendar 기준 UI/UX development guide:
 
-- [Calendar navigation, search, and View design](specs/2026-08-08-calendar-navigation-search-view-design.md)
+- [Tizen Action Example Apps UI/UX Development Guide](UI_UX_DEVELOPMENT_GUIDELINES.md)
 
 ### 10.3 Phase 2 — behavior 단위 RED → GREEN → REFACTOR
 
@@ -939,7 +941,7 @@ sdb -s <serial> shell 'action-tool find-appids Tizen.Action.Schedule --json'
 - [Calendar 대표 README](../Calendar/README.md): 앱 개요, 실제 Emulator 화면, quick commands
 - [Calendar Tizen Action Framework 2.0 개발 가이드](../Calendar/docs/TIZEN_ACTION_FRAMEWORK_2_0_DEVELOPMENT_GUIDE.md): Calendar-specific schema, provider, ViewAnnotation, packaging, E2E
 - [Calendar ViewAnnotation 및 좌표 계약](../Calendar/docs/VIEW_ANNOTATION.md): bounds, actual focus, lifecycle, A2UI
-- [Calendar navigation, search, and View design](specs/2026-08-08-calendar-navigation-search-view-design.md): 구현 전 승인한 UX/architecture 결정
+- [Tizen Action Example Apps UI/UX Development Guide](UI_UX_DEVELOPMENT_GUIDELINES.md): Calendar/Reminder에서 정리한 content-first hierarchy, deterministic input/focus, state/annotation, native evidence 기준
 - [Tizen Aurum UI Automation skill](../.agents/skills/tizen-aurum-ui-automation/SKILL.md): target-native input, tree, screenshot workflow와 실행 코드
 - [NUI Scaling and UI Evidence Workflow](../.agents/workflows/NUI_SCALING_AND_UI_EVIDENCE.md): inset-aware reference canvas, View bounds, Aurum capture, README evidence 재사용 절차
 - [Current development record](../.dev/DEVELOPTMENT.md): 현재 구현 결과와 검증 기록
