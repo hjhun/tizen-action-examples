@@ -11,50 +11,69 @@ namespace Browser.App;
 /// </summary>
 internal sealed class BrowserChromeView
 {
-    internal const float DesignWidth = 1920.0f;
-    internal const float DesignHeight = 1080.0f;
-    internal const float HeaderHeight = 120.0f;
-    internal const float ContentLeft = 52.0f;
-    internal const float ContentTop = 215.0f;
-    internal const float ContentWidth = 1816.0f;
-    internal const float ContentHeight = 821.0f;
-
     private const string InitialAddress = "https://www.tizen.org/";
     private readonly Action<string> _navigate;
+    private readonly View _back;
+    private readonly View _forward;
     private readonly TextField _address;
     private readonly TextLabel _title;
     private readonly TextLabel _url;
+    private readonly TextLabel _state;
     private readonly View _reload;
     private readonly View _tabs;
     private WebView? _webView;
+    private BrowserShellFocusGraph _focusGraph = BrowserShellFocusGraph.Create(false, false);
     private readonly Dictionary<View, Action> _activations = new();
 
-    internal BrowserChromeView(Action<string> navigate)
+    internal BrowserChromeView(
+        Action<string> navigate,
+        Action? goBack = null,
+        Action? goForward = null,
+        Action? openTabs = null)
     {
         _navigate = navigate ?? throw new ArgumentNullException(nameof(navigate));
+        Root = new View
+        {
+            Name = "BrowserPhysicalRoot",
+            ParentOrigin = ParentOrigin.TopLeft,
+            PivotPoint = PivotPoint.TopLeft,
+            BackgroundColor = new Color("#17181BFF"),
+            FocusableChildren = true,
+        };
         Canvas = new View
         {
             Name = "BrowserReferenceCanvas",
-            Size = new Size(DesignWidth, DesignHeight),
+            Size = new Size(BrowserShellMetrics.DesignWidth, BrowserShellMetrics.DesignHeight),
             ParentOrigin = ParentOrigin.TopLeft,
             PivotPoint = PivotPoint.TopLeft,
             BackgroundColor = new Color("#F7F7FAFF"),
             FocusableChildren = true,
         };
+        Root.Add(Canvas);
 
         var header = new View
         {
             Name = "BrowserCommandBand",
-            Size = new Size(DesignWidth, HeaderHeight),
+            Size = new Size(BrowserShellMetrics.DesignWidth, BrowserShellMetrics.HeaderHeight),
             BackgroundColor = Color.White,
             FocusableChildren = true,
         };
         Canvas.Add(header);
 
-        header.Add(Label("Browser", "#1B1B1FFF", 9.0f, new Position(52, 0), new Size(190, HeaderHeight), HorizontalAlignment.Begin));
-        header.Add(CreateDisabledControl("Back", "Back unavailable", "←", new Position(260, 27), new Size(66, 66)));
-        header.Add(CreateDisabledControl("Forward", "Forward unavailable", "→", new Position(336, 27), new Size(66, 66)));
-        _reload = CreateControl("Reload", "Reload current page", "↻", new Position(412, 27), new Size(66, 66), Reload);
+        header.Add(new View
+        {
+            Name = "BrowserProductMark",
+            Position = new Position(52, 45),
+            Size = new Size(42, 42),
+            BackgroundColor = new Color("#134F9EFF"),
+            CornerRadius = 14.0f,
+        });
+        header.Add(Label("Browser", "#1B1B1FFF", 9.0f, new Position(108, 0), new Size(132, BrowserShellMetrics.HeaderHeight), HorizontalAlignment.Begin));
+        _back = CreateDisabledControl("Back", "Back unavailable", "←", new Position(258, 33), new Size(66, 66), goBack);
+        header.Add(_back);
+        _forward = CreateDisabledControl("Forward", "Forward unavailable", "→", new Position(334, 33), new Size(66, 66), goForward);
+        header.Add(_forward);
+        _reload = CreateControl("Reload", "Reload current page", "↻", new Position(410, 33), new Size(66, 66), Reload);
         header.Add(_reload);
 
         _address = new TextField
@@ -65,10 +84,10 @@ internal sealed class BrowserChromeView
             PlaceholderTextColor = new Color("#61616AFF"),
             EnableEditing = true,
             Focusable = true,
-            Position = new Position(496, 27),
-            Size = new Size(1044, 66),
+            Position = new Position(498, 31),
+            Size = new Size(1188, 70),
             BackgroundColor = new Color("#F3F3F6FF"),
-            CornerRadius = 16.0f,
+            CornerRadius = 18.0f,
             BorderlineWidth = 2.0f,
             BorderlineColor = new Color("#777782FF"),
             AccessibilityName = "Address or search. Press Enter to load.",
@@ -77,21 +96,31 @@ internal sealed class BrowserChromeView
         _address.FocusLost += (_, _) => ApplyAddressFocusStyle(false);
         header.Add(_address);
 
-        _tabs = CreateControl("Tabs", "Open tabs", "Tabs 1", new Position(1560, 27), new Size(150, 66), () => { });
+        _tabs = CreateControl("Tabs", "Open tabs. 1 tab.", "Tabs   1", new Position(1704, 33), new Size(164, 66), openTabs ?? (() => { }));
         header.Add(_tabs);
-        header.Add(Label("1", "#1B1B1FFF", 5.0f, new Position(1668, 27), new Size(24, 66), HorizontalAlignment.Center));
 
         Canvas.Add(new View
         {
-            Position = new Position(0, HeaderHeight - 1),
-            Size = new Size(DesignWidth, 1),
+            Position = new Position(0, BrowserShellMetrics.HeaderHeight - 1),
+            Size = new Size(BrowserShellMetrics.DesignWidth, 1),
             BackgroundColor = new Color("#DEDEE5FF"),
         });
-        _title = Label("Loading page", "#1B1B1FFF", 7.0f, new Position(ContentLeft, 150), new Size(510, 45), HorizontalAlignment.Begin);
-        _url = Label(InitialAddress, "#61616AFF", 5.5f, new Position(580, 150), new Size(1200, 45), HorizontalAlignment.Begin);
+        _title = Label("Loading page", "#1B1B1FFF", 7.0f, new Position(52, 132), new Size(360, 92), HorizontalAlignment.Begin);
+        _url = Label(InitialAddress, "#61616AFF", 5.5f, new Position(432, 132), new Size(1240, 92), HorizontalAlignment.Begin);
+        _state = Label("LOADING", "#61616AFF", 4.8f, new Position(1716, 132), new Size(152, 92), HorizontalAlignment.End);
         Canvas.Add(_title);
         Canvas.Add(_url);
+        Canvas.Add(_state);
+        Canvas.Add(new View
+        {
+            Name = "BrowserProgressTrack",
+            Position = new Position(0, BrowserShellMetrics.HeaderHeight + BrowserShellMetrics.ContextHeight),
+            Size = new Size(BrowserShellMetrics.DesignWidth, BrowserShellMetrics.ProgressHeight),
+            BackgroundColor = new Color("#E5E5EAFF"),
+        });
     }
+
+    internal View Root { get; }
 
     internal View Canvas { get; }
 
@@ -103,9 +132,18 @@ internal sealed class BrowserChromeView
         _webView = webView;
         webView.Name = "BrowserWebContent";
         webView.Focusable = true;
-        webView.Position = new Position(ContentLeft, ContentTop);
-        webView.Size = new Size(ContentWidth, ContentHeight);
+        webView.Position = new Position(BrowserShellMetrics.ContentLeft, BrowserShellMetrics.ContentTop);
+        webView.Size = new Size(BrowserShellMetrics.ContentWidth, BrowserShellMetrics.ContentHeight);
         Canvas.Add(webView);
+    }
+
+    internal void UpdatePhysicalSize(float width, float height) => Root.Size = new Size(width, height);
+
+    internal void SetHistoryAvailability(bool canGoBack, bool canGoForward)
+    {
+        SetControlEnabled(_back, canGoBack, canGoBack ? "Go back" : "Back unavailable");
+        SetControlEnabled(_forward, canGoForward, canGoForward ? "Go forward" : "Forward unavailable");
+        _focusGraph = BrowserShellFocusGraph.Create(canGoBack, canGoForward);
     }
 
     internal void UpdatePage(BrowserPage? page, string? error = null)
@@ -115,11 +153,13 @@ internal sealed class BrowserChromeView
             _title.Text = page.Title;
             _url.Text = page.Url;
             _address.Text = page.Url;
+            _state.Text = "READY";
             return;
         }
 
         _title.Text = string.IsNullOrWhiteSpace(error) ? "Loading page" : "Page unavailable";
         _url.Text = string.IsNullOrWhiteSpace(error) ? InitialAddress : error;
+        _state.Text = string.IsNullOrWhiteSpace(error) ? "LOADING" : "ERROR";
     }
 
     internal bool TryHandleKey(string keyName)
@@ -132,17 +172,13 @@ internal sealed class BrowserChromeView
 
         if (keyName == "Down" && IsCommandControl(FocusManager.Instance.GetCurrentFocusView()))
         {
-            if (_webView is not null)
-            {
-                FocusManager.Instance.SetCurrentFocusView(_webView);
-            }
-
+            FocusTarget(_focusGraph.MoveDown(TargetFor(FocusManager.Instance.GetCurrentFocusView())));
             return true;
         }
 
         if (keyName == "Up" && ReferenceEquals(FocusManager.Instance.GetCurrentFocusView(), _webView))
         {
-            FocusAddress();
+            FocusTarget(_focusGraph.MoveUp(BrowserShellFocusTarget.WebContent));
             return true;
         }
 
@@ -168,17 +204,40 @@ internal sealed class BrowserChromeView
 
     private void MoveCommandFocus(int delta)
     {
-        var controls = new View[] { _reload, _address, _tabs };
         var current = FocusManager.Instance.GetCurrentFocusView();
-        var index = Array.FindIndex(controls, control => ReferenceEquals(control, current));
-        var target = index < 0
-            ? _address
-            : controls[Math.Clamp(index + delta, 0, controls.Length - 1)];
-        FocusManager.Instance.SetCurrentFocusView(target);
+        FocusTarget(_focusGraph.MoveHorizontal(TargetFor(current), delta));
     }
 
     private bool IsCommandControl(View? view) =>
+        ReferenceEquals(view, _back) || ReferenceEquals(view, _forward) ||
         ReferenceEquals(view, _reload) || ReferenceEquals(view, _address) || ReferenceEquals(view, _tabs);
+
+    private BrowserShellFocusTarget TargetFor(View? view)
+    {
+        if (ReferenceEquals(view, _back)) return BrowserShellFocusTarget.Back;
+        if (ReferenceEquals(view, _forward)) return BrowserShellFocusTarget.Forward;
+        if (ReferenceEquals(view, _reload)) return BrowserShellFocusTarget.Reload;
+        if (ReferenceEquals(view, _tabs)) return BrowserShellFocusTarget.Tabs;
+        if (ReferenceEquals(view, _webView)) return BrowserShellFocusTarget.WebContent;
+        return BrowserShellFocusTarget.Address;
+    }
+
+    private void FocusTarget(BrowserShellFocusTarget target)
+    {
+        var view = target switch
+        {
+            BrowserShellFocusTarget.Back => _back,
+            BrowserShellFocusTarget.Forward => _forward,
+            BrowserShellFocusTarget.Reload => _reload,
+            BrowserShellFocusTarget.Tabs => _tabs,
+            BrowserShellFocusTarget.WebContent => _webView,
+            _ => _address,
+        };
+        if (view is not null && view.Focusable)
+        {
+            FocusManager.Instance.SetCurrentFocusView(view);
+        }
+    }
 
     private void ApplyAddressFocusStyle(bool focused)
     {
@@ -202,17 +261,22 @@ internal sealed class BrowserChromeView
         }
     }
 
-    private View CreateDisabledControl(string name, string accessibilityName, string text, Position position, Size size)
+    private View CreateDisabledControl(
+        string name,
+        string accessibilityName,
+        string text,
+        Position position,
+        Size size,
+        Action? activate)
     {
-        var control = CreateControl(name, accessibilityName, text, position, size, () => { });
-        control.Focusable = false;
-        control.BackgroundColor = new Color("#F4F4F6FF");
-        control.BorderlineColor = new Color("#E8E8ECFF");
+        var control = CreateControl(name, accessibilityName, text, position, size, activate ?? (() => { }));
+        SetControlEnabled(control, false, accessibilityName);
         return control;
     }
 
     private View CreateControl(string name, string accessibilityName, string text, Position position, Size size, Action activate)
     {
+        var pressed = false;
         var control = new View
         {
             Name = name,
@@ -235,17 +299,33 @@ internal sealed class BrowserChromeView
             var state = eventArgs.Touch.GetState(0);
             if (state is PointStateType.Down or PointStateType.Started)
             {
+                pressed = true;
                 FocusManager.Instance.SetCurrentFocusView(control);
             }
             else if (state is PointStateType.Up or PointStateType.Finished)
             {
-                activate();
+                if (pressed && control.Focusable)
+                {
+                    activate();
+                }
+
+                pressed = false;
             }
 
             return true;
         };
         _activations[control] = activate;
         return control;
+    }
+
+    private static void SetControlEnabled(View control, bool enabled, string accessibilityName)
+    {
+        control.Focusable = enabled;
+        control.AccessibilityName = accessibilityName;
+        control.BackgroundColor = new Color(enabled ? "#FFFFFFFF" : "#F4F4F6FF");
+        control.BorderlineColor = new Color(enabled ? "#DEDEE5FF" : "#E8E8ECFF");
+        control.BorderlineWidth = 2.0f;
+        control.Opacity = enabled ? 1.0f : 0.55f;
     }
 
     private static void ApplyControlFocusStyle(View control, bool focused)

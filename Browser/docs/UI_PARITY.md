@@ -1,6 +1,6 @@
 # Browser UI parity ledger
 
-갱신일: 2026-08-09 (Stage 1)
+갱신일: 2026-08-09 (Stage 2A)
 
 - canonical preview: [`../refs/one-ui-sample.html`](../refs/one-ui-sample.html)
 - Samsung Android 근거: [`SAMSUNG_ANDROID_UI_REFERENCE.md`](SAMSUNG_ANDROID_UI_REFERENCE.md)
@@ -25,9 +25,9 @@
 
 | UI slice | Samsung reference/translation | Stage 1 HTML contract | production NUI/runtime mapping | native evidence/status |
 |---|---|---|---|---|
-| 1920×1080 canvas | phone 화면을 확대하지 않고 TV-distance hierarchy로 번역 | viewport 안에서 centered uniform transform; 4-shape geometry PASS | physical root + one NUI ancestor canvas, `WindowSize`/`GetInsets()` | 과거 1920×1080 frame만 있음; non-zero inset 미검증 |
-| page-first hierarchy | Samsung Browser page + navigation toolbar | 132-unit command band, 92-unit context, 나머지는 content region | real content-only `WebView`, chrome sibling | 기존 command-band frame은 구조 일부만 증명 |
-| Back/Forward/Reload | Samsung 공식 navigation controls | history availability에 따라 Back/Forward disabled, loading/tabs에서 Reload disabled | WebView history adapter와 shared reducer | Back/Forward production은 미구현 |
+| 1920×1080 canvas | phone 화면을 확대하지 않고 TV-distance hierarchy로 번역 | viewport 안에서 centered uniform transform; 4-shape geometry PASS | full-window physical root + one centered NUI ancestor transform, `WindowSize`/`GetInsets()` resize/inset 갱신 | host geometry PASS; non-zero inset native 미검증 |
+| page-first hierarchy | Samsung Browser page + navigation toolbar | 132-unit command band, 92-unit context, 나머지는 content region | 동일 132/92/6 geometry와 1816×806 real content-only `WebView` sibling | source/host PASS; 설치 화면 미검증 |
+| Back/Forward/Reload | Samsung 공식 navigation controls | history availability에 따라 Back/Forward disabled, loading/tabs에서 Reload disabled | 비활성 history focus 제외 + future availability seam; WebView history adapter는 2B | Stage 2A focus graph host PASS; real history 미구현 |
 | address/search | 하나의 address/search surface | URL/search normalization, Enter, local search fixture, invalid input recovery | `TextField` + navigation normalizer + real HTTPS WebView | production은 absolute URL만 지원하므로 차이 열림 |
 | loading | chrome/context를 잃지 않는 recoverable navigation | progress, loading mask, latest intent state | `PageLoadStarted`/completion/error reducer | NUI 시각 상태 미구현 |
 | page | web content가 가장 큰 surface | privacy-safe local article은 WebView region의 실행형 대체물 | real system WebView만 제품 gate 충족 | real HTTPS success 미검증 |
@@ -58,13 +58,18 @@
 
 과거 Common Emulator capture는 [`images/native-browser-command-band-1920x1080.png`](images/native-browser-command-band-1920x1080.png), [`images/native-browser-address-focus-1920x1080.png`](images/native-browser-address-focus-1920x1080.png), [`images/native-browser-tabs-focus-1920x1080.png`](images/native-browser-tabs-focus-1920x1080.png)이다. 이들은 zero-inset command band와 address→Tabs remote focus 변화만 증명한다.
 
-Stage 2에서 닫아야 할 차이:
+Stage 2A에서 source/host 기준으로 닫은 차이:
+
+1. NUI header/context/progress/content geometry를 HTML의 132/92/6/806 계약과 일치시켰다.
+2. drawable area를 검증한 뒤 physical root 위의 단일 1920×1080 ancestor만 uniform scale/center하도록 분리했다.
+3. disabled Back/Forward를 건너뛰고 command row ↔ content WebView를 결정적으로 이동하는 포커스 그래프를 추가했다.
+
+남은 차이:
 
 1. NUI에 search normalization, actual history availability, loading/recovery state가 없다.
 2. Tabs 제어는 NUI에서 no-op이며 tab aggregate/persistence/modal이 없다.
-3. HTML 132-unit header와 current NUI 120-unit header, content geometry, typography/token이 다르다.
-4. pointer/touch, modal trap/restore, non-zero inset, lifecycle state의 native evidence가 없다.
-5. current-state canonical A2UI와 두 DisplayPresentation round trip이 없다.
+3. typography/token의 installed-state parity와 pointer/touch, modal trap/restore, non-zero inset, lifecycle native evidence가 없다.
+4. current-state canonical A2UI와 두 DisplayPresentation round trip이 없다.
 
 ## Runtime blocker boundary
 

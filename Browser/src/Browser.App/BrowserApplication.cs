@@ -26,11 +26,12 @@ internal sealed class BrowserApplication : NUIApplication
         base.OnCreate();
 
         _chrome = new BrowserChromeView(NavigateAddressFromUi);
-        Window.Default.GetDefaultLayer().Add(_chrome.Canvas);
+        Window.Default.GetDefaultLayer().Add(_chrome.Root);
         UpdateReferenceCanvasLayout();
         _webView = NuiWebViewRuntime.CreateSystemWebView();
         _chrome.AddWebView(_webView);
         Window.Default.Resized += OnWindowResized;
+        Window.Default.InsetsChanged += OnWindowResized;
 
         _webRuntime = new NuiWebViewRuntime(_webView, TimeSpan.FromMinutes(2));
         _navigation = new BrowserNavigationCoordinator(_webRuntime);
@@ -53,6 +54,7 @@ internal sealed class BrowserApplication : NUIApplication
     {
         FocusManager.Instance.FocusChanged -= OnFocusChanged;
         Window.Default.Resized -= OnWindowResized;
+        Window.Default.InsetsChanged -= OnWindowResized;
         Window.Default.KeyEvent -= OnKeyEvent;
         _lifetime.Cancel();
         BrowserViewActionProviderHost.ClearPublishedViews();
@@ -64,7 +66,7 @@ internal sealed class BrowserApplication : NUIApplication
 
         if (_chrome is not null)
         {
-            Window.Default.GetDefaultLayer().Remove(_chrome.Canvas);
+            Window.Default.GetDefaultLayer().Remove(_chrome.Root);
         }
 
         _ = DisposeNavigationAsync();
@@ -95,27 +97,22 @@ internal sealed class BrowserApplication : NUIApplication
 
         var window = Window.Default.WindowSize;
         var insets = Window.Default.GetInsets();
-        var availableWidth = window.Width - insets.Start - insets.End;
-        var availableHeight = window.Height - insets.Top - insets.Bottom;
-        if (!float.IsFinite(availableWidth) || !float.IsFinite(availableHeight) ||
-            availableWidth <= 0f || availableHeight <= 0f)
+        if (!ReferenceCanvasViewport.TryCreate(
+                window.Width,
+                window.Height,
+                insets.Start,
+                insets.Top,
+                insets.End,
+                insets.Bottom,
+                out var viewport))
         {
             // Keep the previous valid frame during a transient resize/inset update.
             return;
         }
 
-        var scale = MathF.Min(
-            availableWidth / BrowserChromeView.DesignWidth,
-            availableHeight / BrowserChromeView.DesignHeight);
-        if (!float.IsFinite(scale) || scale <= 0)
-        {
-            return;
-        }
-
-        _chrome.Canvas.Scale = new Vector3(scale, scale, 1.0f);
-        _chrome.Canvas.Position = new Position(
-            insets.Start + ((availableWidth - (BrowserChromeView.DesignWidth * scale)) / 2.0f),
-            insets.Top + ((availableHeight - (BrowserChromeView.DesignHeight * scale)) / 2.0f));
+        _chrome.UpdatePhysicalSize(window.Width, window.Height);
+        _chrome.Canvas.Scale = new Vector3(viewport.Scale, viewport.Scale, 1.0f);
+        _chrome.Canvas.Position = new Position(viewport.OffsetX, viewport.OffsetY);
     }
 
     private void OnFocusChanged(object? sender, FocusManager.FocusChangedEventArgs eventArgs) =>

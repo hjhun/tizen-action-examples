@@ -1,13 +1,13 @@
 # Browser 요구사항 추적성
 
-갱신일: 2026-08-09 (Stage 0)
+갱신일: 2026-08-09 (Stage 2A)
 상태 정의: `문서화`는 구현 완료가 아니며, `부분`은 일부 source/host evidence만 존재하고 target gate가 남았다는 뜻이다.
 
 ## 기능 요구사항
 
 | 요구사항 | 모듈/아키텍처 | 현재/예정 source | host test | target test | screenshot/evidence | 상태 |
 |---|---|---|---|---|---|---|
-| FR-BROWSER-001 | 2A App shell | `BrowserApplication`, `BrowserChromeView` | App geometry/focus tests 예정 | cold launch + initial focus | `native-browser-address-focus-1920x1080.png` | 부분 |
+| FR-BROWSER-001 | 2A App shell | `BrowserApplication`, `BrowserChromeView`, `BrowserShellContract` | physical-root/canvas geometry + focus graph PASS | cold launch + initial focus | 과거 `native-browser-address-focus-1920x1080.png`; current native 예정 | host PASS/target 대기 |
 | FR-BROWSER-002 | 2B navigation reducer/runtime | `BrowserNavigationCoordinator`, `NuiWebViewRuntime` | `Browser.UseCases.Tests` cancellation/validation 확장 | real HTTPS submit/loading | loading HTML/native 예정 | 부분 |
 | FR-BROWSER-003 | 2B input normalization | search normalizer 예정 | URL/search/bounds table tests 예정 | keyboard submit | search HTML/native 예정 | 미구현 |
 | FR-BROWSER-004 | 2B loaded state | coordinator + page snapshot | success/stale tests 존재·확장 | real WebView HTTPS completion | page HTML/native 예정 | 부분 |
@@ -50,10 +50,10 @@
 | NFR-BROWSER-010 | HTTP(S)/no auto approval | URL validation tests 일부 | real HTTPS + permission denial 예정 | 부분 |
 | NFR-BROWSER-011 | accessible labels | HTML/source assertion 예정 | Aurum tree 또는 capability-limit 기록 | 부분 |
 | NFR-BROWSER-012 | contrast/two focus cues | token contrast script 예정 | screenshot visual review | two cues 일부 native 증거 |
-| NFR-BROWSER-013 | focus graph/trap/restore | reducer table tests 예정 | all-state key verification | command band만 부분 |
+| NFR-BROWSER-013 | focus graph/trap/restore | Stage 2A disabled-skip command↔WebView graph PASS; modal은 2C | all-state key verification | shell host PASS/target·modal 대기 |
 | NFR-BROWSER-014 | input parity | HTML suite/reducer tests 예정 | key/pointer/touch matrix | 미검증 |
-| NFR-BROWSER-015 | uniform canvas | viewport helper/tests 예정; current inline source | multi-resolution native는 범위 가능성 따라 | source 부분 |
-| NFR-BROWSER-016 | insets/invalid retention | geometry tests 예정; current resize source | non-zero inset target 예정 | source 부분 |
+| NFR-BROWSER-015 | uniform canvas | `ReferenceCanvasViewport` 1920×1080/16:9/4:3/ultrawide host matrix PASS | multi-resolution native는 범위 가능성 따라 | host PASS/target 대기 |
+| NFR-BROWSER-016 | insets/invalid retention | non-zero inset + invalid/transient retention host matrix PASS, resize+inset event source 연결 | non-zero inset target 예정 | host PASS/target 대기 |
 | NFR-BROWSER-017 | localization | string catalog/longest-string tests 예정 | ko/en frames 예정 | 미구현 |
 | NFR-BROWSER-018 | lifecycle cleanup | cancellation tests 일부; App late-callback tests 예정 | pause/terminate/relaunch | 부분 |
 | NFR-BROWSER-019 | generated ABI | fresh generation/order/byte compare Stage 2D/3 | installed runtime compatibility | 기존 source provenance, runtime 차단 |
@@ -91,3 +91,14 @@
 | NFR-BROWSER-026 | current HTML PNG 6개 decode/dimension/non-blank/privacy review | PASS(HTML) | native image set은 Stage 3 |
 
 Playwright Chromium은 direct `file:` open에서 primary/exception flow, scrolled 10th tab focus, modal confirm/cancel, max-tab disabled, pointer/touch를 실행했고 console/page error는 0이었다. 외부 request는 없었다. 이 결과는 HTML-only이며 FR-BROWSER-019~024 target Action/Entity/View/A2UI 상태를 변경하지 않는다.
+
+## Stage 2A NUI shell/chrome/scaling gate
+
+| 계약 | source/host 증거 | 결과 | 남은 target 경계 |
+|---|---|---|---|
+| FR-BROWSER-001 | full-window physical root, 1920×1080 canvas, 132/92/6 shell, 1816×806 content-only WebView | PASS | current installed launch/frame |
+| FR-BROWSER-010, 025 | Back/Forward disabled-skip, Reload→Address→Tabs, command↔WebView vertical graph | PASS | WebView actual history와 native remote/pointer |
+| NFR-BROWSER-015 | four aspect-ratio centered-uniform viewport table | PASS | target resize/multiple mode |
+| NFR-BROWSER-016 | non-zero insets와 invalid/exhausted/NaN rejection, `Resized`+`InsetsChanged` 연결 | PASS | target non-zero inset와 last-valid frame |
+
+`Browser.App.Tests`의 RED compile failure를 확인한 뒤 최소 계약 타입과 NUI 연결을 추가했다. Domain, Persistence, UseCases, ActionProvider, App 실행형 host test 5개와 전체 solution build가 통과했다. 이 gate는 package, Common Emulator, native screenshot, Action/View/A2UI를 증명하지 않는다.
