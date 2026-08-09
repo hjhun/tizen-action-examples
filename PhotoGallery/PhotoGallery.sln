@@ -17,6 +17,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PhotoGallery.UseCases.Tests
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PhotoGallery.Persistence", "src\PhotoGallery.Persistence\PhotoGallery.Persistence.csproj", "{7F381497-6FC9-44CE-96CA-B6EF098500C7}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PhotoGallery.ActionProvider", "src\PhotoGallery.ActionProvider\PhotoGallery.ActionProvider.csproj", "{A1A423BA-328C-45E5-87C0-7478D96FF94A}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -46,6 +48,10 @@ Global
 		{7F381497-6FC9-44CE-96CA-B6EF098500C7}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{7F381497-6FC9-44CE-96CA-B6EF098500C7}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{7F381497-6FC9-44CE-96CA-B6EF098500C7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A1A423BA-328C-45E5-87C0-7478D96FF94A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A1A423BA-328C-45E5-87C0-7478D96FF94A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A1A423BA-328C-45E5-87C0-7478D96FF94A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A1A423BA-328C-45E5-87C0-7478D96FF94A}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{2F7BFD22-151E-43F8-ADEB-4168E95F3CE3} = {69819A6A-B8A9-4238-BA37-26D18883773D}
@@ -53,5 +59,6 @@ Global
 		{4868A644-02DB-48A4-AB14-3BB10784585F} = {4559DFA2-E412-4D43-8396-602EFDFAF3DB}
 		{A36E7D04-EFD3-41C9-9A37-F511CA173CFB} = {4559DFA2-E412-4D43-8396-602EFDFAF3DB}
 		{7F381497-6FC9-44CE-96CA-B6EF098500C7} = {69819A6A-B8A9-4238-BA37-26D18883773D}
+		{A1A423BA-328C-45E5-87C0-7478D96FF94A} = {69819A6A-B8A9-4238-BA37-26D18883773D}
 	EndGlobalSection
 EndGlobal
