@@ -94,7 +94,19 @@ internal sealed class BrowserApplication : NUIApplication
         }
 
         var window = Window.Default.WindowSize;
-        var scale = MathF.Min(window.Width / BrowserChromeView.DesignWidth, window.Height / BrowserChromeView.DesignHeight);
+        var insets = Window.Default.GetInsets();
+        var availableWidth = window.Width - insets.Start - insets.End;
+        var availableHeight = window.Height - insets.Top - insets.Bottom;
+        if (!float.IsFinite(availableWidth) || !float.IsFinite(availableHeight) ||
+            availableWidth <= 0f || availableHeight <= 0f)
+        {
+            // Keep the previous valid frame during a transient resize/inset update.
+            return;
+        }
+
+        var scale = MathF.Min(
+            availableWidth / BrowserChromeView.DesignWidth,
+            availableHeight / BrowserChromeView.DesignHeight);
         if (!float.IsFinite(scale) || scale <= 0)
         {
             return;
@@ -102,8 +114,8 @@ internal sealed class BrowserApplication : NUIApplication
 
         _chrome.Canvas.Scale = new Vector3(scale, scale, 1.0f);
         _chrome.Canvas.Position = new Position(
-            (window.Width - (BrowserChromeView.DesignWidth * scale)) / 2.0f,
-            (window.Height - (BrowserChromeView.DesignHeight * scale)) / 2.0f);
+            insets.Start + ((availableWidth - (BrowserChromeView.DesignWidth * scale)) / 2.0f),
+            insets.Top + ((availableHeight - (BrowserChromeView.DesignHeight * scale)) / 2.0f));
     }
 
     private void OnFocusChanged(object? sender, FocusManager.FocusChangedEventArgs eventArgs) =>

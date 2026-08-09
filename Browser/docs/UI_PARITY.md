@@ -4,14 +4,14 @@
 - Canonical preview: [`../refs/one-ui-sample.html`](../refs/one-ui-sample.html)
 - Reference/adaptation record: [`ONE_UI_REFERENCE.md`](ONE_UI_REFERENCE.md)
 - Status: **HTML reference baseline browser-verified; installed NUI parity is blocked and must not be inferred.**
-- Validated HTML captures: [`images/html-browser-home-1280x720.png`](images/html-browser-home-1280x720.png) and [`images/html-browser-offline-1264x625.png`](images/html-browser-offline-1264x625.png). These are preview evidence only, never native/Aurum evidence.
+- Validated HTML captures: [`images/html-browser-command-band-1280x720.png`](images/html-browser-command-band-1280x720.png), [`images/html-browser-home-1280x720.png`](images/html-browser-home-1280x720.png), and [`images/html-browser-offline-1264x625.png`](images/html-browser-offline-1264x625.png). These are preview evidence only, never native/Aurum evidence.
 - Native Common Emulator captures: [`images/native-browser-command-band-1920x1080.png`](images/native-browser-command-band-1920x1080.png) and [`images/native-browser-address-focus-1920x1080.png`](images/native-browser-address-focus-1920x1080.png). Aurum decoded both as 1920×1080 RGB PNGs; the post-Right-key image differs only in the command band's address-field rectangle. They prove launch/capture/input response, not a completed visual comparison.
 
 ## Current mapping
 
 | Sample surface/control/state | Planned NUI/runtime mapping | Command or contract | Annotation / A2UI | Native parity evidence |
 |---|---|---|---|---|
-| Full 1920×1080 canvas scaled in its host frame | Full-window physical root plus one centered uniform NUI reference canvas, with the real `WebView` mounted only in the content rectangle | App render policy; `Window.Default.WindowSize` current source seam (inset handling remains an open target-validation requirement) | Bounds must be measured after final transform | Aurum capture retained at 1920×1080; inset/geometry comparison remains open |
+| Full 1920×1080 canvas scaled in its host frame | Full-window physical root plus one centered uniform NUI reference canvas, with the real `WebView` mounted only in the content rectangle | App render policy; `Window.Default.WindowSize` and `GetInsets()` calculate the safe viewport and retain the prior frame during transient invalid geometry | Bounds must be measured after final transform | Aurum capture retained at 1920×1080; non-zero-inset geometry comparison remains open |
 | Header: Back, Forward, Reload, address/search, Tabs | Persistent NUI command band with discrete Back/Forward disabled controls, Reload, `TextField`, and Tabs control above `WebView` | Reload and submitted absolute URL use the shared navigation coordinator; Back/Forward/Tabs remain local follow-up commands | Chrome itself is not currently published; selected page is the planned annotated surface | Aurum Right-key postcondition changed only the address-field rectangle; control-level semantic/focus comparison remains open |
 | Current title/URL context and WebView content region | `TextLabel` page context plus a real system `WebView` content rectangle | `BrowserNavigationCoordinator` / `IWebRuntime` completion updates chrome state | `Tizen.Entity.Browser` uses generated `ToJson()` in `Annotation.EntityInfo` | Host compiled; native layout/annotation still unverified |
 | Loading band | NUI progress view driven by `PageLoadStarted` / completion/error | `NuiWebViewRuntime` async outcome | Current A2UI must include page/load state derived from same entity/render state | Not implemented visually; no capture |
@@ -33,6 +33,8 @@ For each row before it can be marked **matched**:
 
 ## Known difference and blocker
 
-The source now has the first persistent command-band/current-context slice over a real content-only system `WebView`, but it still lacks the sample's loading band, recovery overlay, tabs manager, confirmation flow, inset-aware target validation, and verified native focus behavior. This is an open product difference, not an acceptable parity match.
+The sample command band was corrected from an implicit four-item CSS grid to the intended one-row Browser hierarchy: 190-unit brand region, 218-unit navigation cluster, flexible address field, and 150-unit Tabs control. Its current capture is retained above. The matching NUI root now calculates its centered reference canvas inside actual window insets and preserves the last valid frame on transient invalid geometry. The selected emulator's retained native frames still prove only the zero-inset command-band launch/focus response; non-zero-inset geometry and full visual review remain open.
+
+The source now has the first persistent command-band/current-context slice over a real content-only system `WebView`, but it still lacks the sample's loading band, recovery overlay, tabs manager, confirmation flow, and verified native focus behavior. This is an open product difference, not an acceptable parity match.
 
 Additionally, the selected Common Emulator dispatches the generated provider until `StubBase.HasPrivilegeLocal` then terminates with `MissingMethodException`. Provider discovery is proven, but typed Action/View RPC, current A2UI payload validation, DisplayPresentation round trips, and Aurum Browser screenshots remain blocked. See the Goal `BLOCKERS.md` for the reproducible condition.
