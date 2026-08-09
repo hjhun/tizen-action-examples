@@ -1,27 +1,26 @@
-using Browser.Domain;
+using System.Text.Json;
 using Browser.UseCases;
 
-var coordinator = new BrowserNavigationCoordinator(
-    new ImmediateRuntime(WebNavigationOutcome.Loaded("Example", "Public page metadata")));
+Assert(BrowserActionContract.TryCreatePage(
+    "page-example", "https://example.com/", "Example", "Public page metadata", out var page),
+    "Contract must accept bounded public Browser metadata.");
+Assert(!BrowserActionContract.TryCreatePage("", "invalid", "", "", out _),
+    "Contract must reject malformed Browser entities.");
 
-var navigation = await coordinator.NavigateAsync(
-    "page-example",
-    "https://example.com/",
-    CancellationToken.None);
+Assert(BrowserActionContract.HasValidResolverIds(["page-example", "page-missing", "page-example"]),
+    "Contract must accept bounded stable resolver IDs.");
+Assert(!BrowserActionContract.HasValidResolverIds([" "]),
+    "Contract must reject blank resolver IDs.");
+Assert(!BrowserActionContract.HasValidResolverIds(Enumerable.Repeat("page", 101).ToArray()),
+    "Contract must bound resolver input cardinality.");
 
-Assert(navigation.Status == BrowserNavigationStatus.Loaded, "Expected the current Browser page to load.");
+var presentation = BrowserActionContract.CreatePresentation(page);
+Assert(JsonDocument.Parse(presentation.Template).RootElement.TryGetProperty("surfaceUpdate", out _),
+    "Presentation template must be valid surface-update JSON.");
+Assert(JsonDocument.Parse(presentation.Document).RootElement.TryGetProperty("dataModelUpdate", out _),
+    "Presentation document must be valid data-model-update JSON.");
 
-var query = new BrowserPageQueryService(coordinator);
-var resolution = query.ResolveByIds(["page-example", "page-missing", "page-example"]);
-
-Assert(resolution.Pages.Select(page => page.Id).SequenceEqual(["page-example", "page-example"]),
-    "Resolver must preserve request order and duplicate IDs.");
-Assert(resolution.UnresolvedIds.SequenceEqual(["page-missing"]),
-    "Resolver must return missing IDs explicitly.");
-Assert(query.GetCurrentPage()?.Id == "page-example", "Current-page lookup must return the shared navigation state.");
-
-await coordinator.DisposeAsync();
-Console.WriteLine("PASS: Browser provider query seam exposes current state and ordered duplicate-preserving resolution.");
+Console.WriteLine("PASS: Browser provider contract validates bounded input and produces parseable presentation data.");
 
 static void Assert(bool condition, string message)
 {
@@ -29,9 +28,4 @@ static void Assert(bool condition, string message)
     {
         throw new InvalidOperationException(message);
     }
-}
-
-sealed class ImmediateRuntime(WebNavigationOutcome outcome) : IWebRuntime
-{
-    public Task<WebNavigationOutcome> NavigateAsync(Uri uri, CancellationToken cancellationToken) => Task.FromResult(outcome);
 }
