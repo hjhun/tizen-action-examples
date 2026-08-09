@@ -8,11 +8,11 @@
 
 ### Authoritative reference sources inspected
 
-1. Samsung, [Use the Gallery app on your Galaxy phone or tablet](https://www.samsung.com/us/support/answer/ANS00078941/) — Samsung Support; accessed 2026-08-09.
-2. Samsung, [Galaxy Store: Samsung Gallery](https://galaxystore.samsung.com/detail/com.sec.android.gallery3d) — first-party product listing; accessed 2026-08-09.
-3. Samsung, [One UI](https://www.samsung.com/us/one-ui/) — One UI product guidance; accessed 2026-08-09.
+1. Samsung Korea, [Samsung Gallery](https://www.samsung.com/sec/apps/samsung-gallery/) — first-party Samsung Gallery product page; fetched successfully on 2026-08-09.
+2. Samsung, [One UI](https://www.samsung.com/us/one-ui/) — Samsung’s first-party One UI entry point; fetched on 2026-08-09 (the regional endpoint redirected to Samsung US home in this environment).
+3. Samsung Support URL research was attempted on 2026-08-09. The older US support route redirected to the generic phones category and the public Galaxy Store detail endpoint returned 404 in this environment, so neither is used as behavioral evidence.
 
-The accessible Samsung reference material establishes the Gallery product identity and One UI’s content-first device experience. The browser sample deliberately adapts only the observable category conventions below; it does not reproduce Samsung branding, imagery, account content, or device-specific navigation.
+The successfully fetched Samsung Gallery page establishes the first-party Gallery reference. The sample’s Pictures-first discovery, in-place search, detail inspection, unavailable/empty recovery, and explicit destructive confirmation are restrained category adaptations; they do not claim undocumented Samsung implementation details and do not reproduce Samsung branding, imagery, account content, or device-specific navigation.
 
 | Reference-derived convention | PhotoGallery adaptation for Tizen NUI | Deliberate deviation / reason |
 |---|---|---|
