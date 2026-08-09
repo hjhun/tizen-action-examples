@@ -9,7 +9,7 @@
     },
     {
       "id": 2,
-      "prompt": "Aurum health and screenshots work on emulator-26101, but dumpObjectTree returns status OK with zero roots for my NUI app. Diagnose this and continue UI verification safely.",
+      "prompt": "Aurum health and screenshots work on <serial>, but dumpObjectTree returns status OK with zero roots for my NUI app. Diagnose this and continue UI verification safely.",
       "expected_output": "The agent records the empty-tree capability boundary, avoids inventing element IDs, switches to screenshot-guided remote keys or calibrated native coordinates, and validates every state change visually.",
       "files": []
     },

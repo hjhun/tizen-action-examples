@@ -6,7 +6,7 @@ Calendar는 단순 UI sample이 아닙니다. Month/Week/Day/Agenda 화면과 �
 
 ![Calendar Month view](docs/images/calendar-month.png)
 
-> 위 이미지는 `emulator-26101` Public Tizen Common Emulator에서 실행 중인 최신 TPK를 Aurum gRPC `takeScreenshot`으로 직접 캡처한 1920×1080 화면입니다. 화면의 일정은 E2E fixture data입니다.
+> 위 이미지는 Public Tizen Common Emulator에서 실행 중인 최신 TPK를 Aurum gRPC `takeScreenshot`으로 직접 캡처한 1920×1080 화면입니다. 화면의 일정은 E2E fixture data입니다.
 
 ## 주요 기능
 
@@ -238,7 +238,7 @@ Host test는 Tizen-independent domain/adapter/use-case seam을 실행합니다. 
 ## TPK 실행
 
 ```bash
-SERIAL=emulator-26101
+: "${SERIAL:?Set SERIAL to the target device serial}"
 PACKAGE=dist/org.tizen.actionexamples.calendar-0.1.0-latest.tpk
 APPID=org.tizen.actionexamples.calendar
 
@@ -256,7 +256,7 @@ raw DLL이 아니라 signed ZIP-based TPK를 설치합니다. Public Common Emul
 
 README의 이미지는 2026-08-08에 다음 환경에서 fresh capture했습니다.
 
-- target: `emulator-26101` (`tc-0808-1`)
+- target: Public Tizen Common Emulator
 - profile: Public Tizen Common Emulator
 - app ID: `org.tizen.actionexamples.calendar`
 - resolution: 1920×1080

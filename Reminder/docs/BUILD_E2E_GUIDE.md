@@ -14,7 +14,7 @@ Keep these results separate:
 
 - .NET SDK 8
 - `actionc 0.1.0`, `action2tidl`, and `tidlc 2.9.0` on `PATH`
-- authoritative catalog at `/home/hjhun/samba/workspace/appfw/tizen-action/default-actions`
+- authoritative catalog at `<tizen-action-repo>/default-actions`
 - Tizen Studio with a Tizen 10.1 Common x86_64 emulator and signing profile for packaging
 
 Do not modify the catalog or generator repositories for this app.
@@ -43,7 +43,8 @@ The generated provider assemblies depend on Tizen runtime libraries. Their real 
 Generate complete categories; never use a Schedule subset:
 
 ```sh
-CATALOG=/home/hjhun/samba/workspace/appfw/tizen-action/default-actions
+: "${TIZEN_ACTION_ROOT:?Set TIZEN_ACTION_ROOT to the tizen-action repository}"
+CATALOG="$TIZEN_ACTION_ROOT/default-actions"
 TMP=$(mktemp -d)
 ACTIONC_ACTION2TIDL=$(command -v action2tidl) \
 ACTIONC_TIDLC=$(command -v tidlc) \

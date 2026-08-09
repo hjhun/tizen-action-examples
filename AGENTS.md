@@ -116,6 +116,7 @@ For each advertised Action, test at least one successful invocation and one mean
 - Treat `Calendar/` as the current reference implementation, not as a template that must be copied wholesale.
 - Consult `docs/TIZEN_ACTION_DOMAIN_DEVELOPMENT_GUIDE.md` for detailed engineering and validation guidance.
 - Follow `.agents/workflows/NUI_SCALING_AND_UI_EVIDENCE.md` when implementing reference-canvas scaling, capturing native UI states, or publishing README screenshot evidence.
+- Apply `.agents/skills/tizen-action-product-development/SKILL.md` before designing, implementing, or materially expanding any example app; use its product, One UI design-reference, Agent contract, Aurum, screenshot, and bilingual documentation gates.
 - Consult `docs/TIZEN_ACTION_2_0_DOMAIN_APP_CATALOG.md` for planned application domains and minimum scenarios.
 - Keep application-specific documentation beside its application when practical.
 - Preserve existing untracked files, local patches, generated artifacts, and development records unless the task explicitly covers them.

@@ -57,7 +57,7 @@ sdb devices
 Choose the target explicitly when multiple devices are connected. Verify the application and Aurum bootstrap package independently.
 
 ```bash
-SERIAL=emulator-26101
+SERIAL="${SERIAL:?Set SERIAL to the target device serial}"
 APPID=org.example.app
 
 sdb -s "$SERIAL" shell "app_launcher --is-running $APPID"

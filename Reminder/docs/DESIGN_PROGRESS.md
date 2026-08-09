@@ -87,7 +87,7 @@ B를 기본 shell로 사용하고 A의 스마트 분류를 중앙 상단의 접�
 - 구현은 좌측 smart navigation, 중앙 bounded list, 우측 detail/editor의 3-pane shell을 사용한다.
 - 앱 ID는 `org.tizen.actionexamples.reminder`다.
 - Tizen-free Domain/Persistence/UseCases와 host tests, 10개 Schedule method provider, 현재 View contract provider, Common deterministic simulator를 구현했다.
-- Tizen 10.1 Common Emulator(`emulator-26101`)에 최신 TPK를 설치하고 Schedule/View provider discovery를 확인했다.
+- Tizen 10.1 Common Emulator에 최신 TPK를 설치하고 Schedule/View provider discovery를 확인했다.
 - Schedule 10개 Action의 실제 wire path, mutation postcondition, restart persistence가 통과했다.
 - 1920×1080 native NUI에서 B 3-pane, contrast, card/detail/editor, D-pad rail→filter→list→detail focus route를 Aurum으로 검증했다.
 - Today/Upcoming/Overdue/Completed/All/Reservations 6개 page와 reminder detail, reservation detail, No-alert filter, new editor를 final TPK에서 캡처했다.

@@ -472,7 +472,7 @@ Common profile에서 성공한 것은 Common emulator validation이다. TV profi
 
 ```sh
 sdb -s <serial> install <package>.tpk
-/home/hjhun/tizen-studio/tools/ide/bin/tizen run -s <serial> -p <application-id>
+tizen run -s <serial> -p <application-id>
 sdb -s <serial> shell 'app_launcher --is-running <application-id>'
 sdb -s <serial> shell 'ps -ef | grep <application-id> | grep -v grep'
 ```
@@ -754,7 +754,7 @@ GetAnnotatedViews
 기본 흐름:
 
 ```sh
-cd ~/samba/workspace/tizen-action-examples
+cd <tizen-action-examples-repo>
 SKILL_ROOT="$PWD/.agents/skills/tizen-aurum-ui-automation"
 python3 "$SKILL_ROOT/scripts/prepare_client.py"
 AURUM="$SKILL_ROOT/scripts/aurum-ui"
@@ -909,7 +909,7 @@ TV/product profile: NOT VERIFIED (when Common Emulator only)
 ## 12. Calendar 구현에서 재사용 가능한 검증 명령 요약
 
 ```sh
-cd ~/samba/workspace/tizen-action-examples
+cd <tizen-action-examples-repo>
 
 # Host tests and builds
 set -euo pipefail
@@ -924,12 +924,12 @@ git diff --check
 
 # Device preflight
 sdb devices
-sdb -s emulator-26101 capability
-sdb -s emulator-26101 shell 'id'
+sdb -s <serial> capability
+sdb -s <serial> shell 'id'
 
 # Device discovery
-sdb -s emulator-26101 shell 'action-tool find-appids Tizen.Action.Calendar --json'
-sdb -s emulator-26101 shell 'action-tool find-appids Tizen.Action.Schedule --json'
+sdb -s <serial> shell 'action-tool find-appids Tizen.Action.Calendar --json'
+sdb -s <serial> shell 'action-tool find-appids Tizen.Action.Schedule --json'
 ```
 
 ---
@@ -944,7 +944,7 @@ sdb -s emulator-26101 shell 'action-tool find-appids Tizen.Action.Schedule --jso
 - [NUI Scaling and UI Evidence Workflow](../.agents/workflows/NUI_SCALING_AND_UI_EVIDENCE.md): inset-aware reference canvas, View bounds, Aurum capture, README evidence 재사용 절차
 - [Current development record](../.dev/DEVELOPTMENT.md): 현재 구현 결과와 검증 기록
 - [Developer progress evidence](../.dev/progress/developer.md): 개발 결정과 device evidence
-- Tizen Action default Action schemas: `/home/hjhun/samba/workspace/appfw/tizen-action/default-actions`
-- TIDL implementation repository: `/home/hjhun/samba/workspace/appfw/tidl`
+- Tizen Action default Action schemas: `<tizen-action-repo>/default-actions`
+- TIDL implementation repository: `<tidl-repo>`
 
 새 domain을 시작할 때 이 문서를 baseline으로 사용하되, domain-specific Entity contract, existing Action category ABI, target device profile을 먼저 확인한 뒤 세부 계획을 작성한다.

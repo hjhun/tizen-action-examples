@@ -137,9 +137,10 @@ TIDL method ID는 category 내 `action.seq` 위치에 의존합니다.
 환경 예:
 
 ```bash
-export ACTIONC_ACTION2TIDL="$HOME/.local/bin/action2tidl"
-export ACTIONC_TIDLC="$HOME/.local/bin/tidlc"
-export DEFAULT_ACTIONS="$HOME/samba/workspace/appfw/tizen-action/default-actions"
+export ACTIONC_ACTION2TIDL="$(command -v action2tidl)"
+export ACTIONC_TIDLC="$(command -v tidlc)"
+: "${TIZEN_ACTION_ROOT:?Set TIZEN_ACTION_ROOT to the tizen-action repository}"
+export DEFAULT_ACTIONS="$TIZEN_ACTION_ROOT/default-actions"
 ```
 
 Calendar category:
@@ -371,7 +372,7 @@ sha256sum dist/org.tizen.actionexamples.calendar-0.1.0.tpk
 ### 10.1 install과 launch
 
 ```bash
-SERIAL=emulator-26101
+: "${SERIAL:?Set SERIAL to the target device serial}"
 PACKAGE=dist/org.tizen.actionexamples.calendar-0.1.0.tpk
 APPID=org.tizen.actionexamples.calendar
 

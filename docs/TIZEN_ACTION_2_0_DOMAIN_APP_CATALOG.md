@@ -6,13 +6,13 @@
 
 ## 분석 기준
 
-- 기준 소스: `/home/hjhun/samba/workspace/appfw/tizen-action/default-actions`
+- 기준 소스: `<tizen-action-repo>/default-actions`
 - 분석 대상: `actions/*.action`, `entities/*.entity`, `action.seq`
 - 발견 결과: 공개 도메인 Action category 21개, 도메인 Action 124개, 내부 View Action 4개, Entity schema 46개.
 - 각 `.action`의 `details.appid`는 현재 플랫폼/제품 provider의 식별자다. 예제 앱은 해당 appid를 재사용하지 않고 별도의 예제 appid와 provider metadata를 가져야 한다.
 - `action.seq`의 category 내 순서는 TIDL method ID이므로, 예제 provider 생성 시 해당 category 전체를 `actionc -a <category>`로 생성한다. 기존 순서를 변경하거나 일부 Action만 생성하여 ID를 다시 매기지 않는다.
 
-> Graphify 사전 점검: Graphify CLI의 `update`를 이 소스에 실행했으나, 현재 설치본은 `.action`/`.entity` 확장자를 코드 입력으로 인식하지 않아 그래프를 만들지 못했다. 따라서 아래 표는 원본 JSON schema와 `action.seq`를 직접 파싱하여 산출했다. Graphify store 예약 경로는 `/home/hjhun/.graphify/samba/workspace/appfw/tizen-action/default-actions`이다.
+> Graphify 사전 점검: Graphify CLI의 `update`를 이 소스에 실행했으나, 현재 설치본은 `.action`/`.entity` 확장자를 코드 입력으로 인식하지 않아 그래프를 만들지 못했다. 따라서 아래 표는 원본 JSON schema와 `action.seq`를 직접 파싱하여 산출했다. Graphify 캐시는 저장소 외부에 둔다.
 
 ## 구현 단위 원칙
 

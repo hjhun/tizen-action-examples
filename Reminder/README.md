@@ -82,7 +82,7 @@ The native screenshots in this README are from a 1920×1080 Common Emulator. The
 
 All ten screenshots were freshly captured from the packaged and installed TPK on 2026-08-09.
 
-- target: `emulator-26101` (`tc-0808-1`)
+- target: Public Tizen Common Emulator
 - profile: Public Tizen Common Emulator
 - resolution: 1920×1080
 - app ID: `org.tizen.actionexamples.reminder`
