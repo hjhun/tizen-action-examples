@@ -6,8 +6,8 @@
 - approved V2 design: [`SAMSUNG_MODERNIZATION_V2.md`](SAMSUNG_MODERNIZATION_V2.md)
 - Samsung Android 근거: [`SAMSUNG_ANDROID_UI_REFERENCE.md`](SAMSUNG_ANDROID_UI_REFERENCE.md)
 - 제품 요구사항: [`PRODUCT_REQUIREMENTS.md`](PRODUCT_REQUIREMENTS.md)
-- 현재 판정: **V2 HTML contract PASS; Common Emulator NUI parity 재구현·재검증 대기**
-- 증거 경계: 최신 `html-browser-*`는 승인된 A안의 HTML-only 증거다. 기존 `native-browser-*-visual-*`는 이전 `8234b09` package 증거이므로 V2 native parity를 증명하지 않는다. semantic tree/RPC/A2UI/offline gate는 계속 별도 차단 상태다.
+- 현재 판정: **V2 HTML contract PASS; Common Emulator address-shell NUI parity PASS**
+- 증거 경계: 최신 address V2 PNG는 최종 update-installed package의 1920×1080 증거다. 기존 `native-browser-*-visual-*`는 이전 visual-refinement package 증거로 유지한다. semantic tree/typed RPC/canonical A2UI/offline gate는 계속 별도 차단 상태다.
 
 ## Modernization V2 HTML evidence
 
@@ -118,6 +118,16 @@ Visual refinement에서 추가로 닫은 차이:
 2. Tabs를 full-canvas preview/title/URL card surface로 교체하고 selected rail, focus outline, circular close를 분리했다.
 3. close dialog를 Samsung 계열 split action surface로 교체했고 Home, dock, count, modal의 target clipping을 제거했다.
 4. persisted blank title target crash를 `New tab` fallback + 80자 bound 계약과 host regression test로 닫았다.
+
+Address V2 재검증에서 추가로 닫은 차이:
+
+1. visual shell과 native `TextField`를 분리하고 URL을 18 px horizontal,
+   12 px vertical inset 안에 배치해 capsule의 수직 정렬을 교정했다.
+2. focused editing은 shell blue outline, caret, OSK와 함께
+   [`images/native-browser-address-edit-v2-1920x1080.png`](images/native-browser-address-edit-v2-1920x1080.png)에서 확인했다.
+3. restored Page는
+   [`images/native-browser-home-address-v2-1920x1080.png`](images/native-browser-home-address-v2-1920x1080.png)에서 OSK 없이 렌더되고 correlated terminal Page 이후 명시적으로 WebView focus를 유지한다. superseding intent는 이를 취소하고 paused Page는 resume까지 요청을 보존한다.
+4. outer shell pointer click을 native editing focus로 전달하며 modal boundary를 넘지 않도록 contract를 추가했다.
 
 남은 차이:
 

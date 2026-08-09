@@ -9,7 +9,7 @@ namespace Browser.UseCases;
 /// </summary>
 public static class BrowserActionContract
 {
-    public const int MaximumResolverIds = 100;
+    public const int MaximumResolverIds = 50;
     public const int MaximumIdLength = 256;
     public const int MaximumPresentationCharacters = 256 * 1024;
     public const string BasicCatalogId = "https://a2ui.org/specification/v0_9_1/catalogs/basic/catalog.json";
@@ -33,7 +33,7 @@ public static class BrowserActionContract
     }
 
     public static bool HasValidResolverIds(IReadOnlyCollection<string>? ids) =>
-        ids is not null && ids.Count <= MaximumResolverIds &&
+        ids is not null && ids.Count is > 0 and <= MaximumResolverIds &&
         ids.All(id => !string.IsNullOrWhiteSpace(id) && id.Length <= MaximumIdLength);
 
     public static BrowserPresentationProfiles CreatePresentations(BrowserPage page)

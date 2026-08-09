@@ -152,6 +152,7 @@ internal static class BrowserViewProviderState
     private static TizenEntityView ToAnnotatedView(BrowserPageViewSnapshot snapshot)
     {
         var page = snapshot.Page;
+        var windowBounds = snapshot.WireWindowBounds;
         var entity = new BrowserEntity
         {
             Id = page.Id,
@@ -174,15 +175,13 @@ internal static class BrowserViewProviderState
                 Width = snapshot.Width,
                 Height = snapshot.Height,
             },
-            WindowBounds = snapshot.WindowX is { } windowX && snapshot.WindowY is { } windowY
-                ? new WindowBounds
-                {
-                    X = windowX,
-                    Y = windowY,
-                    Width = snapshot.Width,
-                    Height = snapshot.Height,
-                }
-                : null!,
+            WindowBounds = new WindowBounds
+            {
+                X = windowBounds.X,
+                Y = windowBounds.Y,
+                Width = windowBounds.Width,
+                Height = windowBounds.Height,
+            },
             IsFocused = snapshot.IsFocused,
             IsEnabled = true,
             Annotation = new Annotation

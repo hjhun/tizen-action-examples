@@ -45,6 +45,7 @@ public enum BrowserWorkspaceSurface
 public enum BrowserWorkspaceFocus
 {
     Address,
+    HomeQuickAccess,
     SelectedTab,
     InvokingClose,
     CancelClose,
@@ -145,9 +146,20 @@ public sealed record BrowserTabWorkspace
         BrowserWorkspaceFocus.Address,
         null);
 
-    public bool TryCreateTab(out BrowserTabWorkspace workspace, out string createdTabId)
+    public bool TryCreateTab(out BrowserTabWorkspace workspace, out string createdTabId) =>
+        TryCreateTab(BrowserWorkspaceSurface.Tabs, BrowserWorkspaceSurface.Tabs, BrowserWorkspaceFocus.SelectedTab, out workspace, out createdTabId);
+
+    public bool TryCreateHomeTab(out BrowserTabWorkspace workspace, out string createdTabId) =>
+        TryCreateTab(BrowserWorkspaceSurface.Page, BrowserWorkspaceSurface.Page, BrowserWorkspaceFocus.HomeQuickAccess, out workspace, out createdTabId);
+
+    private bool TryCreateTab(
+        BrowserWorkspaceSurface requiredSurface,
+        BrowserWorkspaceSurface resultSurface,
+        BrowserWorkspaceFocus resultFocus,
+        out BrowserTabWorkspace workspace,
+        out string createdTabId)
     {
-        if (!CanCreateTab || Surface != BrowserWorkspaceSurface.Tabs)
+        if (!CanCreateTab || Surface != requiredSurface)
         {
             workspace = this;
             createdTabId = string.Empty;
@@ -166,9 +178,9 @@ public sealed record BrowserTabWorkspace
         workspace = new BrowserTabWorkspace(
             updatedTabs,
             createdTabId,
-            BrowserWorkspaceSurface.Tabs,
+            resultSurface,
             null,
-            BrowserWorkspaceFocus.SelectedTab,
+            resultFocus,
             createdTabId);
         return true;
     }

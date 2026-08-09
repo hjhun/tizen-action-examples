@@ -133,6 +133,15 @@ if (visibleView.ViewId != $"browser:page:{agentPage.Id}" || !visibleView.IsFocus
     throw new InvalidOperationException("View snapshots must have a stable identity, current Entity, and complete finite measured geometry.");
 }
 
+var screenOnlyView = BrowserPageViewSnapshot.TryCreate(agentPage, 10, 20, null, null, 800, 600, false, out var screenOnlySnapshot)
+    ? screenOnlySnapshot
+    : throw new InvalidOperationException("A valid screen-only snapshot must remain publishable when window coordinates are unavailable.");
+if (screenOnlyView.WireWindowBounds != new BrowserWindowBounds(0, 0, 0, 0) ||
+    visibleView.WireWindowBounds != new BrowserWindowBounds(2, 3, 800, 600))
+{
+    throw new InvalidOperationException("View wire projection must use a non-null zero sentinel for unavailable window bounds and preserve measured bounds when available.");
+}
+
 var visibleViews = new BrowserVisibleViewRegistry();
 visibleViews.Publish(visibleView);
 if (!visibleViews.TryFind(visibleView.ViewId, out var foundView) || foundView != visibleView ||
@@ -167,6 +176,66 @@ await using (var sessionCoordinator = new BrowserSessionCoordinator(persistFirst
     if (!result.Succeeded || tabs.Current.Tabs.Count != 2 || tabs.Current.SelectedTabId != result.CreatedTabId)
     {
         throw new InvalidOperationException("A durable tab mutation must publish exactly once after persistence succeeds.");
+    }
+}
+
+var homePersistFirstStore = new DelayedFirstSaveStore();
+await using (var sessionCoordinator = new BrowserSessionCoordinator(homePersistFirstStore))
+{
+    var tabs = new BrowserTabCoordinator(BrowserTabWorkspace.Create("home-tab"));
+    var persistedTabs = new BrowserTabPersistenceCoordinator(tabs, sessionCoordinator);
+    var create = persistedTabs.CreateHomeTabAsync(CancellationToken.None);
+    await homePersistFirstStore.FirstSaveStarted.Task;
+    if (tabs.Current.Tabs.Count != 1 ||
+        tabs.Current.Surface != BrowserWorkspaceSurface.Page ||
+        tabs.Current.PreferredFocus != BrowserWorkspaceFocus.Address)
+    {
+        throw new InvalidOperationException("Home New-tab must not mutate workspace or focus before persistence succeeds.");
+    }
+
+    homePersistFirstStore.ReleaseFirstSave();
+    var result = await create;
+    if (!result.Succeeded || tabs.Current.Tabs.Count != 2 ||
+        tabs.Current.SelectedTabId != result.CreatedTabId ||
+        tabs.Current.Surface != BrowserWorkspaceSurface.Page ||
+        tabs.Current.PreferredFocus != BrowserWorkspaceFocus.HomeQuickAccess)
+    {
+        throw new InvalidOperationException("Durable Home New-tab must publish Page plus visible quick-access focus exactly once.");
+    }
+}
+
+var fullHomeWorkspace = BrowserTabWorkspace.Restore(
+    Enumerable.Range(1, BrowserTabWorkspace.MaximumTabs).Select(index => BrowserTab.Create($"full-{index}")),
+    "full-1");
+await using (var sessionCoordinator = new BrowserSessionCoordinator(new InMemorySessionStore(null)))
+{
+    var tabs = new BrowserTabCoordinator(fullHomeWorkspace);
+    var persistedTabs = new BrowserTabPersistenceCoordinator(tabs, sessionCoordinator);
+    var result = await persistedTabs.CreateHomeTabAsync(CancellationToken.None);
+    if (result.Succeeded || !ReferenceEquals(tabs.Current, fullHomeWorkspace))
+    {
+        throw new InvalidOperationException("Home New-tab capacity failure must leave workspace and focus untouched.");
+    }
+}
+
+await using (var sessionCoordinator = new BrowserSessionCoordinator(new InMemorySessionStore(null)))
+{
+    var original = BrowserTabWorkspace.Create("cancelled-home");
+    var tabs = new BrowserTabCoordinator(original);
+    var persistedTabs = new BrowserTabPersistenceCoordinator(tabs, sessionCoordinator);
+    using var cancellation = new CancellationTokenSource();
+    cancellation.Cancel();
+    try
+    {
+        await persistedTabs.CreateHomeTabAsync(cancellation.Token);
+        throw new InvalidOperationException("A pre-cancelled Home New-tab must not complete.");
+    }
+    catch (OperationCanceledException)
+    {
+        if (!ReferenceEquals(tabs.Current, original))
+        {
+            throw new InvalidOperationException("Cancelled Home New-tab must leave workspace and focus untouched.");
+        }
     }
 }
 

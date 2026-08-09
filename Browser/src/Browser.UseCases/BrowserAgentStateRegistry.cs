@@ -79,6 +79,8 @@ public sealed class BrowserAgentStateRegistry
     }
 }
 
+public readonly record struct BrowserWindowBounds(double X, double Y, double Width, double Height);
+
 public sealed record BrowserPageViewSnapshot
 {
     private BrowserPageViewSnapshot(
@@ -110,6 +112,10 @@ public sealed record BrowserPageViewSnapshot
     public double Width { get; }
     public double Height { get; }
     public bool IsFocused { get; }
+    public BrowserWindowBounds WireWindowBounds =>
+        WindowX is { } x && WindowY is { } y
+            ? new BrowserWindowBounds(x, y, Width, Height)
+            : default;
 
     public static bool TryCreate(
         BrowserPage page,

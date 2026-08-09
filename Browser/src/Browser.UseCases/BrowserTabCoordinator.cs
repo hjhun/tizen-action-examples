@@ -216,13 +216,24 @@ public sealed class BrowserTabPersistenceCoordinator
         _sessions = sessions ?? throw new ArgumentNullException(nameof(sessions));
     }
 
-    public async Task<BrowserCreateTabResult> CreateTabAsync(CancellationToken cancellationToken)
+    public Task<BrowserCreateTabResult> CreateTabAsync(CancellationToken cancellationToken) =>
+        CreateTabAsync(fromHome: false, cancellationToken);
+
+    public Task<BrowserCreateTabResult> CreateHomeTabAsync(CancellationToken cancellationToken) =>
+        CreateTabAsync(fromHome: true, cancellationToken);
+
+    private async Task<BrowserCreateTabResult> CreateTabAsync(bool fromHome, CancellationToken cancellationToken)
     {
         await _commitGate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
             var current = _tabs.Current;
-            if (!current.TryCreateTab(out var desired, out var createdTabId))
+            BrowserTabWorkspace desired;
+            string createdTabId;
+            var created = fromHome
+                ? current.TryCreateHomeTab(out desired, out createdTabId)
+                : current.TryCreateTab(out desired, out createdTabId);
+            if (!created)
             {
                 return new BrowserCreateTabResult(false, null);
             }

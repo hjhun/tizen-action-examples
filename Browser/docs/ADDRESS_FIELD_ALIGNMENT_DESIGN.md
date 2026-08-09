@@ -1,7 +1,7 @@
 # Browser Address Field Alignment Design
 
 Date: 2026-08-09
-Status: Approved — visual companion option A
+Status: Implemented and validated — visual companion option A
 Scope: `Browser.App` address/search capsule only
 
 ## Decision
@@ -45,7 +45,11 @@ placing the URL against the capsule's top and left edges.
 
 - Initial launch and session restoration must not focus the address field or
   open the OSK automatically.
-- Home quick access remains the initial remote-focus target.
+- On an empty/Home launch, quick access remains the initial remote-focus target.
+- On a restored Page, the UI navigation-state handler explicitly focuses the
+  WebView for the correlated terminal Page intent. Superseding navigation cancels
+  that request, while a paused Page retains it until resume. Restoration never
+  forces address focus or the OSK.
 - Selecting the address field explicitly enters editing and may open the OSK.
 - Enter submits through the existing navigation command.
 - Leaving the field removes only the focused shell treatment; text and current
@@ -69,8 +73,8 @@ domain schemas, provider APIs, and the established C API are outside scope.
 4. Run all five Browser executable host tests and the Browser solution build.
 5. Build and package with the explicit Common Emulator test-only signing mode.
 6. Update-install and launch on the Tizen 10.1 Common Emulator.
-7. Capture a fresh 1920 × 1080 native Home frame before any input and require:
-   no OSK, visible Home-entry focus, optically centered URL/placeholder, no
+7. Capture a fresh 1920 × 1080 native frame before any input and require:
+   no OSK, optically centered URL/placeholder, no
    clipping, and unchanged Internet/Reload geometry.
 8. Explicitly focus the address field, capture the editing state, and require a
    centered URL, visible caret, bounded focus outline, and successful Enter
@@ -83,3 +87,19 @@ domain schemas, provider APIs, and the established C API are outside scope.
 - Adding a security badge or search icon from the unselected option B.
 - Introducing display/edit view swapping from the unselected option C.
 - Claiming TV-profile approval from Common Emulator evidence.
+
+## Implemented result
+
+- `BrowserAddressShell` owns the capsule surface and 3 px focus outline.
+- The native `TextField` is inset 18 px horizontally and 12 px vertically with
+  a bounded 34 px text area.
+- Pointer click on the shell forwards editing focus to the native field; modal
+  state blocks that request.
+- Session hydration suppresses workspace/address focus restoration and does not
+  open the OSK. A restored Page follows the selected WebView-focus policy.
+- Host executable tests 5/5, solution build, Tizen C# build, emulator-test-only
+  package, update-install, launch, and 1920 × 1080 native frames passed.
+- Unfocused/restored evidence:
+  [`images/native-browser-home-address-v2-1920x1080.png`](images/native-browser-home-address-v2-1920x1080.png)
+- Focused editing/OSK evidence:
+  [`images/native-browser-address-edit-v2-1920x1080.png`](images/native-browser-address-edit-v2-1920x1080.png)

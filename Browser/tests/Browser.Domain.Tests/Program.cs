@@ -51,6 +51,16 @@ if (workspace.Tabs.Count != BrowserTabWorkspace.MaximumTabs ||
     throw new InvalidOperationException("The normal-mode workspace must enforce exactly 20 unique stable tabs.");
 }
 
+var homeWorkspace = BrowserTabWorkspace.Create("home-tab");
+if (!homeWorkspace.TryCreateHomeTab(out var createdHomeWorkspace, out var createdHomeTabId) ||
+    createdHomeWorkspace.Surface != BrowserWorkspaceSurface.Page ||
+    createdHomeWorkspace.PreferredFocus != BrowserWorkspaceFocus.HomeQuickAccess ||
+    createdHomeWorkspace.SelectedTabId != createdHomeTabId ||
+    createdHomeWorkspace.Tabs.Count != 2)
+{
+    throw new InvalidOperationException("Home New-tab must produce one Page workspace with visible quick-access focus.");
+}
+
 var closeWorkspace = BrowserTabWorkspace.Create("tab-1").OpenTabs();
 closeWorkspace.TryCreateTab(out closeWorkspace, out var secondTabId);
 closeWorkspace.TryCreateTab(out closeWorkspace, out var thirdTabId);

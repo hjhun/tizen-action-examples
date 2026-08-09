@@ -10,17 +10,163 @@ public static class BrowserShellMetrics
 {
     public const float DesignWidth = 1920.0f;
     public const float DesignHeight = 1080.0f;
-    public const float HeaderHeight = 118.0f;
+    public const float HeaderHeight = 84.0f;
     public const float ContextHeight = 0.0f;
     public const float ProgressHeight = 6.0f;
     public const float ContentLeft = 40.0f;
     public const float ContentTop = HeaderHeight + ContextHeight + ProgressHeight;
     public const float ContentWidth = 1840.0f;
-    public const float ContentHeight = 924.0f;
-    public const float DockLeft = 590.0f;
-    public const float DockTop = 960.0f;
-    public const float DockWidth = 740.0f;
-    public const float DockHeight = 92.0f;
+    public const float ContentHeight = 970.0f;
+    public const float DockLeft = 740.0f;
+    public const float DockTop = 988.0f;
+    public const float DockWidth = 440.0f;
+    public const float DockHeight = 64.0f;
+}
+
+public static class BrowserTypographyMetrics
+{
+    public const float ProductPointSize = 4.0f;
+    public const float AddressPointSize = 4.0f;
+    public const float HomeTitlePointSize = 8.5f;
+    public const float BodyPointSize = 4.3f;
+    public const float TabsTitlePointSize = 8.5f;
+    public const float TabTitlePointSize = 4.7f;
+    public const float TabMetaPointSize = 3.3f;
+    public const float DialogTitlePointSize = 6.3f;
+    public const float ActionPointSize = 3.7f;
+}
+
+/// <summary>
+/// Approved address capsule geometry. The native TextField is inset inside a separate visual
+/// shell so its platform baseline cannot pull the URL against the capsule edge.
+/// </summary>
+public static class BrowserAddressMetrics
+{
+    public const float ShellLeft = 266.0f;
+    public const float ShellTop = 12.0f;
+    public const float ShellWidth = 1540.0f;
+    public const float ShellHeight = 58.0f;
+    public const float TextInsetX = 18.0f;
+    public const float TextTopOffset = 12.0f;
+    public const float TextWidth = ShellWidth - (TextInsetX * 2.0f);
+    public const float TextHeight = 34.0f;
+    public const float FocusOutlineWidth = 3.0f;
+}
+
+public static class BrowserAddressInteractionPolicy
+{
+    public static bool ShouldRequestEditing(bool pressStarted, bool modal) => pressStarted && !modal;
+}
+
+/// <summary>
+/// Session hydration is passive and must not raise the IME. Explicit tab activation remains an
+/// address-editing action unless the tabs surface is intentionally kept open.
+/// </summary>
+public static class BrowserTabFocusPolicy
+{
+    public static bool ShouldFocusAddress(bool keepTabsOpen, bool isSessionRestore) =>
+        !keepTabsOpen && !isSessionRestore;
+
+    public static bool ShouldRestoreWorkspaceFocus(bool isInitialRender, bool isSessionRestore) =>
+        !isInitialRender && !isSessionRestore;
+
+}
+
+/// <summary>
+/// Correlates restored-page focus with the navigation intent that hydration started.
+/// The terminal Page remains pending until focus succeeds, which makes pause/resume safe.
+/// </summary>
+public sealed class BrowserRestoredFocusTracker
+{
+    private bool _captureNextLoading;
+    private long? _intentId;
+
+    public void BeginRestore()
+    {
+        _captureNextLoading = true;
+        _intentId = null;
+    }
+
+    public bool Observe(BrowserNavigationState state)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+
+        if (_captureNextLoading)
+        {
+            if (state.Phase == BrowserNavigationPhase.Loading)
+            {
+                _intentId = state.IntentId;
+                _captureNextLoading = false;
+            }
+
+            return false;
+        }
+
+        if (_intentId is not { } intentId)
+        {
+            return false;
+        }
+
+        if (state.IntentId > intentId)
+        {
+            _intentId = null;
+            return false;
+        }
+
+        if (state.IntentId < intentId)
+        {
+            return false;
+        }
+
+        if (state.Phase == BrowserNavigationPhase.Page && state.Page is not null)
+        {
+            return true;
+        }
+
+        if (state.Phase != BrowserNavigationPhase.Loading)
+        {
+            _intentId = null;
+        }
+
+        return false;
+    }
+
+    public void CompleteFocus()
+    {
+        _captureNextLoading = false;
+        _intentId = null;
+    }
+}
+
+public enum BrowserInitialFocusTarget
+{
+    HomeQuickAccess,
+    HomeDock,
+}
+
+public static class BrowserInitialFocusPolicy
+{
+    public static BrowserInitialFocusTarget Resolve(bool showsHomeSurface) =>
+        showsHomeSurface ? BrowserInitialFocusTarget.HomeQuickAccess : BrowserInitialFocusTarget.HomeDock;
+}
+
+public static class BrowserHiddenHomeFocusPolicy
+{
+    public static bool ShouldFocusWebView(
+        bool isHomeControlFocused,
+        BrowserNavigationPhase phase) =>
+        isHomeControlFocused && phase == BrowserNavigationPhase.Page;
+}
+
+public static class BrowserTabsMetrics
+{
+    public const int ColumnCount = 2;
+    public const float GridLeft = 210.0f;
+    public const float GridTop = 146.0f;
+    public const float CardWidth = 730.0f;
+    public const float CardHeight = 214.0f;
+    public const float ColumnGap = 20.0f;
+    public const float RowGap = 20.0f;
 }
 
 /// <summary>
@@ -81,6 +227,7 @@ public enum BrowserShellFocusTarget
 {
     Back,
     Forward,
+    Home,
     Reload,
     Address,
     Tabs,
@@ -104,7 +251,7 @@ public sealed class BrowserShellFocusGraph
 
     public static BrowserShellFocusGraph Create(bool backEnabled, bool forwardEnabled, bool reloadEnabled = true)
     {
-        var dockRow = new List<BrowserShellFocusTarget>(3);
+        var dockRow = new List<BrowserShellFocusTarget>(4);
         if (backEnabled)
         {
             dockRow.Add(BrowserShellFocusTarget.Back);
@@ -121,6 +268,7 @@ public sealed class BrowserShellFocusGraph
             topRow.Add(BrowserShellFocusTarget.Reload);
         }
 
+        dockRow.Add(BrowserShellFocusTarget.Home);
         dockRow.Add(BrowserShellFocusTarget.Tabs);
         return new BrowserShellFocusGraph(topRow.ToArray(), dockRow.ToArray());
     }
@@ -144,7 +292,7 @@ public sealed class BrowserShellFocusGraph
             return BrowserShellFocusTarget.WebContent;
         }
 
-        return current == BrowserShellFocusTarget.WebContent ? BrowserShellFocusTarget.Tabs : current;
+        return current == BrowserShellFocusTarget.WebContent ? BrowserShellFocusTarget.Home : current;
     }
 
     public BrowserShellFocusTarget MoveUp(BrowserShellFocusTarget current)
@@ -220,14 +368,15 @@ public static class BrowserRecoveryFocusGraph
 
 public enum BrowserHomeFocusTarget
 {
-    OpenGuide,
-    EditAddress,
+    TizenDocs,
+    TizenOrg,
+    NewTab,
 }
 
 public static class BrowserHomeFocusGraph
 {
     private static readonly BrowserHomeFocusTarget[] Row =
-        [BrowserHomeFocusTarget.OpenGuide, BrowserHomeFocusTarget.EditAddress];
+        [BrowserHomeFocusTarget.TizenDocs, BrowserHomeFocusTarget.TizenOrg, BrowserHomeFocusTarget.NewTab];
 
     public static BrowserHomeFocusTarget Move(BrowserHomeFocusTarget current, int delta)
     {

@@ -15,6 +15,8 @@ internal sealed class BrowserChromeView
     private const string InitialAddress = "https://www.tizen.org/";
     private readonly Action<string> _navigate;
     private readonly Action _reloadAction;
+    private readonly Action _homeAction;
+    private readonly Action _createHomeTabAction;
     private readonly Action _closeTabsAction;
     private readonly Action _retryAction;
     private readonly Action _recoveryBackAction;
@@ -25,11 +27,13 @@ internal sealed class BrowserChromeView
     private readonly Action<string> _requestCloseAction;
     private readonly View _back;
     private readonly View _forward;
+    private readonly View _addressShell;
     private readonly TextField _address;
     private readonly TextLabel _title;
     private readonly TextLabel _url;
     private readonly TextLabel _state;
     private readonly View _reload;
+    private readonly View _home;
     private readonly View _tabs;
     private readonly View _bottomDock;
     private readonly View _progressFill;
@@ -40,8 +44,9 @@ internal sealed class BrowserChromeView
     private View? _recoveryBack;
     private View? _editAddress;
     private View? _homeSurface;
-    private View? _homeOpenGuide;
-    private View? _homeEditAddress;
+    private View? _homeTizenDocs;
+    private View? _homeTizenOrg;
+    private View? _homeNewTab;
     private View? _tabsSurface;
     private View? _tabsBack;
     private TextLabel? _tabsCount;
@@ -63,12 +68,14 @@ internal sealed class BrowserChromeView
         Action<string> navigate,
         Action? goBack = null,
         Action? goForward = null,
+        Action? goHome = null,
         Action? openTabs = null,
         Action? closeTabs = null,
         Action? reload = null,
         Action? retry = null,
         Action? recoveryBack = null,
         Action? createTab = null,
+        Action? createHomeTab = null,
         Action<string>? selectTab = null,
         Action<string>? requestClose = null,
         Action? confirmClose = null,
@@ -76,6 +83,8 @@ internal sealed class BrowserChromeView
     {
         _navigate = navigate ?? throw new ArgumentNullException(nameof(navigate));
         _reloadAction = reload ?? ReloadAddress;
+        _homeAction = goHome ?? (() => { });
+        _createHomeTabAction = createHomeTab ?? (() => { });
         _closeTabsAction = closeTabs ?? (() => { });
         _retryAction = retry ?? ReloadAddress;
         _recoveryBackAction = recoveryBack ?? FocusAddress;
@@ -115,52 +124,77 @@ internal sealed class BrowserChromeView
         var productMark = new View
         {
             Name = "BrowserProductMark",
-            Position = new Position(52, 37),
-            Size = new Size(44, 44),
+            Position = new Position(40, 24),
+            Size = new Size(36, 36),
             BackgroundColor = Color.Transparent,
-            CornerRadius = 14.0f,
-            BorderlineWidth = 3.0f,
+            CornerRadius = 12.0f,
+            BorderlineWidth = 2.0f,
             BorderlineColor = new Color("#1B1B1FFF"),
         };
         productMark.Add(new View
         {
-            Position = new Position(10, 12),
-            Size = new Size(24, 3),
-            BackgroundColor = new Color("#0877E8FF"),
-            CornerRadius = 2.0f,
+            Position = new Position(8, 10),
+            Size = new Size(20, 2),
+            BackgroundColor = new Color("#0B76E8FF"),
+            CornerRadius = 1.0f,
         });
         productMark.Add(new View
         {
-            Position = new Position(10, 22),
-            Size = new Size(24, 3),
-            BackgroundColor = new Color("#0877E8FF"),
-            CornerRadius = 2.0f,
+            Position = new Position(8, 19),
+            Size = new Size(20, 2),
+            BackgroundColor = new Color("#0B76E8FF"),
+            CornerRadius = 1.0f,
         });
         header.Add(productMark);
-        header.Add(Label("Browser", "#1B1B1FFF", 6.0f, new Position(110, 0), new Size(164, BrowserShellMetrics.HeaderHeight), HorizontalAlignment.Begin));
+        header.Add(Label("Internet", "#1B1B1FFF", BrowserTypographyMetrics.ProductPointSize, new Position(88, 0), new Size(150, BrowserShellMetrics.HeaderHeight), HorizontalAlignment.Begin));
 
+        _addressShell = new View
+        {
+            Name = "BrowserAddressShell",
+            Position = new Position(BrowserAddressMetrics.ShellLeft, BrowserAddressMetrics.ShellTop),
+            Size = new Size(BrowserAddressMetrics.ShellWidth, BrowserAddressMetrics.ShellHeight),
+            BackgroundColor = new Color("#ECECF1FF"),
+            CornerRadius = 22.0f,
+            BorderlineWidth = 2.0f,
+            BorderlineColor = new Color("#ECECF1FF"),
+            FocusableChildren = true,
+        };
         _address = new TextField
         {
             Name = "BrowserAddress",
-            Text = InitialAddress,
+            Text = string.Empty,
             PlaceholderText = "Search or enter address",
-            PlaceholderTextColor = new Color("#61616AFF"),
+            PlaceholderTextColor = new Color("#66666FFF"),
+            PointSize = BrowserTypographyMetrics.AddressPointSize,
             EnableEditing = true,
             Focusable = true,
-            Position = new Position(298, 24),
-            Size = new Size(1478, 70),
-            BackgroundColor = new Color("#E9E9EDFF"),
-            CornerRadius = 27.0f,
-            BorderlineWidth = 2.0f,
-            BorderlineColor = new Color("#E9E9EDFF"),
+            Position = new Position(BrowserAddressMetrics.TextInsetX, BrowserAddressMetrics.TextTopOffset),
+            Size = new Size(BrowserAddressMetrics.TextWidth, BrowserAddressMetrics.TextHeight),
+            BackgroundColor = Color.Transparent,
+            CornerRadius = 0.0f,
+            BorderlineWidth = 0.0f,
+            BorderlineColor = Color.Transparent,
             AccessibilityName = "Address or search. Press Enter to load.",
         };
         _address.FocusGained += (_, _) => ApplyAddressFocusStyle(true);
         _address.FocusLost += (_, _) => ApplyAddressFocusStyle(false);
-        header.Add(_address);
+        _addressShell.TouchEvent += (_, eventArgs) =>
+        {
+            var state = eventArgs.Touch.GetState(0);
+            var pressStarted = state is PointStateType.Down or PointStateType.Started;
+            var modal = _workspace?.Surface == BrowserWorkspaceSurface.CloseConfirmation;
+            if (BrowserAddressInteractionPolicy.ShouldRequestEditing(pressStarted, modal))
+            {
+                FocusManager.Instance.SetCurrentFocusView(_address);
+            }
 
-        _reload = CreateControl("Reload", "Reload current page", "↻", new Position(1796, 24), new Size(72, 70), _reloadAction);
-        _reload.CornerRadius = 25.0f;
+            return pressStarted;
+        };
+        _addressShell.Add(_address);
+        header.Add(_addressShell);
+
+        _reload = CreateControl("Reload", "Reload current page", "↻", new Position(1822, 13), new Size(58, 58), _reloadAction);
+        _reload.CornerRadius = 19.0f;
         header.Add(_reload);
 
         _bottomDock = new View
@@ -169,16 +203,18 @@ internal sealed class BrowserChromeView
             Position = new Position(BrowserShellMetrics.DockLeft, BrowserShellMetrics.DockTop),
             Size = new Size(BrowserShellMetrics.DockWidth, BrowserShellMetrics.DockHeight),
             BackgroundColor = Color.White,
-            CornerRadius = 34.0f,
-            BorderlineWidth = 2.0f,
+            CornerRadius = 24.0f,
+            BorderlineWidth = 1.0f,
             BorderlineColor = new Color("#D7D7DCFF"),
             FocusableChildren = true,
         };
-        _back = CreateDisabledControl("Back", "Back unavailable", "←  Back", new Position(10, 10), new Size(230, 70), goBack);
-        _forward = CreateDisabledControl("Forward", "Forward unavailable", "→  Forward", new Position(250, 10), new Size(230, 70), goForward);
-        _tabs = CreateControl("Tabs", "Open tabs. 1 tab.", "▣  Tabs  1", new Position(490, 10), new Size(240, 70), openTabs ?? (() => { }));
+        _back = CreateDisabledControl("Back", "Back unavailable", "←", new Position(6, 6), new Size(104, 52), goBack);
+        _forward = CreateDisabledControl("Forward", "Forward unavailable", "→", new Position(114, 6), new Size(104, 52), goForward);
+        _home = CreateControl("Home", "Open local start page", "Home", new Position(222, 6), new Size(104, 52), OpenHome);
+        _tabs = CreateControl("Tabs", "Open tabs. 1 tab.", "Tabs 1", new Position(330, 6), new Size(104, 52), openTabs ?? (() => { }));
         _bottomDock.Add(_back);
         _bottomDock.Add(_forward);
+        _bottomDock.Add(_home);
         _bottomDock.Add(_tabs);
         Canvas.Add(_bottomDock);
 
@@ -211,6 +247,7 @@ internal sealed class BrowserChromeView
         BuildRecoverySurface();
         BuildTabsSurface();
         BuildCloseModal();
+        FocusManager.Instance.SetCurrentFocusView(_homeTizenDocs ?? _home);
     }
 
     internal View Root { get; }
@@ -243,6 +280,7 @@ internal sealed class BrowserChromeView
     internal void UpdateNavigationState(BrowserNavigationState state)
     {
         ArgumentNullException.ThrowIfNull(state);
+        var homeControlWasFocused = IsHomeControl(FocusManager.Instance.GetCurrentFocusView());
         _navigationState = state;
         var visual = BrowserNavigationVisualState.From(state);
 
@@ -270,8 +308,7 @@ internal sealed class BrowserChromeView
         if (_homeSurface is not null)
         {
             var showHome = state.Phase == BrowserNavigationPhase.Home &&
-                           _workspace?.Surface == BrowserWorkspaceSurface.Page &&
-                           _workspace.SelectedTab.Page is null;
+                           _workspace?.Surface == BrowserWorkspaceSurface.Page;
             if (showHome) _homeSurface.Show(); else _homeSurface.Hide();
         }
 
@@ -290,10 +327,15 @@ internal sealed class BrowserChromeView
             }
         }
 
+        if (BrowserHiddenHomeFocusPolicy.ShouldFocusWebView(homeControlWasFocused, state.Phase))
+        {
+            FocusWebContent();
+        }
+
         ApplyModalInputBoundary();
     }
 
-    internal void UpdateWorkspace(BrowserTabWorkspace workspace)
+    internal void UpdateWorkspace(BrowserTabWorkspace workspace, bool restoreFocus = true)
     {
         ArgumentNullException.ThrowIfNull(workspace);
         var priorWorkspace = _workspace;
@@ -301,7 +343,7 @@ internal sealed class BrowserChromeView
         var workspaceVisual = BrowserWorkspaceVisualState.From(workspace);
         _tabs.AccessibilityName = $"Open tabs. {workspace.Tabs.Count} tabs.";
 
-        var countLabel = workspace.Tabs.Count == 1 ? "▣  Tabs  1" : $"▣  Tabs  {workspace.Tabs.Count}";
+        var countLabel = workspace.Tabs.Count == 1 ? "Tabs 1" : $"Tabs {workspace.Tabs.Count}";
         if (_tabs.GetChildAt(0) is TextLabel tabsLabel)
         {
             tabsLabel.Text = countLabel;
@@ -338,10 +380,11 @@ internal sealed class BrowserChromeView
             else
             {
                 _closeModal.Hide();
-                if (priorWorkspace?.Surface != workspace.Surface ||
-                    priorWorkspace?.SelectedTabId != workspace.SelectedTabId ||
-                    priorWorkspace?.PreferredFocus != workspace.PreferredFocus ||
-                    priorWorkspace?.PreferredFocusTabId != workspace.PreferredFocusTabId)
+                if (restoreFocus &&
+                    (priorWorkspace?.Surface != workspace.Surface ||
+                     priorWorkspace?.SelectedTabId != workspace.SelectedTabId ||
+                     priorWorkspace?.PreferredFocus != workspace.PreferredFocus ||
+                     priorWorkspace?.PreferredFocusTabId != workspace.PreferredFocusTabId))
                 {
                     RestoreWorkspaceFocus(workspace);
                 }
@@ -423,9 +466,9 @@ internal sealed class BrowserChromeView
         var currentFocus = FocusManager.Instance.GetCurrentFocusView();
         if (keyName == "Down" && (ReferenceEquals(currentFocus, _address) || ReferenceEquals(currentFocus, _reload)))
         {
-            if (_homeSurface?.Visibility == true && _homeOpenGuide is not null)
+            if (_homeSurface?.Visibility == true && _homeTizenDocs is not null)
             {
-                FocusManager.Instance.SetCurrentFocusView(_homeOpenGuide);
+                FocusManager.Instance.SetCurrentFocusView(_homeTizenDocs);
             }
             else if (_recoverySurface?.Visibility == true && _retry is not null)
             {
@@ -441,7 +484,7 @@ internal sealed class BrowserChromeView
         if (keyName == "Down" && (ReferenceEquals(currentFocus, _webView) ||
                                    IsRecoveryControl(currentFocus) || IsHomeControl(currentFocus)))
         {
-            FocusTarget(BrowserShellFocusTarget.Tabs);
+            FocusTarget(BrowserShellFocusTarget.Home);
             return true;
         }
 
@@ -454,9 +497,9 @@ internal sealed class BrowserChromeView
 
         if (keyName == "Up" && IsDockControl(currentFocus))
         {
-            if (_homeSurface?.Visibility == true && _homeOpenGuide is not null)
+            if (_homeSurface?.Visibility == true && _homeTizenDocs is not null)
             {
-                FocusManager.Instance.SetCurrentFocusView(_homeOpenGuide);
+                FocusManager.Instance.SetCurrentFocusView(_homeTizenDocs);
             }
             else if (_recoverySurface?.Visibility == true && _retry is not null)
             {
@@ -495,6 +538,26 @@ internal sealed class BrowserChromeView
 
     internal void FocusAddress() => FocusManager.Instance.SetCurrentFocusView(_address);
 
+    internal void FocusWebContent()
+    {
+        if (_webView is { } webView &&
+            _workspace?.Surface == BrowserWorkspaceSurface.Page &&
+            _navigationState.Phase == BrowserNavigationPhase.Page)
+        {
+            FocusManager.Instance.SetCurrentFocusView(webView);
+        }
+    }
+
+    internal void FocusHomeEntry()
+    {
+        var showsHomeSurface = _navigationState.Phase == BrowserNavigationPhase.Home &&
+                               _workspace?.Surface == BrowserWorkspaceSurface.Page;
+        var target = BrowserInitialFocusPolicy.Resolve(showsHomeSurface) == BrowserInitialFocusTarget.HomeQuickAccess
+            ? _homeTizenDocs ?? _home
+            : _home;
+        FocusManager.Instance.SetCurrentFocusView(target);
+    }
+
     private void MoveCommandFocus(int delta)
     {
         var current = FocusManager.Instance.GetCurrentFocusView();
@@ -502,28 +565,33 @@ internal sealed class BrowserChromeView
     }
 
     private bool IsCommandControl(View? view) =>
-        ReferenceEquals(view, _back) || ReferenceEquals(view, _forward) ||
+        ReferenceEquals(view, _back) || ReferenceEquals(view, _forward) || ReferenceEquals(view, _home) ||
         ReferenceEquals(view, _reload) || ReferenceEquals(view, _address) || ReferenceEquals(view, _tabs);
 
     private bool IsDockControl(View? view) =>
-        ReferenceEquals(view, _back) || ReferenceEquals(view, _forward) || ReferenceEquals(view, _tabs);
+        ReferenceEquals(view, _back) || ReferenceEquals(view, _forward) || ReferenceEquals(view, _home) || ReferenceEquals(view, _tabs);
 
     private bool IsHomeControl(View? view) =>
-        ReferenceEquals(view, _homeOpenGuide) || ReferenceEquals(view, _homeEditAddress);
+        ReferenceEquals(view, _homeTizenDocs) || ReferenceEquals(view, _homeTizenOrg) || ReferenceEquals(view, _homeNewTab);
 
     private void MoveHomeFocus(int delta)
     {
-        if (_homeOpenGuide is null || _homeEditAddress is null)
+        if (_homeTizenDocs is null || _homeTizenOrg is null || _homeNewTab is null)
         {
             return;
         }
 
-        var current = ReferenceEquals(FocusManager.Instance.GetCurrentFocusView(), _homeEditAddress)
-            ? BrowserHomeFocusTarget.EditAddress
-            : BrowserHomeFocusTarget.OpenGuide;
-        var target = BrowserHomeFocusGraph.Move(current, delta) == BrowserHomeFocusTarget.EditAddress
-            ? _homeEditAddress
-            : _homeOpenGuide;
+        var current = ReferenceEquals(FocusManager.Instance.GetCurrentFocusView(), _homeTizenOrg)
+            ? BrowserHomeFocusTarget.TizenOrg
+            : ReferenceEquals(FocusManager.Instance.GetCurrentFocusView(), _homeNewTab)
+                ? BrowserHomeFocusTarget.NewTab
+                : BrowserHomeFocusTarget.TizenDocs;
+        var target = BrowserHomeFocusGraph.Move(current, delta) switch
+        {
+            BrowserHomeFocusTarget.TizenOrg => _homeTizenOrg,
+            BrowserHomeFocusTarget.NewTab => _homeNewTab,
+            _ => _homeTizenDocs,
+        };
         FocusManager.Instance.SetCurrentFocusView(target);
     }
 
@@ -531,6 +599,7 @@ internal sealed class BrowserChromeView
     {
         if (ReferenceEquals(view, _back)) return BrowserShellFocusTarget.Back;
         if (ReferenceEquals(view, _forward)) return BrowserShellFocusTarget.Forward;
+        if (ReferenceEquals(view, _home)) return BrowserShellFocusTarget.Home;
         if (ReferenceEquals(view, _reload)) return BrowserShellFocusTarget.Reload;
         if (ReferenceEquals(view, _tabs)) return BrowserShellFocusTarget.Tabs;
         if (ReferenceEquals(view, _webView)) return BrowserShellFocusTarget.WebContent;
@@ -543,6 +612,7 @@ internal sealed class BrowserChromeView
         {
             BrowserShellFocusTarget.Back => _back,
             BrowserShellFocusTarget.Forward => _forward,
+            BrowserShellFocusTarget.Home => _home,
             BrowserShellFocusTarget.Reload => _reload,
             BrowserShellFocusTarget.Tabs => _tabs,
             BrowserShellFocusTarget.WebContent => _webView,
@@ -556,9 +626,16 @@ internal sealed class BrowserChromeView
 
     private void ApplyAddressFocusStyle(bool focused)
     {
-        _address.BackgroundColor = focused ? Color.White : new Color("#E9E9EDFF");
-        _address.BorderlineColor = new Color(focused ? "#0868D7FF" : "#E9E9EDFF");
-        _address.BorderlineWidth = focused ? 4.0f : 2.0f;
+        _addressShell.BackgroundColor = focused ? Color.White : new Color("#ECECF1FF");
+        _addressShell.BorderlineColor = new Color(focused ? "#0B76E8FF" : "#ECECF1FF");
+        _addressShell.BorderlineWidth = focused ? BrowserAddressMetrics.FocusOutlineWidth : 2.0f;
+    }
+
+    private void OpenHome()
+    {
+        _address.Text = string.Empty;
+        _homeAction();
+        FocusHomeEntry();
     }
 
     private void ReloadAddress()
@@ -583,27 +660,28 @@ internal sealed class BrowserChromeView
             BackgroundColor = Color.White,
             FocusableChildren = true,
         };
-        _homeSurface.Add(Label("START PAGE", "#0877E8FF", 4.8f, new Position(360, 214), new Size(1120, 48), HorizontalAlignment.Center));
-        _homeSurface.Add(Label("Browse the web.", "#1B1B1FFF", 15.0f, new Position(260, 260), new Size(1320, 116), HorizontalAlignment.Center));
+        _homeSurface.Add(Label("QUICK ACCESS", "#0B76E8FF", 3.0f, new Position(360, 300), new Size(1120, 42), HorizontalAlignment.Center));
+        _homeSurface.Add(Label("Where would you like to go?", "#17171BFF", BrowserTypographyMetrics.HomeTitlePointSize, new Position(260, 338), new Size(1320, 84), HorizontalAlignment.Center));
         var homeCopy = Paragraph(
-            "Search or enter an address above. Pages open in the system WebView. Use remote, keyboard, pointer, or touch.",
-            "#45454FFF",
-            6.6f,
-            new Position(330, 390),
-            new Size(1180, 124));
+            "Search with the address bar or choose a private local shortcut.",
+            "#66666FFF",
+            BrowserTypographyMetrics.BodyPointSize,
+            new Position(330, 425),
+            new Size(1180, 62));
         homeCopy.HorizontalAlignment = HorizontalAlignment.Center;
         _homeSurface.Add(homeCopy);
-        _homeOpenGuide = CreateControl("OpenGuide", "Open the public Tizen guide", "Open Tizen guide", new Position(576, 534), new Size(326, 76), () => _navigate(InitialAddress));
-        _homeEditAddress = CreateControl("HomeEditAddress", "Focus address or search", "Enter an address", new Position(926, 534), new Size(326, 76), FocusAddress);
-        _homeSurface.Add(_homeOpenGuide);
-        _homeSurface.Add(_homeEditAddress);
-        _homeSurface.Add(Label(
-            "✓   Normal browsing only · public title and address metadata",
-            "#256D3BFF",
-            4.8f,
-            new Position(420, 642),
-            new Size(1000, 58),
-            HorizontalAlignment.Center));
+        _homeTizenDocs = CreateQuickAccessCard(
+            "HomeTizenDocs", "Open Tizen Docs", "Tizen Docs", "docs.tizen.org", new Position(532, 505),
+            () => _navigate("https://docs.tizen.org/"));
+        _homeTizenOrg = CreateQuickAccessCard(
+            "HomeTizenOrg", "Open Tizen.org", "Tizen.org", "www.tizen.org", new Position(796, 505),
+            () => _navigate(InitialAddress));
+        _homeNewTab = CreateQuickAccessCard(
+            "HomeNewTab", "Open a new tab", "New tab", "Private local start page", new Position(1060, 505),
+            _createHomeTabAction);
+        _homeSurface.Add(_homeTizenDocs);
+        _homeSurface.Add(_homeTizenOrg);
+        _homeSurface.Add(_homeNewTab);
         Canvas.Add(_homeSurface);
     }
 
@@ -617,11 +695,15 @@ internal sealed class BrowserChromeView
             BackgroundColor = new Color("#F7F7FAFF"),
             FocusableChildren = true,
         };
-        _recoveryTitle = Label("Page unavailable", "#1B1B1FFF", 13.0f, new Position(164, 132), new Size(1488, 96), HorizontalAlignment.Begin);
-        _recoveryMessage = Label("The page could not be loaded.", "#61616AFF", 7.0f, new Position(164, 238), new Size(1488, 76), HorizontalAlignment.Begin);
-        _retry = CreateControl("Retry", "Retry navigation", "Retry", new Position(164, 366), new Size(240, 76), _retryAction);
-        _recoveryBack = CreateControl("RecoveryBack", "Return to the previous page", "Back", new Position(426, 366), new Size(240, 76), _recoveryBackAction);
-        _editAddress = CreateControl("EditAddress", "Edit address or search", "Edit address", new Position(688, 366), new Size(280, 76), FocusAddress);
+        _recoveryTitle = Label("Page unavailable", "#17171BFF", BrowserTypographyMetrics.HomeTitlePointSize, new Position(164, 170), new Size(1488, 78), HorizontalAlignment.Begin);
+        _recoveryMessage = Label("The page could not be loaded.", "#66666FFF", BrowserTypographyMetrics.BodyPointSize, new Position(164, 252), new Size(1488, 62), HorizontalAlignment.Begin);
+        _retry = CreateControl("Retry", "Retry navigation", "Retry", new Position(164, 350), new Size(210, 64), _retryAction);
+        _recoveryBack = CreateControl("RecoveryBack", "Return to the previous page", "Back", new Position(394, 350), new Size(210, 64), _recoveryBackAction);
+        _editAddress = CreateControl("EditAddress", "Edit address or search", "Edit address", new Position(624, 350), new Size(250, 64), FocusAddress);
+        foreach (var control in new[] { _retry, _recoveryBack, _editAddress })
+        {
+            if (control.GetChildAt(0) is TextLabel label) label.PointSize = BrowserTypographyMetrics.ActionPointSize;
+        }
         _recoverySurface.Add(_recoveryTitle);
         _recoverySurface.Add(_recoveryMessage);
         _recoverySurface.Add(_retry);
@@ -641,24 +723,25 @@ internal sealed class BrowserChromeView
             BackgroundColor = new Color("#F7F7FAFF"),
             FocusableChildren = true,
         };
-        _tabsBack = CreateControl("TabsBack", "Return to browser", "‹", new Position(110, 36), new Size(66, 66), _closeTabsAction);
-        _tabsBack.CornerRadius = 23.0f;
+        _tabsBack = CreateControl("TabsBack", "Return to browser", "‹", new Position(110, 52), new Size(58, 58), _closeTabsAction);
+        _tabsBack.CornerRadius = 19.0f;
         _tabsSurface.Add(_tabsBack);
-        _tabsSurface.Add(Label("Tabs", "#1B1B1FFF", 14.0f, new Position(210, 20), new Size(620, 104), HorizontalAlignment.Begin));
-        _tabsCount = Label("1 normal · maximum 20", "#61616AFF", 5.2f, new Position(1410, 32), new Size(400, 80), HorizontalAlignment.Center);
+        _tabsSurface.Add(Label("Tabs", "#17171BFF", BrowserTypographyMetrics.TabsTitlePointSize, new Position(188, 38), new Size(620, 76), HorizontalAlignment.Begin));
+        _tabsCount = Label("1 normal · maximum 20", "#66666FFF", BrowserTypographyMetrics.TabMetaPointSize, new Position(1556, 59), new Size(254, 44), HorizontalAlignment.Center);
         _tabsCount.BackgroundColor = new Color("#ECECF0FF");
-        _tabsCount.CornerRadius = 30.0f;
+        _tabsCount.CornerRadius = 22.0f;
         _tabsSurface.Add(_tabsCount);
         _tabListViewport = new View
         {
-            Name = "BrowserTabListViewport",
-            Position = new Position(300, 190),
-            Size = new Size(1320, 680),
+            Name = "BrowserTabGridViewport",
+            Position = new Position(BrowserTabsMetrics.GridLeft, BrowserTabsMetrics.GridTop),
+            Size = new Size(1500, 730),
             ClippingMode = ClippingModeType.ClipChildren,
             FocusableChildren = true,
         };
         _tabsSurface.Add(_tabListViewport);
-        _newTab = CreateControl("NewTab", "Create a new normal tab", "New tab", new Position(300, 900), new Size(220, 76), _createTabAction);
+        _newTab = CreateControl("NewTab", "Create a new normal tab", "New tab", new Position(1576, 900), new Size(134, 60), _createTabAction);
+        if (_newTab.GetChildAt(0) is TextLabel newTabLabel) newTabLabel.PointSize = BrowserTypographyMetrics.ActionPointSize;
         _tabsSurface.Add(_newTab);
         Canvas.Add(_tabsSurface);
         _tabsSurface.Hide();
@@ -678,31 +761,33 @@ internal sealed class BrowserChromeView
         var card = new View
         {
             Name = "BrowserCloseConfirmationCard",
-            Position = new Position(580, 398),
-            Size = new Size(760, 284),
+            Position = new Position(620, 418),
+            Size = new Size(680, 244),
             BackgroundColor = Color.White,
-            CornerRadius = 34.0f,
+            CornerRadius = 28.0f,
             FocusableChildren = true,
         };
-        _closeModalTitle = Label("Close tab?", "#1B1B1FFF", 10.0f, new Position(48, 24), new Size(664, 78), HorizontalAlignment.Begin);
+        _closeModalTitle = Label("Close this tab?", "#17171BFF", BrowserTypographyMetrics.DialogTitlePointSize, new Position(42, 20), new Size(596, 64), HorizontalAlignment.Begin);
         card.Add(_closeModalTitle);
-        card.Add(Paragraph("This tab will be removed.", "#61616AFF", 5.4f, new Position(48, 108), new Size(664, 64)));
+        card.Add(Paragraph("This tab will be removed.", "#66666FFF", BrowserTypographyMetrics.ActionPointSize, new Position(42, 88), new Size(596, 50)));
         card.Add(new View
         {
-            Position = new Position(0, 180),
-            Size = new Size(760, 2),
+            Position = new Position(0, 156),
+            Size = new Size(680, 1),
             BackgroundColor = new Color("#DEDEE5FF"),
         });
         card.Add(new View
         {
-            Position = new Position(379, 182),
-            Size = new Size(2, 102),
+            Position = new Position(339, 157),
+            Size = new Size(1, 87),
             BackgroundColor = new Color("#DEDEE5FF"),
         });
-        _cancelClose = CreateControl("CancelClose", "Cancel closing tab", "Cancel", new Position(0, 182), new Size(380, 102), _cancelCloseAction);
+        _cancelClose = CreateControl("CancelClose", "Cancel closing tab", "Cancel", new Position(0, 157), new Size(339, 87), _cancelCloseAction);
         _cancelClose.CornerRadius = 0.0f;
-        _confirmClose = CreateControl("ConfirmClose", "Close this tab", "Close", new Position(381, 182), new Size(379, 102), _confirmCloseAction);
+        _confirmClose = CreateControl("ConfirmClose", "Close this tab", "Close", new Position(340, 157), new Size(340, 87), _confirmCloseAction);
         _confirmClose.CornerRadius = 0.0f;
+        if (_cancelClose.GetChildAt(0) is TextLabel cancelLabel) cancelLabel.PointSize = BrowserTypographyMetrics.ActionPointSize;
+        if (_confirmClose.GetChildAt(0) is TextLabel closeLabel) closeLabel.PointSize = BrowserTypographyMetrics.ActionPointSize;
         SetControlEnabled(_cancelClose, true, "Cancel closing tab");
         SetControlEnabled(_confirmClose, true, "Close this tab");
         if (_confirmClose.GetChildAt(0) is TextLabel confirmLabel)
@@ -755,15 +840,19 @@ internal sealed class BrowserChromeView
         {
             var tab = workspace.Tabs[index];
             var selected = tab.Id == workspace.SelectedTabId;
+            var column = index % BrowserTabsMetrics.ColumnCount;
+            var gridRow = index / BrowserTabsMetrics.ColumnCount;
             var row = new View
             {
-                Name = $"TabRow-{tab.Id}",
-                Position = new Position(0, index * 156),
-                Size = new Size(1320, 142),
-                BackgroundColor = new Color(selected ? "#EDF5FFFF" : "#FFFFFFFF"),
-                CornerRadius = 26.0f,
-                BorderlineWidth = 2.0f,
-                BorderlineColor = new Color(selected ? "#B7D7FBFF" : "#DEDEE4FF"),
+                Name = $"TabCard-{tab.Id}",
+                Position = new Position(
+                    column * (BrowserTabsMetrics.CardWidth + BrowserTabsMetrics.ColumnGap),
+                    gridRow * (BrowserTabsMetrics.CardHeight + BrowserTabsMetrics.RowGap)),
+                Size = new Size(BrowserTabsMetrics.CardWidth, BrowserTabsMetrics.CardHeight),
+                BackgroundColor = new Color(selected ? "#EAF4FFFF" : "#FFFFFFFF"),
+                CornerRadius = 24.0f,
+                BorderlineWidth = 1.0f,
+                BorderlineColor = new Color(selected ? "#B7D7FBFF" : "#DEDEE5FF"),
                 FocusableChildren = true,
             };
             var title = BrowserTabVisualText.Title(tab);
@@ -771,37 +860,63 @@ internal sealed class BrowserChromeView
             var rail = new View
             {
                 Position = new Position(0, 0),
-                Size = new Size(selected ? 9 : 0, 142),
-                BackgroundColor = new Color("#0877E8FF"),
-                CornerRadius = 5.0f,
+                Size = new Size(selected ? 7 : 0, BrowserTabsMetrics.CardHeight),
+                BackgroundColor = new Color("#0B76E8FF"),
+                CornerRadius = 4.0f,
             };
             var preview = new View
             {
-                Position = new Position(24, 17),
-                Size = new Size(118, 108),
-                BackgroundColor = new Color(selected ? "#FFFFFFFF" : "#E7EDF6FF"),
+                Position = new Position(20, 16),
+                Size = new Size(168, 182),
+                BackgroundColor = new Color("#F3F4F8FF"),
+                CornerRadius = 18.0f,
+                BorderlineWidth = 1.0f,
+                BorderlineColor = new Color("#E6E7ECFF"),
+            };
+            var previewChrome = new View
+            {
+                Position = new Position(0, 0),
+                Size = new Size(168, 28),
+                BackgroundColor = new Color("#E7E9EEFF"),
                 CornerRadius = 18.0f,
             };
-            preview.Add(Label(title[..1].ToUpperInvariant(), "#0877E8FF", 8.0f, new Position(0, 0), new Size(118, 108), HorizontalAlignment.Center));
+            preview.Add(previewChrome);
+            preview.Add(new View
+            {
+                Position = new Position(16, 48),
+                Size = new Size(92, 10),
+                BackgroundColor = new Color("#79B9FFFF"),
+                CornerRadius = 5.0f,
+            });
+            for (var line = 0; line < 3; line++)
+            {
+                preview.Add(new View
+                {
+                    Position = new Position(16, 76 + (line * 18)),
+                    Size = new Size(line == 2 ? 104 : 128, 7),
+                    BackgroundColor = new Color("#D5D9E2FF"),
+                    CornerRadius = 4.0f,
+                });
+            }
             var open = CreateControl(
                 $"Open-{tab.Id}",
                 $"Open {title}{(selected ? ", current tab" : string.Empty)}",
                 string.Empty,
-                new Position(160, 0),
-                new Size(1060, 142),
+                new Position(204, 0),
+                new Size(456, BrowserTabsMetrics.CardHeight),
                 () => _selectTabAction(tab.Id));
-            open.BackgroundColor = new Color(selected ? "#EDF5FFFF" : "#FFFFFFFF");
-            open.CornerRadius = 22.0f;
-            open.Add(Label(title, "#1B1B1FFF", 7.0f, new Position(26, 20), new Size(990, 52), HorizontalAlignment.Begin));
-            open.Add(Label(publicUrl, "#61616AFF", 5.2f, new Position(26, 72), new Size(990, 46), HorizontalAlignment.Begin));
+            open.BackgroundColor = Color.Transparent;
+            open.CornerRadius = 18.0f;
+            open.Add(Label(title, "#17171BFF", BrowserTypographyMetrics.TabTitlePointSize, new Position(18, 48), new Size(420, 52), HorizontalAlignment.Begin));
+            open.Add(Label(publicUrl, "#66666FFF", BrowserTypographyMetrics.TabMetaPointSize, new Position(18, 106), new Size(420, 42), HorizontalAlignment.Begin));
             var close = CreateControl(
                 $"Close-{tab.Id}",
                 $"Close {title}",
                 "×",
-                new Position(1236, 38),
-                new Size(66, 66),
+                new Position(664, 81),
+                new Size(52, 52),
                 () => _requestCloseAction(tab.Id));
-            close.CornerRadius = 33.0f;
+            close.CornerRadius = 26.0f;
             SetControlEnabled(close, workspace.Tabs.Count > 1, workspace.Tabs.Count > 1 ? $"Close {title}" : "Last tab cannot be closed");
             var capturedIndex = index;
             open.FocusGained += (_, _) => EnsureTabVisible(capturedIndex);
@@ -830,11 +945,17 @@ internal sealed class BrowserChromeView
             return;
         }
 
-        const int visibleRows = 4;
-        var firstVisible = Math.Clamp(index - 2, 0, Math.Max(0, _tabRows.Count - visibleRows));
+        const int visibleGridRows = 3;
+        var totalGridRows = (int)Math.Ceiling(_tabRows.Count / (double)BrowserTabsMetrics.ColumnCount);
+        var focusedGridRow = index / BrowserTabsMetrics.ColumnCount;
+        var firstVisibleGridRow = Math.Clamp(focusedGridRow - 1, 0, Math.Max(0, totalGridRows - visibleGridRows));
         foreach (var row in _tabRows)
         {
-            row.Row.Position = new Position(0, (row.Index - firstVisible) * 156);
+            var column = row.Index % BrowserTabsMetrics.ColumnCount;
+            var gridRow = row.Index / BrowserTabsMetrics.ColumnCount;
+            row.Row.Position = new Position(
+                column * (BrowserTabsMetrics.CardWidth + BrowserTabsMetrics.ColumnGap),
+                (gridRow - firstVisibleGridRow) * (BrowserTabsMetrics.CardHeight + BrowserTabsMetrics.RowGap));
         }
     }
 
@@ -845,6 +966,10 @@ internal sealed class BrowserChromeView
             if (workspace.PreferredFocus == BrowserWorkspaceFocus.Address)
             {
                 FocusAddress();
+            }
+            else if (workspace.PreferredFocus == BrowserWorkspaceFocus.HomeQuickAccess)
+            {
+                FocusHomeEntry();
             }
 
             return;
@@ -870,6 +995,7 @@ internal sealed class BrowserChromeView
         {
             _back.Focusable = false;
             _forward.Focusable = false;
+            _home.Focusable = false;
             _reload.Focusable = false;
             _tabs.Focusable = false;
             if (_tabsBack is not null) _tabsBack.Focusable = false;
@@ -879,6 +1005,7 @@ internal sealed class BrowserChromeView
         var visual = BrowserNavigationVisualState.From(_navigationState);
         SetControlEnabled(_reload, visual.ReloadEnabled, visual.ShowsProgress ? "Reload unavailable while loading" : "Reload current page");
         SetHistoryAvailability(!visual.ShowsProgress && _navigationState.History.CanGoBack, !visual.ShowsProgress && _navigationState.History.CanGoForward);
+        SetControlEnabled(_home, true, "Open local start page");
         SetControlEnabled(_tabs, true, _workspace is null ? "Open tabs" : $"Open tabs. {_workspace.Tabs.Count} tabs.");
         if (_tabsBack is not null) SetControlEnabled(_tabsBack, true, "Return to browser");
     }
@@ -950,9 +1077,35 @@ internal sealed class BrowserChromeView
             }
 
             var row = _tabRows[rowIndex];
-            var target = keyName == "Right" && ReferenceEquals(current, row.Open) && row.Close.Focusable
-                ? row.Close
-                : row.Open;
+            View target;
+            if (keyName == "Right")
+            {
+                if (ReferenceEquals(current, row.Open) && row.Close.Focusable)
+                {
+                    target = row.Close;
+                }
+                else if (rowIndex % BrowserTabsMetrics.ColumnCount == 0 && rowIndex + 1 < _tabRows.Count)
+                {
+                    target = _tabRows[rowIndex + 1].Open;
+                }
+                else
+                {
+                    target = current!;
+                }
+            }
+            else if (ReferenceEquals(current, row.Close))
+            {
+                target = row.Open;
+            }
+            else if (rowIndex % BrowserTabsMetrics.ColumnCount == 1)
+            {
+                target = _tabRows[rowIndex - 1].Open;
+            }
+            else
+            {
+                target = current!;
+            }
+
             FocusManager.Instance.SetCurrentFocusView(target);
             return true;
         }
@@ -992,7 +1145,7 @@ internal sealed class BrowserChromeView
                 return true;
             }
 
-            var nextIndex = rowIndex + (keyName == "Up" ? -1 : 1);
+            var nextIndex = rowIndex + (keyName == "Up" ? -BrowserTabsMetrics.ColumnCount : BrowserTabsMetrics.ColumnCount);
             if (nextIndex < 0)
             {
                 if (_tabsBack?.Focusable == true)
@@ -1020,6 +1173,24 @@ internal sealed class BrowserChromeView
         }
 
         return false;
+    }
+
+    private View CreateQuickAccessCard(
+        string name,
+        string accessibilityName,
+        string title,
+        string metadata,
+        Position position,
+        Action activate)
+    {
+        var card = CreateControl(name, accessibilityName, string.Empty, position, new Size(248, 108), activate);
+        card.BackgroundColor = new Color("#F0F1F5FF");
+        card.BorderlineWidth = 1.0f;
+        card.BorderlineColor = new Color("#DEDEE5FF");
+        card.CornerRadius = 22.0f;
+        card.Add(Label(title, "#17171BFF", BrowserTypographyMetrics.ProductPointSize, new Position(16, 15), new Size(216, 40), HorizontalAlignment.Begin));
+        card.Add(Label(metadata, "#66666FFF", BrowserTypographyMetrics.TabMetaPointSize, new Position(16, 55), new Size(216, 36), HorizontalAlignment.Begin));
+        return card;
     }
 
     private View CreateDisabledControl(
@@ -1111,25 +1282,25 @@ internal sealed class BrowserChromeView
         {
             control.BackgroundColor = new Color(focused ? "#EDF5FFFF" : "#00000000");
             control.BorderlineColor = new Color(focused ? "#0868D7FF" : "#00000000");
-            control.BorderlineWidth = focused ? 4.0f : 0.0f;
+            control.BorderlineWidth = focused ? 3.0f : 0.0f;
         }
         else if (IsModalActionName(control.Name))
         {
             control.BackgroundColor = Color.White;
             control.BorderlineColor = new Color(focused ? "#0868D7FF" : "#00000000");
-            control.BorderlineWidth = focused ? 5.0f : 0.0f;
+            control.BorderlineWidth = focused ? 3.0f : 0.0f;
         }
         else
         {
             control.BorderlineColor = new Color(focused ? "#0868D7FF" : "#DEDEE5FF");
-            control.BorderlineWidth = focused ? 4.0f : 2.0f;
+            control.BorderlineWidth = focused ? 3.0f : 1.0f;
         }
 
         var scaleFocused = focused && !IsModalActionName(control.Name);
-        control.Scale = scaleFocused ? new Vector3(1.025f, 1.025f, 1.0f) : new Vector3(1.0f, 1.0f, 1.0f);
+        control.Scale = scaleFocused ? new Vector3(1.015f, 1.015f, 1.0f) : new Vector3(1.0f, 1.0f, 1.0f);
     }
 
-    private static bool IsDockControlName(string? name) => name is "Back" or "Forward" or "Tabs";
+    private static bool IsDockControlName(string? name) => name is "Back" or "Forward" or "Home" or "Tabs";
 
     private static bool IsModalActionName(string? name) => name is "CancelClose" or "ConfirmClose";
 

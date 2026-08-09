@@ -12,10 +12,14 @@ Assert(!BrowserActionContract.TryCreatePage("", "invalid", "", "", out _),
 
 Assert(BrowserActionContract.HasValidResolverIds(["page-example", "page-missing", "page-example"]),
     "Contract must accept bounded stable resolver IDs.");
+Assert(BrowserActionContract.HasValidResolverIds(Enumerable.Range(0, 50).Select(index => $"page-{index}").ToArray()),
+    "Resolver input must accept the exact 50-ID boundary.");
+Assert(!BrowserActionContract.HasValidResolverIds([]),
+    "Resolver input must contain at least one stable ID.");
 Assert(!BrowserActionContract.HasValidResolverIds([" "]),
     "Contract must reject blank resolver IDs.");
-Assert(!BrowserActionContract.HasValidResolverIds(Enumerable.Repeat("page", 101).ToArray()),
-    "Contract must bound resolver input cardinality.");
+Assert(!BrowserActionContract.HasValidResolverIds(Enumerable.Repeat("page", 51).ToArray()),
+    "Resolver input must honor the public 1-to-50 cardinality contract.");
 
 var presentations = BrowserActionContract.CreatePresentations(page);
 if (args is ["--emit-canonical", var messageIndex] &&

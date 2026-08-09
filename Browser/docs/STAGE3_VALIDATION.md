@@ -68,6 +68,43 @@ Common Emulator UI는 1920×1080 한 모드에서 검증했다. host viewport te
 
 Remote는 Home/Page→Tabs, open↔close, modal trap, Back 복원, confirm close를 실행했고 tab count는 3→2로 변경됐다. coordinate click과 touch tap은 New tab을 각각 추가해 1→2→3 postcondition을 만들었다. Aurum tree는 다시 `root_count: 0`이므로 semantic accessibility는 여전히 미검증이다. typed RPC/A2UI/offline gate는 재실행하지 않았고 기존 차단 상태를 유지한다.
 
+### Address V2 및 Action/View 재검증
+
+승인된 address option A를 outer visual shell + inset native `TextField`로
+구현했다. 최종 emulator-test-only package SHA-256은
+`b810559e6347d2314c78e7247dabb767ecef834d3a4a6decf6b8650b0a2f9859`이며,
+archive 21 entries의 manifest, Browser App/ActionProvider/ViewActionProvider,
+Domain/UseCases/Persistence payload와 author/distributor signature를 검사했다.
+update-install/launch 후 restored Page에서는 OSK가 자동으로 열리지 않았고,
+pointer click editing에서는 blue shell outline, centered URL, caret와 OSK가
+표시됐다. 증거는 `native-browser-home-address-v2-1920x1080.png`와
+`native-browser-address-edit-v2-1920x1080.png`다.
+Home dock으로 quick-access를 연 뒤 visible-focused `Tizen Docs` card를 선택해
+terminal Page로 전환했고, 숨겨지는 Home control focus는 WebView로 이전한다.
+Home `New tab` 성공 경로는 Tabs count를 정확히 +1로 만들고 주소/OSK를
+활성화하지 않은 채 `Tizen Docs` quick-access blue focus를 복원했다. capacity
+failure, cancellation, persistence exception은 기존 Home workspace/focus를 publish
+없이 보존한다.
+
+Action/Entity/ViewAnnotation portable gate에서 resolver cardinality를 공개
+계약의 1~50 IDs로 교정하고 정확히 50개 허용 boundary까지 고정했다. window
+coordinates가 unavailable인 valid View snapshot은 generated parcel wire가 null을
+표현하지 못하므로 non-null zero `WindowBounds` sentinel로 projection한다. restored
+focus tracker는 정상 hydration, superseding intent 폐기, paused Page의 resume 보존,
+focus 성공 후 one-shot 소비를 host에서 검증한다. 이 regression들을 포함해 Browser
+host executable tests 5/5, solution 0 warnings/0 errors, Tizen C# build 0 errors가
+통과했다. fresh `actionc` Browser/View output은 tracked generated source와 각각
+byte-identical했다.
+
+최종 설치본의 Browser/View provider discovery는 다시 PASS했다. explicit
+`Tv_Tizen.Action.Browser_GetCurrent`는 generic `isError:true` 뒤 app process를
+종료했고 target dlog는 generated `CheckPrivilege`의
+`StubBase.HasPrivilegeLocal(string,string)` `MissingMethodException`과 SIGABRT를
+확인했다. 따라서 typed Browser/View RPC, resolver/ViewAnnotation/legacy Display
+round trip은 여전히 platform generator/runtime ABI blocker이며 Browser의
+generated source나 public Action ABI는 수정하지 않았다. canonical A2UI target
+transport blocker도 그대로다.
+
 ## English summary
 
 The final visual-refinement Browser package builds, packages with the explicit emulator-test-only signer, installs, launches, and renders a real public HTTPS page in the system WebView on a 1920×1080 Tizen Common Emulator. Aurum proved the revised Home, Page, full-canvas Tabs, modal trapping/restoration, pointer/touch New tab, and exact-one tab close through native screenshots and state postconditions. Earlier Stage 3 Loading and InvalidInput frames remain historical evidence and are not relabeled as revised visual-package captures.

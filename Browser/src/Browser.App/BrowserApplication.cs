@@ -26,6 +26,8 @@ internal sealed class BrowserApplication : NUIApplication
     private SynchronizationContext? _uiContext;
     private int _paused;
     private int _tabMutationPending;
+    private bool _suppressWorkspaceFocusRestore;
+    private readonly BrowserRestoredFocusTracker _restoredFocus = new();
 
     protected override void OnCreate()
     {
@@ -43,12 +45,14 @@ internal sealed class BrowserApplication : NUIApplication
             NavigateAddressFromUi,
             goBack: GoBackFromUi,
             goForward: GoForwardFromUi,
+            goHome: GoHomeFromUi,
             openTabs: OpenTabsFromUi,
             closeTabs: CloseTabsFromUi,
             reload: ReloadFromUi,
             retry: RetryFromUi,
             recoveryBack: HandleBackFromUi,
             createTab: CreateTabFromUi,
+            createHomeTab: CreateTabFromHome,
             selectTab: SelectTabFromUi,
             requestClose: RequestCloseTabFromUi,
             confirmClose: ConfirmCloseTabFromUi,
@@ -98,8 +102,12 @@ internal sealed class BrowserApplication : NUIApplication
         FocusManager.Instance.FocusChanged += OnFocusChanged;
         Window.Default.KeyEvent += OnKeyEvent;
         _chrome.UpdateNavigationState(_navigation.CurrentState);
-        _chrome.UpdateWorkspace(_tabsCoordinator.Current);
-        _chrome.FocusAddress();
+        _chrome.UpdateWorkspace(
+            _tabsCoordinator.Current,
+            restoreFocus: BrowserTabFocusPolicy.ShouldRestoreWorkspaceFocus(
+                isInitialRender: true,
+                isSessionRestore: false));
+        _chrome.FocusHomeEntry();
         _ = RestoreSessionAsync();
     }
 
@@ -158,6 +166,12 @@ internal sealed class BrowserApplication : NUIApplication
         if (_tabsCoordinator is not null)
         {
             _chrome?.UpdateWorkspace(_tabsCoordinator.Current);
+        }
+
+        if (_navigation is not null && _restoredFocus.Observe(_navigation.CurrentState))
+        {
+            _chrome?.FocusWebContent();
+            _restoredFocus.CompleteFocus();
         }
 
         PublishAgentState();
@@ -241,6 +255,14 @@ internal sealed class BrowserApplication : NUIApplication
         }
     }
 
+    private void GoHomeFromUi()
+    {
+        if (Volatile.Read(ref _tabMutationPending) == 0)
+        {
+            _navigation?.ResetToHome();
+        }
+    }
+
     private void OpenTabsFromUi()
     {
         if (Volatile.Read(ref _tabMutationPending) == 0)
@@ -260,6 +282,47 @@ internal sealed class BrowserApplication : NUIApplication
     private void CreateTabFromUi()
     {
         _ = CreateTabPersistedAsync();
+    }
+
+    private void CreateTabFromHome()
+    {
+        if (Volatile.Read(ref _tabMutationPending) != 0)
+        {
+            return;
+        }
+
+        _ = CreateHomeTabPersistedAsync();
+    }
+
+    private async Task CreateHomeTabPersistedAsync()
+    {
+        if (_tabPersistence is null || Interlocked.CompareExchange(ref _tabMutationPending, 1, 0) != 0)
+        {
+            return;
+        }
+
+        try
+        {
+            _chrome?.SetTabMutationBusy(true);
+            var result = await _tabPersistence.CreateHomeTabAsync(_lifetime.Token);
+            if (result.Succeeded)
+            {
+                _navigation?.ResetToHome();
+            }
+        }
+        catch (OperationCanceledException) when (_lifetime.IsCancellationRequested)
+        {
+            // Application lifecycle ended before the new local start page became durable.
+        }
+        catch (Exception exception) when (exception is InvalidDataException or IOException or UnauthorizedAccessException or InvalidOperationException)
+        {
+            // Persist-first semantics leave the Home workspace and quick-access focus unchanged.
+        }
+        finally
+        {
+            Volatile.Write(ref _tabMutationPending, 0);
+            _chrome?.SetTabMutationBusy(false);
+        }
     }
 
     private void SelectTabFromUi(string tabId)
@@ -377,7 +440,7 @@ internal sealed class BrowserApplication : NUIApplication
         }
     }
 
-    private void ActivateTab(BrowserTab tab, bool keepTabsOpen = false)
+    private void ActivateTab(BrowserTab tab, bool keepTabsOpen = false, bool isSessionRestore = false)
     {
         ArgumentNullException.ThrowIfNull(tab);
         if (tab.Page is null)
@@ -386,10 +449,15 @@ internal sealed class BrowserApplication : NUIApplication
         }
         else
         {
+            if (isSessionRestore)
+            {
+                _restoredFocus.BeginRestore();
+            }
+
             _ = NavigateFromUiAsync(tab.Id, tab.Page.Url);
         }
 
-        if (!keepTabsOpen)
+        if (BrowserTabFocusPolicy.ShouldFocusAddress(keepTabsOpen, isSessionRestore))
         {
             _chrome?.FocusAddress();
         }
@@ -428,14 +496,24 @@ internal sealed class BrowserApplication : NUIApplication
 
             if (restore.Result.Status == BrowserSessionRestoreStatus.Restored && restore.Result.Snapshot is not null)
             {
-                restore.Application._tabsCoordinator.Restore(restore.Result.Snapshot);
+                restore.Application._suppressWorkspaceFocusRestore = true;
+                try
+                {
+                    restore.Application._tabsCoordinator.Restore(restore.Result.Snapshot);
+                }
+                finally
+                {
+                    restore.Application._suppressWorkspaceFocusRestore = false;
+                }
             }
             else if (restore.Result.Status == BrowserSessionRestoreStatus.InvalidSession)
             {
                 restore.Application.SaveSessionFromUi();
             }
 
-            restore.Application.ActivateTab(restore.Application._tabsCoordinator.Current.SelectedTab);
+            restore.Application.ActivateTab(
+                restore.Application._tabsCoordinator.Current.SelectedTab,
+                isSessionRestore: true);
         }, new SessionRestoreUpdate(this, result));
     }
 
@@ -570,6 +648,12 @@ internal sealed class BrowserApplication : NUIApplication
         }
 
         _chrome?.UpdateNavigationState(state);
+        if (_restoredFocus.Observe(state) && Volatile.Read(ref _paused) == 0)
+        {
+            _chrome?.FocusWebContent();
+            _restoredFocus.CompleteFocus();
+        }
+
         PublishAgentState();
         PublishCurrentPageAnnotation();
     }
@@ -621,7 +705,11 @@ internal sealed class BrowserApplication : NUIApplication
 
     private void ApplyWorkspaceState(BrowserTabWorkspace workspace)
     {
-        _chrome?.UpdateWorkspace(workspace);
+        _chrome?.UpdateWorkspace(
+            workspace,
+            restoreFocus: BrowserTabFocusPolicy.ShouldRestoreWorkspaceFocus(
+                isInitialRender: false,
+                isSessionRestore: _suppressWorkspaceFocusRestore));
         PublishAgentState();
         PublishCurrentPageAnnotation();
     }
