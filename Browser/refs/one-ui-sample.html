@@ -12,11 +12,11 @@
   --quiet: #85858e;
   --line: #d8d8df;
   --surface: #ffffff;
-  --canvas: #f7f7f9;
+  --canvas: #f6f6f8;
   --soft: #eeeeF2;
-  --blue: #0b57d0;
-  --focus: #0b4da2;
-  --danger: #ba1a1a;
+  --blue: #0877e8;
+  --focus: #0868d7;
+  --danger: #d92d2d;
   --success: #256d3b;
   --scale: 1;
 }
@@ -46,28 +46,27 @@ button, input { font: inherit; }
   overflow: hidden;
   background: var(--canvas);
 }
-.command-band {
-  height: 132px;
-  padding: 25px 52px;
+.browser-header {
+  height: 118px;
+  padding: 24px 52px;
   display: grid;
-  grid-template-columns: 188px 222px minmax(600px, 1fr) 164px;
-  gap: 18px;
+  grid-template-columns: 226px minmax(720px, 1fr) 72px;
+  gap: 20px;
   align-items: center;
-  background: var(--surface);
-  border-bottom: 1px solid var(--line);
+  background: var(--canvas);
 }
 .product-name {
   display: flex;
   align-items: center;
   gap: 14px;
   min-width: 0;
-  font-size: 29px;
+  font-size: 27px;
   font-weight: 760;
   letter-spacing: -.8px;
 }
 .product-mark {
-  width: 42px;
-  height: 42px;
+  width: 44px;
+  height: 44px;
   border: 3px solid var(--ink);
   border-radius: 14px 14px 18px 18px;
   position: relative;
@@ -83,7 +82,6 @@ button, input { font: inherit; }
   background: var(--blue);
   box-shadow: 0 8px 0 var(--blue);
 }
-.nav-controls { display: grid; grid-template-columns: repeat(3, 66px); gap: 10px; }
 .control {
   height: 66px;
   border: 2px solid var(--line);
@@ -103,9 +101,9 @@ button, input { font: inherit; }
 }
 .address-shell {
   height: 70px;
-  border: 2px solid #777780;
-  border-radius: 20px;
-  background: #f0f0f3;
+  border: 2px solid transparent;
+  border-radius: 27px;
+  background: #e9e9ed;
   display: grid;
   grid-template-columns: 34px minmax(0, 1fr) auto;
   gap: 13px;
@@ -116,7 +114,7 @@ button, input { font: inherit; }
 .address-shell:focus-within {
   background: var(--surface);
   border-color: var(--focus);
-  box-shadow: 0 0 0 5px rgba(11, 77, 162, .20), 0 10px 25px rgba(25, 38, 64, .11);
+  box-shadow: 0 0 0 5px rgba(8, 104, 215, .18), 0 10px 25px rgba(25, 38, 64, .10);
 }
 .address-icon { color: var(--muted); font-size: 25px; }
 #address {
@@ -130,7 +128,8 @@ button, input { font: inherit; }
   letter-spacing: -.3px;
 }
 .security-label { color: var(--success); font-size: 17px; font-weight: 700; }
-.tabs-control { padding: 0 21px; display: flex; align-items: center; justify-content: center; gap: 12px; }
+.reload-control { width: 70px; height: 70px; border-radius: 25px; font-size: 27px; }
+.tabs-control { padding: 0 20px; display: flex; align-items: center; justify-content: center; gap: 12px; }
 .tab-count {
   min-width: 30px;
   height: 30px;
@@ -141,28 +140,10 @@ button, input { font: inherit; }
   font-size: 16px;
 }
 .workspace {
-  height: 948px;
-  padding: 0 52px 44px;
+  height: 962px;
+  padding: 0 40px 32px;
   display: grid;
-  grid-template-rows: 92px 6px minmax(0, 1fr);
-}
-.page-context {
-  display: grid;
-  grid-template-columns: minmax(220px, auto) minmax(0, 1fr) auto;
-  gap: 20px;
-  align-items: center;
-}
-#page-title { font-size: 27px; font-weight: 760; letter-spacing: -.55px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-#page-url { font-size: 20px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-#state-label {
-  min-width: 112px;
-  padding: 9px 16px;
-  border-radius: 999px;
-  background: var(--soft);
-  color: var(--muted);
-  font-size: 17px;
-  font-weight: 730;
-  text-align: center;
+  grid-template-rows: 6px minmax(0, 1fr);
 }
 .progress-track { height: 6px; background: transparent; overflow: hidden; }
 #progress {
@@ -180,28 +161,61 @@ button, input { font: inherit; }
   min-height: 0;
   overflow: hidden;
   border: 1px solid var(--line);
-  border-radius: 24px;
+  border-radius: 26px;
   background: var(--surface);
 }
+.bottom-dock {
+  position: absolute;
+  z-index: 12;
+  left: 50%;
+  bottom: 28px;
+  width: 592px;
+  height: 92px;
+  padding: 10px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  transform: translateX(-50%);
+  border: 1px solid #d7d7dc;
+  border-radius: 34px;
+  background: #fff;
+  box-shadow: 0 18px 44px rgba(27, 28, 34, .17);
+}
+.dock-control {
+  height: 70px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  border: 0;
+  border-radius: 25px;
+  background: transparent;
+  color: var(--ink);
+  font-size: 20px;
+  font-weight: 740;
+}
+.dock-control .dock-icon { font-size: 27px; font-weight: 500; }
+.dock-control[disabled] { color: #aaaab2; background: #f4f4f6; }
 #surface { position: absolute; inset: 0; overflow: hidden; }
 .state-page { position: absolute; inset: 0; }
 .home-state {
-  padding: 98px 110px;
-  display: grid;
-  grid-template-columns: minmax(0, 1.16fr) minmax(420px, .84fr);
-  gap: 88px;
+  padding: 110px 122px 170px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
   align-items: center;
+  text-align: center;
   background: var(--surface);
 }
 .eyebrow { color: var(--blue); font-size: 18px; font-weight: 800; letter-spacing: 1.8px; text-transform: uppercase; }
 .home-state h1, .fixture-page h1, .recovery h1, .tabs-view h1 {
   margin: 16px 0 24px;
   color: var(--ink);
-  font-size: 56px;
+  font-size: 64px;
   line-height: 1.08;
   letter-spacing: -2.2px;
 }
-.lead { margin: 0; max-width: 850px; color: #45454d; font-size: 27px; line-height: 1.55; letter-spacing: -.25px; }
+.lead { margin: 0; max-width: 1040px; color: #45454d; font-size: 27px; line-height: 1.52; letter-spacing: -.25px; }
 .home-actions { margin-top: 42px; display: flex; gap: 16px; }
 .action-button {
   min-height: 68px;
@@ -216,26 +230,8 @@ button, input { font: inherit; }
 }
 .action-button.primary { background: var(--blue); color: #fff; border-color: var(--blue); }
 .action-button.danger { background: var(--danger); color: #fff; border-color: var(--danger); }
-.privacy-card {
-  border: 1px solid var(--line);
-  border-radius: 22px;
-  padding: 34px 36px;
-  background: #fafafa;
-}
-.privacy-card .shield {
-  width: 58px;
-  height: 66px;
-  margin-bottom: 28px;
-  border: 4px solid var(--success);
-  border-radius: 28px 28px 34px 34px;
-  display: grid;
-  place-items: center;
-  color: var(--success);
-  font-size: 27px;
-  font-weight: 800;
-}
-.privacy-card h2 { margin: 0 0 14px; font-size: 27px; }
-.privacy-card p { margin: 0; color: var(--muted); font-size: 20px; line-height: 1.55; }
+.privacy-line { margin-top: 34px; display: flex; align-items: center; gap: 12px; color: var(--muted); font-size: 18px; }
+.privacy-line .shield { width: 32px; height: 36px; border: 3px solid var(--success); border-radius: 15px 15px 18px 18px; display: grid; place-items: center; color: var(--success); font-weight: 800; }
 .fixture-page { padding: 74px 92px; background: var(--surface); }
 .fixture-page .article-rule { width: 92px; height: 7px; margin-bottom: 34px; border-radius: 99px; background: var(--blue); }
 .fixture-page .article-grid { display: grid; grid-template-columns: minmax(0, 1fr) 410px; gap: 92px; }
@@ -271,47 +267,59 @@ button, input { font: inherit; }
 .recovery h1 { margin-top: 0; }
 .recovery p { max-width: 900px; margin: 0; color: var(--muted); font-size: 25px; line-height: 1.55; }
 .recovery .home-actions { grid-column: 2; }
-.tabs-view { padding: 54px 74px 48px; height: 100%; overflow: hidden; background: #f9f9fb; }
-.tabs-heading { height: 84px; display: flex; align-items: center; justify-content: space-between; }
-.tabs-heading h1 { margin: 0; font-size: 48px; }
-.tabs-heading p { margin: 0; color: var(--muted); font-size: 19px; }
-.tab-list { margin-top: 26px; display: grid; gap: 14px; max-height: 538px; overflow-y: auto; padding: 6px 10px 6px 6px; scrollbar-width: thin; }
+.tabs-open .browser-header, .tabs-open .bottom-dock { visibility: hidden; }
+.tabs-open .workspace { position: absolute; inset: 0; width: 1920px; height: 1080px; padding: 0; display: block; }
+.tabs-open .progress-track { display: none; }
+.tabs-open .web-shell { position: absolute; inset: 0; border: 0; border-radius: 0; }
+.tabs-view { padding: 48px 110px 52px; height: 100%; overflow: hidden; background: #f7f7f9; }
+.tabs-heading { height: 104px; display: grid; grid-template-columns: 76px 1fr auto; gap: 24px; align-items: center; }
+.tabs-back { width: 66px; height: 66px; border-radius: 23px; }
+.tabs-heading h1 { margin: 0; font-size: 58px; letter-spacing: -2px; }
+.tabs-heading p { margin: 0; padding: 12px 18px; border-radius: 999px; background: #ececf0; color: var(--muted); font-size: 18px; font-weight: 720; }
+.tab-list { width: 1320px; margin: 34px auto 0; display: grid; gap: 14px; max-height: 680px; overflow-y: auto; padding: 6px 12px 6px 8px; scrollbar-width: thin; }
 .tab-row {
-  min-height: 118px;
+  position: relative;
+  min-height: 142px;
   display: grid;
-  grid-template-columns: 1fr 80px;
+  grid-template-columns: 150px 1fr 92px;
   align-items: stretch;
-  border: 2px solid var(--line);
-  border-radius: 20px;
+  border: 2px solid #dedee4;
+  border-radius: 26px;
   background: var(--surface);
+  overflow: hidden;
 }
-.tab-row.selected { border-color: var(--blue); box-shadow: inset 6px 0 0 var(--blue); }
+.tab-row.selected { border-color: #b7d7fb; background: #edf5ff; box-shadow: inset 9px 0 0 var(--blue); }
+.tab-preview { margin: 17px 8px 17px 24px; border-radius: 18px; background: #e7edf6; display: grid; place-items: center; color: var(--blue); font-size: 31px; font-weight: 800; }
+.tab-row.selected .tab-preview { background: #fff; }
 .tab-open {
   min-width: 0;
-  padding: 21px 28px 21px 34px;
+  padding: 28px 26px;
   border: 0;
   border-radius: 18px 0 0 18px;
   background: transparent;
   text-align: left;
   cursor: pointer;
 }
-.tab-open strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink); font-size: 25px; }
-.tab-open span { display: block; margin-top: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font-size: 18px; }
-.tab-close { margin: 24px 18px 24px 0; height: 68px; border-radius: 18px; font-size: 25px; }
-.tabs-footer { margin-top: 22px; display: flex; justify-content: space-between; align-items: center; }
+.tab-open strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink); font-size: 27px; }
+.tab-open span { display: block; margin-top: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font-size: 19px; }
+.tab-close { align-self: center; width: 66px; height: 66px; margin-right: 18px; border-radius: 50%; font-size: 27px; }
+.tabs-footer { width: 1320px; margin: 24px auto 0; display: flex; justify-content: space-between; align-items: center; }
 .limit-note { color: var(--quiet); font-size: 18px; }
 .modal-layer { position: absolute; inset: 0; z-index: 20; display: grid; place-items: center; padding: 60px; background: rgba(17, 17, 20, .48); }
 .modal {
-  width: 720px;
-  padding: 44px;
-  border-radius: 28px;
+  width: 760px;
+  padding: 46px 0 0;
+  overflow: hidden;
+  border-radius: 34px;
   background: var(--surface);
   box-shadow: 0 28px 72px rgba(0, 0, 0, .28);
 }
-.modal .eyebrow { color: var(--danger); }
-.modal h2 { margin: 14px 0 14px; font-size: 39px; letter-spacing: -1.1px; }
-.modal p { margin: 0; color: var(--muted); font-size: 22px; line-height: 1.5; }
-.modal-actions { margin-top: 36px; display: flex; justify-content: flex-end; gap: 14px; }
+.modal h2 { margin: 0; padding: 0 48px; font-size: 39px; letter-spacing: -1.1px; }
+.modal p { margin: 18px 0 38px; padding: 0 48px; color: var(--muted); font-size: 22px; line-height: 1.5; }
+.modal-actions { height: 104px; display: grid; grid-template-columns: 1fr 1fr; border-top: 1px solid var(--line); }
+.modal-action { border: 0; border-radius: 0; background: transparent; font-size: 23px; font-weight: 760; }
+.modal-action + .modal-action { border-left: 1px solid var(--line); }
+.modal-action.danger { color: var(--danger); }
 .verification-tray {
   position: absolute;
   right: 22px;
@@ -345,6 +353,7 @@ button:focus-visible, [tabindex="0"]:focus-visible {
   box-shadow: inset 0 0 0 5px var(--focus);
   transform: none;
 }
+.modal-action:focus-visible { outline-offset: -8px; border-radius: 18px; transform: none; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
@@ -353,42 +362,39 @@ button:focus-visible, [tabindex="0"]:focus-visible {
 <body>
 <div id="viewport">
   <main id="app" aria-label="Browser preview">
-    <header class="command-band">
+    <header class="browser-header">
       <div class="product-name" aria-label="Browser"><span class="product-mark" aria-hidden="true"></span><span>Browser</span></div>
-      <nav class="nav-controls" aria-label="Page navigation">
-        <button class="control" id="back" data-row="0" data-col="0" aria-label="Back" disabled>←</button>
-        <button class="control" id="forward" data-row="0" data-col="1" aria-label="Forward" disabled>→</button>
-        <button class="control" id="reload" data-row="0" data-col="2" aria-label="Reload current page">↻</button>
-      </nav>
       <label class="address-shell" aria-label="Address or search">
         <span class="address-icon" aria-hidden="true">⌕</span>
-        <input id="address" data-row="0" data-col="3" aria-label="Address or search. Press Enter to load." placeholder="Search or enter address" autocomplete="off" spellcheck="false">
+        <input id="address" data-row="0" data-col="0" aria-label="Address or search. Press Enter to load." placeholder="Search or enter address" autocomplete="off" spellcheck="false">
         <span class="security-label" id="security-label">Web</span>
       </label>
-      <button class="control tabs-control" id="tabs" data-row="0" data-col="4" aria-label="Open tabs"><span>Tabs</span><span class="tab-count" id="tab-count">1</span></button>
+      <button class="control reload-control" id="reload" data-row="0" data-col="1" aria-label="Reload current page">↻</button>
     </header>
     <section class="workspace">
-      <div class="page-context">
-        <strong id="page-title">Start page</strong>
-        <span id="page-url">Normal browsing · local start surface</span>
-        <span id="state-label">Ready</span>
-      </div>
       <div class="progress-track" aria-hidden="true"><i id="progress"></i></div>
       <section class="web-shell" aria-label="Browser content region">
         <div id="surface"></div>
       </section>
     </section>
+    <nav class="bottom-dock" aria-label="Browser navigation">
+      <button class="dock-control" id="back" data-row="2" data-col="0" aria-label="Back" disabled><span class="dock-icon" aria-hidden="true">←</span><span>Back</span></button>
+      <button class="dock-control" id="forward" data-row="2" data-col="1" aria-label="Forward" disabled><span class="dock-icon" aria-hidden="true">→</span><span>Forward</span></button>
+      <button class="dock-control tabs-control" id="tabs" data-row="2" data-col="2" aria-label="Open tabs"><span class="dock-icon" aria-hidden="true">▣</span><span>Tabs</span><span class="tab-count" id="tab-count">1</span></button>
+    </nav>
     <div class="modal-layer hidden" id="modal-layer">
       <section class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title" aria-describedby="modal-copy">
-        <div class="eyebrow">Tab manager</div>
         <h2 id="modal-title">Close this tab?</h2>
         <p id="modal-copy"></p>
         <div class="modal-actions">
-          <button class="action-button" id="modal-cancel" data-row="0" data-col="0">Cancel</button>
-          <button class="action-button danger" id="modal-confirm" data-row="0" data-col="1">Close tab</button>
+          <button class="modal-action" id="modal-cancel" data-row="0" data-col="0">Cancel</button>
+          <button class="modal-action danger" id="modal-confirm" data-row="0" data-col="1">Close</button>
         </div>
       </section>
     </div>
+    <strong class="sr-only" id="page-title">Start page</strong>
+    <span class="sr-only" id="page-url">Normal browsing · local start surface</span>
+    <span class="sr-only" id="state-label">Ready</span>
     <aside class="verification-tray hidden" id="verification-tray" aria-label="Preview verification states"></aside>
     <div class="sr-only" id="live-status" aria-live="polite"></div>
   </main>
@@ -466,31 +472,27 @@ button:focus-visible, [tabindex="0"]:focus-visible {
   }
 
   function renderHome() {
+    app.classList.remove("tabs-open");
     state.mode = "home";
     state.lastWorkspaceMode = "home";
     $("progress").className = "";
     setChrome("Start page", "Normal browsing · local start surface", "Ready");
     surface.innerHTML = `
       <section class="state-page home-state" aria-label="Start page">
-        <div>
-          <div class="eyebrow">Browse the open web</div>
-          <h1>A clear place to start.</h1>
-          <p class="lead">Enter an address or search above. The installed app maps this content region to the system WebView and keeps navigation controls available for remote, keyboard, pointer, and touch.</p>
-          <div class="home-actions">
-            <button class="action-button primary" data-command="fixture" data-row="1" data-col="0">Open Tizen guide</button>
-            <button class="action-button" data-command="focus-address" data-row="1" data-col="1">Enter an address</button>
-          </div>
+        <div class="eyebrow">Start page</div>
+        <h1>Browse the web.</h1>
+        <p class="lead">Search or enter an address above. Pages open in the system WebView. Use remote, keyboard, pointer, or touch.</p>
+        <div class="home-actions">
+          <button class="action-button primary" data-command="fixture" data-row="1" data-col="0">Open Tizen guide</button>
+          <button class="action-button" data-command="focus-address" data-row="1" data-col="1">Enter an address</button>
         </div>
-        <aside class="privacy-card">
-          <div class="shield" aria-hidden="true">✓</div>
-          <h2>Normal browsing only</h2>
-          <p>This sample stores bounded public page metadata. It does not publish cookies, credentials, form values, page bodies, or a private-mode history.</p>
-        </aside>
+        <div class="privacy-line"><span class="shield" aria-hidden="true">✓</span><span>Normal browsing only · public title and address metadata</span></div>
       </section>`;
   }
 
   function renderPage(page = currentPage()) {
     if (!page) { renderHome(); return; }
+    app.classList.remove("tabs-open");
     state.mode = "page";
     state.lastWorkspaceMode = "page";
     $("progress").className = "";
@@ -513,18 +515,20 @@ button:focus-visible, [tabindex="0"]:focus-visible {
   }
 
   function renderLoading(target) {
+    app.classList.remove("tabs-open");
     state.mode = "loading";
     $("progress").className = "loading";
     setChrome("Loading", publicUrl(target), "Loading");
     surface.innerHTML = `
       <section class="state-page fixture-page" aria-hidden="true">
-        <div class="article-rule"></div><div class="article-grid"><div><div class="eyebrow">Browser</div><h1>Keeping your place</h1><p>The command band stays available while the newest navigation intent runs.</p></div></div>
+        <div class="article-rule"></div><div class="article-grid"><div><div class="eyebrow">Browser</div><h1>Keeping your place</h1><p>The address and navigation controls stay available while the newest navigation intent runs.</p></div></div>
       </section>
       <div class="loading-mask" role="status"><div class="loading-card"><div class="loading-ring"></div><h2>Opening page</h2><p>${escapeHtml(publicUrl(target))}</p></div></div>`;
     announce(`Loading ${publicUrl(target)}`);
   }
 
   function renderRecovery(kind) {
+    app.classList.remove("tabs-open");
     state.mode = kind;
     state.lastWorkspaceMode = kind;
     $("progress").className = "";
@@ -561,24 +565,30 @@ button:focus-visible, [tabindex="0"]:focus-visible {
   }
 
   function renderTabs(focusTabId = state.selectedTabId) {
+    app.classList.add("tabs-open");
     state.mode = "tabs";
     $("progress").className = "";
     setChrome("Tabs", `${state.tabs.length} normal-mode tab${state.tabs.length === 1 ? "" : "s"}`, "Manage");
     const visibleTabs = state.tabs;
     surface.innerHTML = `
       <section class="state-page tabs-view" aria-label="Tabs manager">
-        <div class="tabs-heading"><h1>Tabs</h1><p>Ordered normal browsing tabs · maximum 20</p></div>
+        <div class="tabs-heading">
+          <button class="control tabs-back" data-command="close-tabs" data-row="0" data-col="0" aria-label="Return to browser">‹</button>
+          <h1>Tabs</h1>
+          <p>${state.tabs.length} normal · maximum 20</p>
+        </div>
         <div class="tab-list">
           ${visibleTabs.map((tab, index) => `
             <article class="tab-row ${tab.id === state.selectedTabId ? "selected" : ""}">
-              <button class="tab-open" data-command="select-tab" data-tab-id="${tab.id}" data-row="${index + 1}" data-col="0" aria-label="Open ${escapeHtml(tabLabel(tab))}${tab.id === state.selectedTabId ? ", current tab" : ""}">
+              <div class="tab-preview" aria-hidden="true">${escapeHtml(tabLabel(tab).slice(0, 1).toUpperCase())}</div>
+              <button class="tab-open" data-command="select-tab" data-tab-id="${tab.id}" data-row="${index + 1}" data-col="1" aria-label="Open ${escapeHtml(tabLabel(tab))}${tab.id === state.selectedTabId ? ", current tab" : ""}">
                 <strong>${escapeHtml(tabLabel(tab))}</strong><span>${escapeHtml(tabUrl(tab))}</span>
               </button>
-              <button class="control tab-close" data-command="request-close" data-tab-id="${tab.id}" data-row="${index + 1}" data-col="1" aria-label="Close ${escapeHtml(tabLabel(tab))}">×</button>
+              <button class="control tab-close" data-command="request-close" data-tab-id="${tab.id}" data-row="${index + 1}" data-col="2" aria-label="Close ${escapeHtml(tabLabel(tab))}">×</button>
             </article>`).join("")}
         </div>
         <div class="tabs-footer">
-          <button class="action-button primary" data-command="new-tab" data-row="${state.tabs.length + 1}" data-col="0" ${state.tabs.length >= 20 ? "disabled" : ""}>New tab</button>
+          <button class="action-button primary" data-command="new-tab" data-row="${state.tabs.length + 1}" data-col="1" ${state.tabs.length >= 20 ? "disabled" : ""}>New tab</button>
           <span class="limit-note">${state.tabs.length >= 20 ? "Tab limit reached" : `${20 - state.tabs.length} tabs available`}</span>
         </div>
       </section>`;
@@ -632,7 +642,7 @@ button:focus-visible, [tabindex="0"]:focus-visible {
     if (!tab) return;
     focusMemory.set("modal", document.activeElement);
     state.pendingCloseId = tabId;
-    $("modal-copy").textContent = `“${tabLabel(tab).slice(0, 80)}” will be removed from this normal browsing session.`;
+    $("modal-copy").textContent = "This tab will be removed.";
     modalLayer.classList.remove("hidden");
     queueMicrotask(() => $("modal-cancel").focus());
     announce("Close tab confirmation opened");
@@ -684,6 +694,7 @@ button:focus-visible, [tabindex="0"]:focus-visible {
     else if (command === "select-tab") selectTab(target.dataset.tabId);
     else if (command === "request-close") openCloseDialog(target.dataset.tabId);
     else if (command === "new-tab") newTab();
+    else if (command === "close-tabs") handleBack();
   }
 
   function handleBack() {
@@ -726,7 +737,7 @@ button:focus-visible, [tabindex="0"]:focus-visible {
       bodyTargets[0]?.focus();
       return;
     }
-    if (direction === "up" && currentRow > 0 && state.mode !== "tabs" && modalLayer.classList.contains("hidden")) {
+    if (direction === "up" && currentRow === 1 && state.mode !== "tabs" && modalLayer.classList.contains("hidden")) {
       address.focus();
       return;
     }

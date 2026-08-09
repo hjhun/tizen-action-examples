@@ -44,6 +44,7 @@ internal sealed class BrowserApplication : NUIApplication
             goBack: GoBackFromUi,
             goForward: GoForwardFromUi,
             openTabs: OpenTabsFromUi,
+            closeTabs: CloseTabsFromUi,
             reload: ReloadFromUi,
             retry: RetryFromUi,
             recoveryBack: HandleBackFromUi,
@@ -245,6 +246,14 @@ internal sealed class BrowserApplication : NUIApplication
         if (Volatile.Read(ref _tabMutationPending) == 0)
         {
             _tabsCoordinator?.OpenTabs();
+        }
+    }
+
+    private void CloseTabsFromUi()
+    {
+        if (Volatile.Read(ref _tabMutationPending) == 0)
+        {
+            _tabsCoordinator?.TryCloseTabs();
         }
     }
 

@@ -88,16 +88,16 @@
 | FR-BROWSER-025 | D-pad/keyboard/pointer/touch command parity | PASS | installed input parity는 Stage 3 |
 | NFR-BROWSER-011~014 | labels, two-cue focus, graph/trap/input | PASS(HTML) | Aurum tree/input은 Stage 3 |
 | NFR-BROWSER-015 | four-shape centered uniform transform | PASS(HTML) | NUI inset/resize는 Stage 2A/3 |
-| NFR-BROWSER-026 | current HTML PNG 6개 decode/dimension/non-blank/privacy review | PASS(HTML) | native image set은 Stage 3 |
+| NFR-BROWSER-026 | current HTML PNG 7개 decode/dimension/non-blank/privacy review | PASS(HTML) | native image set은 Stage 3/visual refinement |
 
-Playwright Chromium은 direct `file:` open에서 primary/exception flow, scrolled 10th tab focus, modal confirm/cancel, max-tab disabled, pointer/touch를 실행했고 console/page error는 0이었다. 외부 request는 없었다. 이 결과는 HTML-only이며 FR-BROWSER-019~024 target Action/Entity/View/A2UI 상태를 변경하지 않는다.
+Playwright Chromium은 direct `file:` open에서 primary/exception flow, scrolled 10th tab focus, modal confirm/cancel, max-tab disabled, pointer/touch를 실행했고 console/page error는 0이었다. 외부 request는 없었다. visual refinement에서 같은 시나리오를 split address/dock/full-canvas Tabs 구조로 다시 실행했다. 이 결과는 HTML-only이며 FR-BROWSER-019~024 target Action/Entity/View/A2UI 상태를 변경하지 않는다.
 
 ## Stage 2A NUI shell/chrome/scaling gate
 
 | 계약 | source/host 증거 | 결과 | 남은 target 경계 |
 |---|---|---|---|
-| FR-BROWSER-001 | full-window physical root, 1920×1080 canvas, 132/92/6 shell, 1816×806 content-only WebView | PASS | current installed launch/frame |
-| FR-BROWSER-010, 025 | Back/Forward disabled-skip, Reload→Address→Tabs, command↔WebView vertical graph | PASS | WebView actual history와 native remote/pointer |
+| FR-BROWSER-001 | full-window physical root, 1920×1080 canvas; visual refinement에서 118/0/6 shell, 1840×924 content, centered dock로 갱신 | PASS | current installed launch/frame |
+| FR-BROWSER-010, 025 | Back/Forward disabled-skip, Address↔Reload top row, content, Back↔Forward↔Tabs dock graph | PASS | WebView actual history와 native remote/pointer |
 | NFR-BROWSER-015 | four aspect-ratio centered-uniform viewport table | PASS | target resize/multiple mode |
 | NFR-BROWSER-016 | non-zero insets와 invalid/exhausted/NaN rejection, `Resized`+`InsetsChanged` 연결 | PASS | target non-zero inset와 last-valid frame |
 
@@ -143,3 +143,17 @@ generated service 객체는 Tizen reference assembly가 host 실행 구현을 �
 ## Stage 3 Common Emulator gate
 
 패키지, target, screenshot provenance와 blocker 상세는 [`STAGE3_VALIDATION.md`](STAGE3_VALIDATION.md)에 있다. clean host test/build, Tizen build, emulator-only signing/package, archive payload, install/launch, real HTTPS WebView, Home/Loading/Page/InvalidInput/Tabs/modal native states는 독립 PASS다. Browser/View provider discovery는 PASS지만 exact Browser RPC가 generated/runtime ABI mismatch로 앱을 종료하므로 FR-BROWSER-019~024의 target RPC/View/legacy Display gate는 차단 상태를 유지한다. canonical A2UI target transport와 offline capture도 각각 독립 차단 상태다.
+
+## Samsung visual-refinement gate
+
+| 요구사항 | refs/source/host 증거 | Common Emulator 증거 | 결과 |
+|---|---|---|---|
+| FR-BROWSER-001, 004, 005, 010 | compact address+Reload, expanded content, centered Back/Forward/Tabs dock; Playwright revised Home/Page | revised Home와 실제 public HTTPS Page 1920×1080 | PASS(Common visual) |
+| FR-BROWSER-012~017 | full-canvas preview/title/URL card, selected rail, focus outline, circular close, split dialog | 3-card Tabs, Cancel initial, modal trap, Back restore, exact-one close 3→2 | PASS(Common visual/input) |
+| FR-BROWSER-025 | revised keyboard/pointer/touch Playwright; split-row host focus graph | remote Tabs/modal flow, coordinate click New tab, touch tap New tab의 1→2→3 postcondition | PASS(상태 postcondition 범위) |
+| NFR-BROWSER-011~015 | non-color selected/focus cue, modal boundary, four-shape centered transform | native focus/selected cue와 system overlay 비충돌 | PARTIAL — tree root 0, native multi-mode 미검증 |
+| NFR-BROWSER-024, 026 | clean host/Tizen build 분리; HTML PNG 7개 | final package SHA-256 `5c2b4a46076f1a82610ce4626cb637550c7e5aa33fe2526cee7e992d58294124`; native PNG 4개 | PASS(Common visual package) |
+
+target에서 persisted blank title이 preview 첫 글자 계산 중 종료되는 문제를 발견해 blank/whitespace→`New tab`, 최대 80자 계약과 App host regression test를 추가했다. 모든 Browser 실행형 host test 5개와 clean solution build가 통과했다. package는 `-s` 없는 emulator-test-only signer로 만들고 archive/manifest/payload/signature를 검사한 뒤 update-install했다.
+
+이 gate는 시각 모듈만 닫는다. Aurum semantic tree는 `root_count: 0`이라 접근성 tree를 PASS로 세지 않는다. generated `HasPrivilegeLocal` ABI mismatch 때문에 typed Browser/View RPC와 종속 resolver/ViewAnnotation/legacy Display round trip은 계속 차단이다. canonical A2UI target render는 two-string Presentation transport 때문에 독립 차단이며 offline mode는 transport를 끊으므로 재실행하지 않았다.

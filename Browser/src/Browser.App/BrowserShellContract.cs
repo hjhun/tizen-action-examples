@@ -10,13 +10,17 @@ public static class BrowserShellMetrics
 {
     public const float DesignWidth = 1920.0f;
     public const float DesignHeight = 1080.0f;
-    public const float HeaderHeight = 132.0f;
-    public const float ContextHeight = 92.0f;
+    public const float HeaderHeight = 118.0f;
+    public const float ContextHeight = 0.0f;
     public const float ProgressHeight = 6.0f;
-    public const float ContentLeft = 52.0f;
+    public const float ContentLeft = 40.0f;
     public const float ContentTop = HeaderHeight + ContextHeight + ProgressHeight;
-    public const float ContentWidth = 1816.0f;
-    public const float ContentHeight = 806.0f;
+    public const float ContentWidth = 1840.0f;
+    public const float ContentHeight = 924.0f;
+    public const float DockLeft = 590.0f;
+    public const float DockTop = 960.0f;
+    public const float DockWidth = 740.0f;
+    public const float DockHeight = 92.0f;
 }
 
 /// <summary>
@@ -84,53 +88,74 @@ public enum BrowserShellFocusTarget
 }
 
 /// <summary>
-/// Deterministic command-row focus policy. Disabled history controls are omitted rather than
-/// accepting focus, while vertical movement has one stable WebView/address restoration pair.
+/// Deterministic split-row focus policy. Disabled history controls are omitted rather than
+/// accepting focus, while vertical movement crosses top address, content, and bottom dock.
 /// </summary>
 public sealed class BrowserShellFocusGraph
 {
-    private readonly BrowserShellFocusTarget[] _commandRow;
+    private readonly BrowserShellFocusTarget[] _topRow;
+    private readonly BrowserShellFocusTarget[] _dockRow;
 
-    private BrowserShellFocusGraph(BrowserShellFocusTarget[] commandRow) => _commandRow = commandRow;
+    private BrowserShellFocusGraph(BrowserShellFocusTarget[] topRow, BrowserShellFocusTarget[] dockRow)
+    {
+        _topRow = topRow;
+        _dockRow = dockRow;
+    }
 
     public static BrowserShellFocusGraph Create(bool backEnabled, bool forwardEnabled, bool reloadEnabled = true)
     {
-        var commandRow = new List<BrowserShellFocusTarget>(5);
+        var dockRow = new List<BrowserShellFocusTarget>(3);
         if (backEnabled)
         {
-            commandRow.Add(BrowserShellFocusTarget.Back);
+            dockRow.Add(BrowserShellFocusTarget.Back);
         }
 
         if (forwardEnabled)
         {
-            commandRow.Add(BrowserShellFocusTarget.Forward);
+            dockRow.Add(BrowserShellFocusTarget.Forward);
         }
 
+        var topRow = new List<BrowserShellFocusTarget>(2) { BrowserShellFocusTarget.Address };
         if (reloadEnabled)
         {
-            commandRow.Add(BrowserShellFocusTarget.Reload);
+            topRow.Add(BrowserShellFocusTarget.Reload);
         }
-        commandRow.Add(BrowserShellFocusTarget.Address);
-        commandRow.Add(BrowserShellFocusTarget.Tabs);
-        return new BrowserShellFocusGraph(commandRow.ToArray());
+
+        dockRow.Add(BrowserShellFocusTarget.Tabs);
+        return new BrowserShellFocusGraph(topRow.ToArray(), dockRow.ToArray());
     }
 
     public BrowserShellFocusTarget MoveHorizontal(BrowserShellFocusTarget current, int delta)
     {
-        var index = Array.IndexOf(_commandRow, current);
+        var row = Array.IndexOf(_topRow, current) >= 0 ? _topRow : _dockRow;
+        var index = Array.IndexOf(row, current);
         if (index < 0)
         {
             return BrowserShellFocusTarget.Address;
         }
 
-        return _commandRow[Math.Clamp(index + Math.Sign(delta), 0, _commandRow.Length - 1)];
+        return row[Math.Clamp(index + Math.Sign(delta), 0, row.Length - 1)];
     }
 
-    public BrowserShellFocusTarget MoveDown(BrowserShellFocusTarget current) =>
-        current == BrowserShellFocusTarget.WebContent ? current : BrowserShellFocusTarget.WebContent;
+    public BrowserShellFocusTarget MoveDown(BrowserShellFocusTarget current)
+    {
+        if (Array.IndexOf(_topRow, current) >= 0)
+        {
+            return BrowserShellFocusTarget.WebContent;
+        }
 
-    public BrowserShellFocusTarget MoveUp(BrowserShellFocusTarget current) =>
-        current == BrowserShellFocusTarget.WebContent ? BrowserShellFocusTarget.Address : current;
+        return current == BrowserShellFocusTarget.WebContent ? BrowserShellFocusTarget.Tabs : current;
+    }
+
+    public BrowserShellFocusTarget MoveUp(BrowserShellFocusTarget current)
+    {
+        if (Array.IndexOf(_dockRow, current) >= 0)
+        {
+            return BrowserShellFocusTarget.WebContent;
+        }
+
+        return current == BrowserShellFocusTarget.WebContent ? BrowserShellFocusTarget.Address : current;
+    }
 }
 
 public sealed record BrowserNavigationVisualState(
@@ -208,6 +233,16 @@ public static class BrowserHomeFocusGraph
     {
         var index = Array.IndexOf(Row, current);
         return Row[Math.Clamp(index + Math.Sign(delta), 0, Row.Length - 1)];
+    }
+}
+
+public static class BrowserTabVisualText
+{
+    public static string Title(BrowserTab tab)
+    {
+        ArgumentNullException.ThrowIfNull(tab);
+        var title = string.IsNullOrWhiteSpace(tab.Page?.Title) ? "New tab" : tab.Page.Title;
+        return title.Length <= 80 ? title : title[..80];
     }
 }
 

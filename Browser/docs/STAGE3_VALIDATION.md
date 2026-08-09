@@ -13,7 +13,7 @@
 | 대상 | Tizen 10.1 Unified Common Emulator, 1920×1080 |
 | 애플리케이션 | `org.tizen.browser` |
 | Tizen API package | `Tizen.NET` 14.0.0.19326 |
-| package SHA-256 | `c1527f7b0daee622572c840cafcf9f485e6bea522c22f8648068640dd3160159` |
+| package SHA-256 | `5c2b4a46076f1a82610ce4626cb637550c7e5aa33fe2526cee7e992d58294124` (visual-refinement final) |
 | signing 경계 | Tizen CLI 내장 emulator-test-only signer. production/default distribution profile로 주장하지 않음 |
 | archive | ZIP 무결성, manifest, author/distributor signature, App/provider/domain/use-case/persistence payload PASS |
 | 설치/실행 | update install 및 installed app launch PASS |
@@ -62,8 +62,14 @@ OfflineMode 실험은 SDB/Aurum까지 끊었다. 원본 VM 설정과 설치 상�
 
 Common Emulator UI는 1920×1080 한 모드에서 검증했다. host viewport test는 non-zero inset, 16:9, 4:3, ultrawide를 포함하지만 이는 native multi-mode evidence를 대신하지 않는다.
 
+### Visual-refinement 재검증
+
+동일한 Common Emulator와 emulator-test-only signer 경로에서 최종 visual package를 다시 build/package/update-install/launch했다. ZIP 무결성, manifest, Browser App/provider/domain/use-case/persistence payload, author/distributor signature를 검사했다. revised Home, real public HTTPS Page, full-canvas Tabs, split-action close confirmation은 각각 `native-browser-*-visual-1920x1080.png`로 재캡처했으며 [`UI_PARITY.md`](UI_PARITY.md)에서 Samsung reference↔HTML↔NUI 차이를 판정한다.
+
+Remote는 Home/Page→Tabs, open↔close, modal trap, Back 복원, confirm close를 실행했고 tab count는 3→2로 변경됐다. coordinate click과 touch tap은 New tab을 각각 추가해 1→2→3 postcondition을 만들었다. Aurum tree는 다시 `root_count: 0`이므로 semantic accessibility는 여전히 미검증이다. typed RPC/A2UI/offline gate는 재실행하지 않았고 기존 차단 상태를 유지한다.
+
 ## English summary
 
-The final Browser package builds, packages with the explicit emulator-test-only signer, installs, launches, and renders a real public HTTPS page in the system WebView on a 1920×1080 Tizen Common Emulator. Aurum proved Home, page, invalid-input recovery, tabs, modal trapping/restoration, and exact-one tab close through native screenshots and remote/coordinate input.
+The final visual-refinement Browser package builds, packages with the explicit emulator-test-only signer, installs, launches, and renders a real public HTTPS page in the system WebView on a 1920×1080 Tizen Common Emulator. Aurum proved the revised Home, Page, full-canvas Tabs, modal trapping/restoration, pointer/touch New tab, and exact-one tab close through native screenshots and state postconditions. Earlier Stage 3 Loading and InvalidInput frames remain historical evidence and are not relabeled as revised visual-package captures.
 
 This is a partial target result, not full completion. The generated provider crashes at the target RPC boundary because the installed runtime does not provide the generated `StubBase.HasPrivilegeLocal(string, string)` ABI. Therefore typed Browser/View RPC, resolver postconditions, live ViewAnnotation RPC, and legacy DisplayPresentation round trips remain blocked. Canonical A2UI target rendering is independently blocked by the current two-string Presentation transport. Offline UI capture is also blocked because target offline mode disconnects the SDB/Aurum transport used to capture evidence.

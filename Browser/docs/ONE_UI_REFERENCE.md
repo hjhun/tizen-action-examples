@@ -13,16 +13,16 @@ The sources establish Samsung Internet as the applicable Samsung browser referen
 
 | Reference pattern | Tizen Browser adaptation | Why |
 |---|---|---|
-| A browser keeps the current address/page context visibly available while people navigate. | A persistent top command band shows Back, Forward, Reload, an editable address/search field, and Tabs; the current URL is repeated as small page context after a load. | A remote user must be able to recover navigation without hidden gestures. |
+| Samsung Internet separates the top address/search + Reload area from its bottom navigation controls. | A compact top address/search surface keeps Reload adjacent, while a centered bottom dock contains only the implemented Back, Forward, and Tabs commands. The URL is not repeated in another chrome row. | Preserves the source hierarchy, shortens the remote path, and avoids generic desktop top chrome. |
 | Page content is the primary surface, not a collection of browser-dashboard cards. | The real `WebView` is the largest region. The sample uses bounded local page fixtures solely to demonstrate its planned runtime states. | The Browser product gate requires a real target web engine; fixtures cannot replace it. |
 | Navigation controls become unavailable when there is no applicable history/load operation. | Disabled Back/Forward are visibly muted and not activatable; Reload remains available for recoverable errors. | Makes state and D-pad focus deterministic. |
-| Tabs are a separate management surface, rather than permanent content competing with the page. | Tabs opens a compact full-screen manager with ordered normal-mode tabs and Close controls; closing returns focus to Tabs or the address field. | Fits TV focus navigation and avoids a mobile bottom navigation bar. |
+| Tabs are a separate management surface with preview, title, URL, selected cue, circular close, and New tab. | Tabs owns the full reference canvas and uses bounded vertical cards with local preview tiles, separate title/URL, a leading selected rail, circular close, and New tab. | Retains the Samsung tab-management family without stretching a phone screenshot or inventing a TV dashboard. |
 | Failed connectivity/loading has a concise explanation and a direct recovery path. | Loading, offline, engine-error, and close-tab confirmation are first-class states. Retry returns focus to the address field or Retry button. | The WebView adapter already maps bounded timeout/load errors; no silent freeze is acceptable. |
 
 ## Information architecture and control hierarchy
 
-1. **Browser workspace (root):** command band → address/search field → current-page context → WebView surface.
-2. **Tabs manager (secondary):** ordered normal-mode tab rows, selected state, close command, and New tab command.
+1. **Browser workspace (root):** compact address/search + Reload → page/recovery content → centered Back/Forward/Tabs dock.
+2. **Tabs manager (secondary):** full-canvas header → ordered preview/title/URL cards → New tab.
 3. **Recovery overlay (exception):** concise reason and Retry/Back; it traps focus until dismissed.
 4. **Close-tab confirmation (destructive exception):** Cancel and Close tab; Back cancels and restores the invoking focus.
 
@@ -31,7 +31,7 @@ No profile, weather, quick-launch, floating dock, synthetic statistics, remote i
 ## Tizen input and scaling policy
 
 - The NUI implementation will use one inset-aware, centered uniform 1920×1080 reference canvas transform. The sample uses the same logical canvas/aspect-ratio policy and scales within the browser viewport.
-- Initial focus is the address/search input. Left/Right move across the command band; Down enters the page surface or focused tab list; Up returns to the command band. Enter activates. Keyboard `Enter`, arrows, and `Escape` emulate Enter, D-pad, and Back. Pointer/touch uses the same command reducer.
+- Initial focus is the address/search input. Left/Right moves between Address and Reload. Down crosses content to the Back/Forward/Tabs dock; Up returns through content to Address. Tabs uses Back, ordered open/close pairs, and New tab. Enter activates. Keyboard `Enter`, arrows, and `Escape` emulate Enter, D-pad, and Back. Pointer/touch uses the same command reducer.
 - Back first dismisses the active modal, then leaves Tabs, then invokes browser-history Back only when available. Focus restoration is explicit: Tabs returns to Tabs; cancelled confirmation returns to the tab row; recovery returns to Retry or address depending on its source.
 - Focus is not color-only: the active control has a high-contrast outline plus subtle scale/elevation. Disabled controls are excluded from keyboard focus.
 
@@ -49,4 +49,4 @@ No profile, weather, quick-launch, floating dock, synthetic statistics, remote i
 
 ## Evidence boundary
 
-This source-backed design record is not native parity evidence. `refs/one-ui-sample.html` demonstrates the planned NUI flow in a browser. Native Browser chrome, real WebView content/loading, Aurum input, annotations, and A2UI remain unverified until the installed package's generated-provider runtime blocker is resolved.
+The HTML sample and installed Common Emulator package now have separate visual evidence in `UI_PARITY.md`. That evidence proves Browser chrome, a real public WebView page, and bounded remote/pointer/touch flows at 1920×1080; it is not TV-product approval. Aurum still returns an empty semantic tree, and the generated-provider ABI blocker continues to prevent typed Action/View RPC, annotations over RPC, and legacy Presentation round trips. Canonical A2UI target transport remains independently blocked.

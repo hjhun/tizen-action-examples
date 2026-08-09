@@ -43,37 +43,44 @@ foreach (var invalid in new[]
     }
 }
 
-if (BrowserShellMetrics.HeaderHeight != 132 ||
-    BrowserShellMetrics.ContextHeight != 92 ||
+if (BrowserShellMetrics.HeaderHeight != 118 ||
+    BrowserShellMetrics.ContextHeight != 0 ||
     BrowserShellMetrics.ProgressHeight != 6 ||
-    BrowserShellMetrics.ContentLeft != 52 ||
-    BrowserShellMetrics.ContentTop != 230 ||
-    BrowserShellMetrics.ContentWidth != 1816 ||
-    BrowserShellMetrics.ContentHeight != 806 ||
-    BrowserShellMetrics.ContentTop + BrowserShellMetrics.ContentHeight != 1036)
+    BrowserShellMetrics.ContentLeft != 40 ||
+    BrowserShellMetrics.ContentTop != 124 ||
+    BrowserShellMetrics.ContentWidth != 1840 ||
+    BrowserShellMetrics.ContentHeight != 924 ||
+    BrowserShellMetrics.ContentTop + BrowserShellMetrics.ContentHeight != 1048 ||
+    BrowserShellMetrics.DockLeft != 590 ||
+    BrowserShellMetrics.DockTop != 960 ||
+    BrowserShellMetrics.DockWidth != 740 ||
+    BrowserShellMetrics.DockHeight != 92 ||
+    BrowserShellMetrics.DockTop + BrowserShellMetrics.DockHeight > BrowserShellMetrics.DesignHeight)
 {
-    throw new InvalidOperationException("NUI shell geometry must match the executable 1920x1080 Browser contract.");
+    throw new InvalidOperationException("NUI split address/content/navigation geometry must match the executable 1920x1080 Browser contract.");
 }
 
 var unavailableHistory = BrowserShellFocusGraph.Create(backEnabled: false, forwardEnabled: false);
-AssertFocus(unavailableHistory.MoveHorizontal(BrowserShellFocusTarget.Address, -1), BrowserShellFocusTarget.Reload);
-AssertFocus(unavailableHistory.MoveHorizontal(BrowserShellFocusTarget.Address, 1), BrowserShellFocusTarget.Tabs);
-AssertFocus(unavailableHistory.MoveHorizontal(BrowserShellFocusTarget.Reload, -1), BrowserShellFocusTarget.Reload);
+AssertFocus(unavailableHistory.MoveHorizontal(BrowserShellFocusTarget.Address, -1), BrowserShellFocusTarget.Address);
+AssertFocus(unavailableHistory.MoveHorizontal(BrowserShellFocusTarget.Address, 1), BrowserShellFocusTarget.Reload);
+AssertFocus(unavailableHistory.MoveHorizontal(BrowserShellFocusTarget.Reload, -1), BrowserShellFocusTarget.Address);
 AssertFocus(unavailableHistory.MoveHorizontal(BrowserShellFocusTarget.Tabs, 1), BrowserShellFocusTarget.Tabs);
 AssertFocus(unavailableHistory.MoveDown(BrowserShellFocusTarget.Address), BrowserShellFocusTarget.WebContent);
+AssertFocus(unavailableHistory.MoveDown(BrowserShellFocusTarget.WebContent), BrowserShellFocusTarget.Tabs);
+AssertFocus(unavailableHistory.MoveUp(BrowserShellFocusTarget.Tabs), BrowserShellFocusTarget.WebContent);
 AssertFocus(unavailableHistory.MoveUp(BrowserShellFocusTarget.WebContent), BrowserShellFocusTarget.Address);
 
 var backOnly = BrowserShellFocusGraph.Create(backEnabled: true, forwardEnabled: false);
-AssertFocus(backOnly.MoveHorizontal(BrowserShellFocusTarget.Reload, -1), BrowserShellFocusTarget.Back);
-AssertFocus(backOnly.MoveHorizontal(BrowserShellFocusTarget.Back, 1), BrowserShellFocusTarget.Reload);
+AssertFocus(backOnly.MoveHorizontal(BrowserShellFocusTarget.Back, 1), BrowserShellFocusTarget.Tabs);
+AssertFocus(backOnly.MoveHorizontal(BrowserShellFocusTarget.Tabs, -1), BrowserShellFocusTarget.Back);
 
 var fullHistory = BrowserShellFocusGraph.Create(backEnabled: true, forwardEnabled: true);
-AssertFocus(fullHistory.MoveHorizontal(BrowserShellFocusTarget.Reload, -1), BrowserShellFocusTarget.Forward);
 AssertFocus(fullHistory.MoveHorizontal(BrowserShellFocusTarget.Forward, -1), BrowserShellFocusTarget.Back);
+AssertFocus(fullHistory.MoveHorizontal(BrowserShellFocusTarget.Forward, 1), BrowserShellFocusTarget.Tabs);
 
 var loading = BrowserShellFocusGraph.Create(backEnabled: false, forwardEnabled: false, reloadEnabled: false);
-AssertFocus(loading.MoveHorizontal(BrowserShellFocusTarget.Address, -1), BrowserShellFocusTarget.Address);
-AssertFocus(loading.MoveHorizontal(BrowserShellFocusTarget.Address, 1), BrowserShellFocusTarget.Tabs);
+AssertFocus(loading.MoveHorizontal(BrowserShellFocusTarget.Address, 1), BrowserShellFocusTarget.Address);
+AssertFocus(loading.MoveHorizontal(BrowserShellFocusTarget.Tabs, -1), BrowserShellFocusTarget.Tabs);
 
 var loadingVisual = BrowserNavigationVisualState.From(new BrowserNavigationState(
     1, BrowserNavigationPhase.Loading, null, "https://example.com/", null, default));
@@ -103,6 +110,17 @@ if (BrowserHomeFocusGraph.Move(BrowserHomeFocusTarget.OpenGuide, -1) != BrowserH
     BrowserHomeFocusGraph.Move(BrowserHomeFocusTarget.EditAddress, 1) != BrowserHomeFocusTarget.EditAddress)
 {
     throw new InvalidOperationException("Home focus must remain trapped in Open guide, Enter address order.");
+}
+
+var blankTitleTab = BrowserTab.Create(
+    "blank-title",
+    BrowserPage.Create("blank-title", "https://example.com/blank", string.Empty, "Public"));
+var longTitleTab = BrowserTab.Create(
+    "long-title",
+    BrowserPage.Create("long-title", "https://example.com/long", new string('T', 90), "Public"));
+if (BrowserTabVisualText.Title(blankTitleTab) != "New tab" || BrowserTabVisualText.Title(longTitleTab).Length != 80)
+{
+    throw new InvalidOperationException("Tab visuals must safely fall back for blank target titles and bound long labels.");
 }
 
 var homeWorkspace = BrowserTabWorkspace.Create("tab-1");
