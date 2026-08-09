@@ -1,14 +1,14 @@
 using Browser.ActionProvider;
 using Browser.Domain;
 using Browser.UseCases;
+using Browser.ViewActionProvider;
 using Tizen.NUI;
 using Tizen.NUI.BaseComponents;
 
 namespace Browser.App;
 
 /// <summary>
-/// Owns the NUI WebView and routes UI-originated URL navigation through the shared use case.
-/// Provider composition is intentionally deferred until generated provider bindings are added.
+/// Owns the NUI WebView, shared navigation/query services, and current-page annotation publication.
 /// </summary>
 internal sealed class BrowserApplication : NUIApplication
 {
@@ -39,13 +39,17 @@ internal sealed class BrowserApplication : NUIApplication
         }
 
         BrowserActionProviderHost.Start(_queries, new NuiNavigationBridge(this, _uiContext));
+        BrowserViewActionProviderHost.Start();
+        FocusManager.Instance.FocusChanged += OnFocusChanged;
         _ = NavigateFromUiAsync(InitialPage);
     }
 
     protected override void OnTerminate()
     {
+        FocusManager.Instance.FocusChanged -= OnFocusChanged;
         Window.Default.Resized -= OnWindowResized;
         _lifetime.Cancel();
+        BrowserViewActionProviderHost.ClearPublishedViews();
 
         if (_webView is not null)
         {
@@ -62,8 +66,12 @@ internal sealed class BrowserApplication : NUIApplication
         if (_webView is not null)
         {
             _webView.Size = Window.Default.WindowSize;
+            PublishCurrentPageAnnotation();
         }
     }
+
+    private void OnFocusChanged(object? sender, FocusManager.FocusChangedEventArgs eventArgs) =>
+        PublishCurrentPageAnnotation();
 
     private async Task NavigateFromUiAsync(Uri uri)
     {
@@ -75,10 +83,54 @@ internal sealed class BrowserApplication : NUIApplication
         try
         {
             await _navigation.NavigateAsync("initial-page", uri.AbsoluteUri, _lifetime.Token);
+            PublishCurrentPageAnnotation();
         }
         catch (OperationCanceledException) when (_lifetime.IsCancellationRequested)
         {
             // Application lifecycle ended while an engine request was in flight.
+        }
+    }
+
+    private void PublishCurrentPageAnnotation()
+    {
+        if (_webView is null || _navigation?.CurrentPage is not { } page || _lifetime.IsCancellationRequested)
+        {
+            BrowserViewActionProviderHost.ClearPublishedViews();
+            return;
+        }
+
+        try
+        {
+            var bounds = _webView.CalculateScreenPositionSize();
+            if (!float.IsFinite(bounds.X) || !float.IsFinite(bounds.Y) ||
+                !float.IsFinite(bounds.Z) || !float.IsFinite(bounds.W) ||
+                bounds.Z <= 0 || bounds.W <= 0)
+            {
+                BrowserViewActionProviderHost.ClearPublishedViews();
+                return;
+            }
+
+            double? windowX = null;
+            double? windowY = null;
+            try
+            {
+                using var windowPosition = Window.Default.WindowPosition;
+                windowX = bounds.X - windowPosition.X;
+                windowY = bounds.Y - windowPosition.Y;
+            }
+            catch
+            {
+                // Screen bounds remain usable when the platform does not expose window position.
+            }
+
+            var focused = ReferenceEquals(FocusManager.Instance.GetCurrentFocusView(), _webView);
+            BrowserViewActionProviderHost.PublishVisiblePage(new BrowserPageViewSnapshot(
+                page, bounds.X, bounds.Y, windowX, windowY, bounds.Z, bounds.W, focused));
+        }
+        catch
+        {
+            // A transient NUI layout/lifecycle frame is never published as stale annotation data.
+            BrowserViewActionProviderHost.ClearPublishedViews();
         }
     }
 

@@ -10,5 +10,6 @@
     <ProjectReference Include="../Browser.Domain/Browser.Domain.csproj" />
     <ProjectReference Include="../Browser.UseCases/Browser.UseCases.csproj" />
     <ProjectReference Include="../Browser.ActionProvider/Browser.ActionProvider.csproj" />
+    <ProjectReference Include="../Browser.ViewActionProvider/Browser.ViewActionProvider.csproj" />
   </ItemGroup>
 </Project>
