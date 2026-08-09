@@ -1,6 +1,6 @@
 # Browser UI parity ledger
 
-갱신일: 2026-08-09 (Stage 2A)
+갱신일: 2026-08-09 (Stage 2B)
 
 - canonical preview: [`../refs/one-ui-sample.html`](../refs/one-ui-sample.html)
 - Samsung Android 근거: [`SAMSUNG_ANDROID_UI_REFERENCE.md`](SAMSUNG_ANDROID_UI_REFERENCE.md)
@@ -27,11 +27,11 @@
 |---|---|---|---|---|
 | 1920×1080 canvas | phone 화면을 확대하지 않고 TV-distance hierarchy로 번역 | viewport 안에서 centered uniform transform; 4-shape geometry PASS | full-window physical root + one centered NUI ancestor transform, `WindowSize`/`GetInsets()` resize/inset 갱신 | host geometry PASS; non-zero inset native 미검증 |
 | page-first hierarchy | Samsung Browser page + navigation toolbar | 132-unit command band, 92-unit context, 나머지는 content region | 동일 132/92/6 geometry와 1816×806 real content-only `WebView` sibling | source/host PASS; 설치 화면 미검증 |
-| Back/Forward/Reload | Samsung 공식 navigation controls | history availability에 따라 Back/Forward disabled, loading/tabs에서 Reload disabled | 비활성 history focus 제외 + future availability seam; WebView history adapter는 2B | Stage 2A focus graph host PASS; real history 미구현 |
-| address/search | 하나의 address/search surface | URL/search normalization, Enter, local search fixture, invalid input recovery | `TextField` + navigation normalizer + real HTTPS WebView | production은 absolute URL만 지원하므로 차이 열림 |
-| loading | chrome/context를 잃지 않는 recoverable navigation | progress, loading mask, latest intent state | `PageLoadStarted`/completion/error reducer | NUI 시각 상태 미구현 |
+| Back/Forward/Reload | Samsung 공식 navigation controls | history availability에 따라 Back/Forward disabled, loading/tabs에서 Reload disabled | real WebView Reload/GoBack/GoForward/CanGo*, loading disabled-skip focus | source/host PASS; actual native history 미검증 |
+| address/search | 하나의 address/search surface | URL/search normalization, Enter, local search fixture, invalid input recovery | bounded URL 또는 fixed HTTPS search, credential rejection, public query/fragment redaction | source/host PASS; real target search 미검증 |
+| loading | chrome/context를 잃지 않는 recoverable navigation | progress, loading mask, latest intent state | synchronous Loading state, visible progress, active request cancellation/StopLoading | source/host PASS; native timing/frame 미검증 |
 | page | web content가 가장 큰 surface | privacy-safe local article은 WebView region의 실행형 대체물 | real system WebView만 제품 gate 충족 | real HTTPS success 미검증 |
-| offline/error/timeout | 실패 설명과 직접 recovery | Offline, Engine error, Timeout, Retry/Back/Edit address | bounded error state와 `StopLoading`/retry | NUI 미구현 |
+| offline/error/timeout | 실패 설명과 직접 recovery | Offline, Engine error, Timeout, Retry/Back/Edit address | typed bounded state, NUI recovery surface, focus trap, stable-page/home Back, 15초 timeout | source/host PASS; native error/timeout 미검증 |
 | tabs manager | 별도 Tabs screen, selected outline, per-tab X, New tab | ordered 1~20 rows, select/new/close, max disabled, scroll focus | bounded tab aggregate + persistence + NUI rows | NUI 미구현 |
 | close dialog | Samsung close-all dialog family | individual close safety adaptation, Cancel initial focus, trap, Back cancel, restore | NUI modal overlay와 invoking focus registry | NUI 미구현 |
 | input | touch Android를 D-pad/keyboard/pointer/touch로 확장 | Arrow/Enter/Escape, click, touch tap가 같은 command를 실행 | one reducer, `FocusManager`, TouchEvent | command-band remote 일부만 과거 검증 |
@@ -58,18 +58,19 @@
 
 과거 Common Emulator capture는 [`images/native-browser-command-band-1920x1080.png`](images/native-browser-command-band-1920x1080.png), [`images/native-browser-address-focus-1920x1080.png`](images/native-browser-address-focus-1920x1080.png), [`images/native-browser-tabs-focus-1920x1080.png`](images/native-browser-tabs-focus-1920x1080.png)이다. 이들은 zero-inset command band와 address→Tabs remote focus 변화만 증명한다.
 
-Stage 2A에서 source/host 기준으로 닫은 차이:
+Stage 2A/2B에서 source/host 기준으로 닫은 차이:
 
 1. NUI header/context/progress/content geometry를 HTML의 132/92/6/806 계약과 일치시켰다.
 2. drawable area를 검증한 뒤 physical root 위의 단일 1920×1080 ancestor만 uniform scale/center하도록 분리했다.
 3. disabled Back/Forward를 건너뛰고 command row ↔ content WebView를 결정적으로 이동하는 포커스 그래프를 추가했다.
+4. URL/search 입력, Loading/Page/Offline/EngineError/Timeout/InvalidInput, Retry/Back/Edit address를 한 navigation state path로 연결했다.
+5. 실제 WebView Reload/Back/Forward와 history availability, 15초 timeout, superseded `StopLoading`을 adapter에 연결했다.
 
 남은 차이:
 
-1. NUI에 search normalization, actual history availability, loading/recovery state가 없다.
-2. Tabs 제어는 NUI에서 no-op이며 tab aggregate/persistence/modal이 없다.
-3. typography/token의 installed-state parity와 pointer/touch, modal trap/restore, non-zero inset, lifecycle native evidence가 없다.
-4. current-state canonical A2UI와 두 DisplayPresentation round trip이 없다.
+1. Tabs 제어는 NUI에서 no-op이며 tab aggregate/persistence/modal이 없다.
+2. typography/token의 installed-state parity와 navigation/error/history pointer·remote, non-zero inset, lifecycle native evidence가 없다.
+3. current-state canonical A2UI와 두 DisplayPresentation round trip이 없다.
 
 ## Runtime blocker boundary
 

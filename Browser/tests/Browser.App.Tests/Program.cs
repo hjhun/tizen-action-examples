@@ -1,4 +1,5 @@
 using Browser.App;
+using Browser.UseCases;
 
 var matrix = new[]
 {
@@ -69,7 +70,29 @@ var fullHistory = BrowserShellFocusGraph.Create(backEnabled: true, forwardEnable
 AssertFocus(fullHistory.MoveHorizontal(BrowserShellFocusTarget.Reload, -1), BrowserShellFocusTarget.Forward);
 AssertFocus(fullHistory.MoveHorizontal(BrowserShellFocusTarget.Forward, -1), BrowserShellFocusTarget.Back);
 
-Console.WriteLine("PASS: Browser NUI shell geometry, safe viewport, disabled-skip focus graph, and WebView vertical focus contract.");
+var loading = BrowserShellFocusGraph.Create(backEnabled: false, forwardEnabled: false, reloadEnabled: false);
+AssertFocus(loading.MoveHorizontal(BrowserShellFocusTarget.Address, -1), BrowserShellFocusTarget.Address);
+AssertFocus(loading.MoveHorizontal(BrowserShellFocusTarget.Address, 1), BrowserShellFocusTarget.Tabs);
+
+var loadingVisual = BrowserNavigationVisualState.From(new BrowserNavigationState(
+    1, BrowserNavigationPhase.Loading, null, "https://example.com/", null, default));
+var offlineVisual = BrowserNavigationVisualState.From(new BrowserNavigationState(
+    2, BrowserNavigationPhase.Offline, null, "https://example.com/", "offline", default));
+if (!loadingVisual.ShowsProgress || loadingVisual.ShowsRecovery || loadingVisual.ReloadEnabled ||
+    offlineVisual.ShowsProgress || !offlineVisual.ShowsRecovery || offlineVisual.Title != "You're offline")
+{
+    throw new InvalidOperationException("Loading and recovery phases must map to distinct deterministic NUI surfaces.");
+}
+
+if (BrowserRecoveryFocusGraph.Move(BrowserRecoveryFocusTarget.Retry, -1) != BrowserRecoveryFocusTarget.Retry ||
+    BrowserRecoveryFocusGraph.Move(BrowserRecoveryFocusTarget.Retry, 1) != BrowserRecoveryFocusTarget.Back ||
+    BrowserRecoveryFocusGraph.Move(BrowserRecoveryFocusTarget.Back, 1) != BrowserRecoveryFocusTarget.EditAddress ||
+    BrowserRecoveryFocusGraph.Move(BrowserRecoveryFocusTarget.EditAddress, 1) != BrowserRecoveryFocusTarget.EditAddress)
+{
+    throw new InvalidOperationException("Recovery focus must remain trapped in Retry, Back, Edit address order.");
+}
+
+Console.WriteLine("PASS: Browser NUI shell geometry, safe viewport, navigation/recovery visuals, and deterministic focus contracts.");
 
 static bool Near(float actual, float expected) => MathF.Abs(actual - expected) < 0.002f;
 

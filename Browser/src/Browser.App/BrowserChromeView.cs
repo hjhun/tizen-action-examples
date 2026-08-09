@@ -1,4 +1,5 @@
 using Browser.Domain;
+using Browser.UseCases;
 using Tizen.NUI;
 using Tizen.NUI.BaseComponents;
 
@@ -13,6 +14,9 @@ internal sealed class BrowserChromeView
 {
     private const string InitialAddress = "https://www.tizen.org/";
     private readonly Action<string> _navigate;
+    private readonly Action _reloadAction;
+    private readonly Action _retryAction;
+    private readonly Action _recoveryBackAction;
     private readonly View _back;
     private readonly View _forward;
     private readonly TextField _address;
@@ -21,6 +25,13 @@ internal sealed class BrowserChromeView
     private readonly TextLabel _state;
     private readonly View _reload;
     private readonly View _tabs;
+    private readonly View _progressFill;
+    private View? _recoverySurface;
+    private TextLabel? _recoveryTitle;
+    private TextLabel? _recoveryMessage;
+    private View? _retry;
+    private View? _recoveryBack;
+    private View? _editAddress;
     private WebView? _webView;
     private BrowserShellFocusGraph _focusGraph = BrowserShellFocusGraph.Create(false, false);
     private readonly Dictionary<View, Action> _activations = new();
@@ -29,9 +40,15 @@ internal sealed class BrowserChromeView
         Action<string> navigate,
         Action? goBack = null,
         Action? goForward = null,
-        Action? openTabs = null)
+        Action? openTabs = null,
+        Action? reload = null,
+        Action? retry = null,
+        Action? recoveryBack = null)
     {
         _navigate = navigate ?? throw new ArgumentNullException(nameof(navigate));
+        _reloadAction = reload ?? ReloadAddress;
+        _retryAction = retry ?? ReloadAddress;
+        _recoveryBackAction = recoveryBack ?? FocusAddress;
         Root = new View
         {
             Name = "BrowserPhysicalRoot",
@@ -73,7 +90,7 @@ internal sealed class BrowserChromeView
         header.Add(_back);
         _forward = CreateDisabledControl("Forward", "Forward unavailable", "→", new Position(334, 33), new Size(66, 66), goForward);
         header.Add(_forward);
-        _reload = CreateControl("Reload", "Reload current page", "↻", new Position(410, 33), new Size(66, 66), Reload);
+        _reload = CreateControl("Reload", "Reload current page", "↻", new Position(410, 33), new Size(66, 66), _reloadAction);
         header.Add(_reload);
 
         _address = new TextField
@@ -118,6 +135,16 @@ internal sealed class BrowserChromeView
             Size = new Size(BrowserShellMetrics.DesignWidth, BrowserShellMetrics.ProgressHeight),
             BackgroundColor = new Color("#E5E5EAFF"),
         });
+        _progressFill = new View
+        {
+            Name = "BrowserProgressFill",
+            Position = new Position(0, BrowserShellMetrics.HeaderHeight + BrowserShellMetrics.ContextHeight),
+            Size = new Size(0, BrowserShellMetrics.ProgressHeight),
+            BackgroundColor = new Color("#134F9EFF"),
+        };
+        Canvas.Add(_progressFill);
+        _progressFill.Hide();
+        BuildRecoverySurface();
     }
 
     internal View Root { get; }
@@ -135,6 +162,11 @@ internal sealed class BrowserChromeView
         webView.Position = new Position(BrowserShellMetrics.ContentLeft, BrowserShellMetrics.ContentTop);
         webView.Size = new Size(BrowserShellMetrics.ContentWidth, BrowserShellMetrics.ContentHeight);
         Canvas.Add(webView);
+        if (_recoverySurface is not null)
+        {
+            Canvas.Remove(_recoverySurface);
+            Canvas.Add(_recoverySurface);
+        }
     }
 
     internal void UpdatePhysicalSize(float width, float height) => Root.Size = new Size(width, height);
@@ -143,7 +175,49 @@ internal sealed class BrowserChromeView
     {
         SetControlEnabled(_back, canGoBack, canGoBack ? "Go back" : "Back unavailable");
         SetControlEnabled(_forward, canGoForward, canGoForward ? "Go forward" : "Forward unavailable");
-        _focusGraph = BrowserShellFocusGraph.Create(canGoBack, canGoForward);
+        _focusGraph = BrowserShellFocusGraph.Create(canGoBack, canGoForward, _reload.Focusable);
+    }
+
+    internal void UpdateNavigationState(BrowserNavigationState state)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+        var visual = BrowserNavigationVisualState.From(state);
+
+        SetControlEnabled(_reload, visual.ReloadEnabled, visual.ShowsProgress ? "Reload unavailable while loading" : "Reload current page");
+        SetHistoryAvailability(!visual.ShowsProgress && state.History.CanGoBack, !visual.ShowsProgress && state.History.CanGoForward);
+        if (visual.ShowsProgress) _progressFill.Show(); else _progressFill.Hide();
+        _progressFill.Size = new Size(visual.ShowsProgress ? 720.0f : 0.0f, BrowserShellMetrics.ProgressHeight);
+
+        if (state.Page is not null && state.Phase == BrowserNavigationPhase.Page)
+        {
+            UpdatePage(state.Page);
+        }
+        else
+        {
+            _title.Text = visual.Title;
+            _url.Text = state.PublicUrl ?? state.Error ?? InitialAddress;
+            _state.Text = visual.Status;
+        }
+
+        if (_recoverySurface is not null)
+        {
+            if (visual.ShowsRecovery) _recoverySurface.Show(); else _recoverySurface.Hide();
+        }
+
+        if (visual.ShowsProgress && IsRecoveryControl(FocusManager.Instance.GetCurrentFocusView()))
+        {
+            FocusAddress();
+        }
+
+        if (visual.ShowsRecovery)
+        {
+            if (_recoveryTitle is not null) _recoveryTitle.Text = _title.Text;
+            if (_recoveryMessage is not null) _recoveryMessage.Text = state.Error ?? "The page could not be loaded.";
+            if (_retry is not null)
+            {
+                FocusManager.Instance.SetCurrentFocusView(_retry);
+            }
+        }
     }
 
     internal void UpdatePage(BrowserPage? page, string? error = null)
@@ -166,17 +240,33 @@ internal sealed class BrowserChromeView
     {
         if (keyName is "Left" or "Right")
         {
-            MoveCommandFocus(keyName == "Left" ? -1 : 1);
+            var delta = keyName == "Left" ? -1 : 1;
+            if (IsRecoveryControl(FocusManager.Instance.GetCurrentFocusView()))
+            {
+                MoveRecoveryFocus(delta);
+            }
+            else
+            {
+                MoveCommandFocus(delta);
+            }
             return true;
         }
 
         if (keyName == "Down" && IsCommandControl(FocusManager.Instance.GetCurrentFocusView()))
         {
-            FocusTarget(_focusGraph.MoveDown(TargetFor(FocusManager.Instance.GetCurrentFocusView())));
+            if (_recoverySurface?.Visibility == true && _retry is not null)
+            {
+                FocusManager.Instance.SetCurrentFocusView(_retry);
+            }
+            else
+            {
+                FocusTarget(_focusGraph.MoveDown(TargetFor(FocusManager.Instance.GetCurrentFocusView())));
+            }
             return true;
         }
 
-        if (keyName == "Up" && ReferenceEquals(FocusManager.Instance.GetCurrentFocusView(), _webView))
+        if (keyName == "Up" && (ReferenceEquals(FocusManager.Instance.GetCurrentFocusView(), _webView) ||
+                                IsRecoveryControl(FocusManager.Instance.GetCurrentFocusView())))
         {
             FocusTarget(_focusGraph.MoveUp(BrowserShellFocusTarget.WebContent));
             return true;
@@ -246,7 +336,7 @@ internal sealed class BrowserChromeView
         _address.BorderlineWidth = focused ? 4.0f : 2.0f;
     }
 
-    private void Reload()
+    private void ReloadAddress()
     {
         var address = string.IsNullOrWhiteSpace(_address.Text) ? InitialAddress : _address.Text;
         _navigate(address);
@@ -255,9 +345,53 @@ internal sealed class BrowserChromeView
     private void SubmitAddress()
     {
         var address = _address.Text?.Trim();
-        if (!string.IsNullOrWhiteSpace(address))
+        _navigate(address ?? string.Empty);
+    }
+
+    private void BuildRecoverySurface()
+    {
+        _recoverySurface = new View
         {
-            _navigate(address);
+            Name = "BrowserRecoverySurface",
+            Position = new Position(BrowserShellMetrics.ContentLeft, BrowserShellMetrics.ContentTop),
+            Size = new Size(BrowserShellMetrics.ContentWidth, BrowserShellMetrics.ContentHeight),
+            BackgroundColor = new Color("#F7F7FAFF"),
+            FocusableChildren = true,
+        };
+        _recoveryTitle = Label("Page unavailable", "#1B1B1FFF", 13.0f, new Position(164, 132), new Size(1488, 96), HorizontalAlignment.Begin);
+        _recoveryMessage = Label("The page could not be loaded.", "#61616AFF", 7.0f, new Position(164, 238), new Size(1488, 76), HorizontalAlignment.Begin);
+        _retry = CreateControl("Retry", "Retry navigation", "Retry", new Position(164, 366), new Size(240, 76), _retryAction);
+        _recoveryBack = CreateControl("RecoveryBack", "Return to the previous page", "Back", new Position(426, 366), new Size(240, 76), _recoveryBackAction);
+        _editAddress = CreateControl("EditAddress", "Edit address or search", "Edit address", new Position(688, 366), new Size(280, 76), FocusAddress);
+        _recoverySurface.Add(_recoveryTitle);
+        _recoverySurface.Add(_recoveryMessage);
+        _recoverySurface.Add(_retry);
+        _recoverySurface.Add(_recoveryBack);
+        _recoverySurface.Add(_editAddress);
+        Canvas.Add(_recoverySurface);
+        _recoverySurface.Hide();
+    }
+
+    private bool IsRecoveryControl(View? view) =>
+        ReferenceEquals(view, _retry) || ReferenceEquals(view, _recoveryBack) || ReferenceEquals(view, _editAddress);
+
+    private void MoveRecoveryFocus(int delta)
+    {
+        var current = FocusManager.Instance.GetCurrentFocusView();
+        var currentTarget = ReferenceEquals(current, _recoveryBack)
+            ? BrowserRecoveryFocusTarget.Back
+            : ReferenceEquals(current, _editAddress)
+                ? BrowserRecoveryFocusTarget.EditAddress
+                : BrowserRecoveryFocusTarget.Retry;
+        var target = BrowserRecoveryFocusGraph.Move(currentTarget, delta) switch
+        {
+            BrowserRecoveryFocusTarget.Back => _recoveryBack,
+            BrowserRecoveryFocusTarget.EditAddress => _editAddress,
+            _ => _retry,
+        };
+        if (target is not null)
+        {
+            FocusManager.Instance.SetCurrentFocusView(target);
         }
     }
 

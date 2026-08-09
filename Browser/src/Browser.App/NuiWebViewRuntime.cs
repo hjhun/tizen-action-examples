@@ -11,7 +11,6 @@ namespace Browser.App;
 public sealed class NuiWebViewRuntime : IWebRuntime, IAsyncDisposable
 {
     private const int MaximumTitleLength = 512;
-    private const int MaximumErrorLength = 512;
     private readonly WebView _webView;
     private readonly TimeSpan _navigationTimeout;
     private readonly SynchronizationContext _nuiSynchronizationContext;
@@ -21,7 +20,7 @@ public sealed class NuiWebViewRuntime : IWebRuntime, IAsyncDisposable
     public NuiWebViewRuntime(WebView webView, TimeSpan navigationTimeout)
     {
         _webView = webView ?? throw new ArgumentNullException(nameof(webView));
-        if (navigationTimeout <= TimeSpan.Zero || navigationTimeout > TimeSpan.FromMinutes(2))
+        if (navigationTimeout <= TimeSpan.Zero || navigationTimeout > BrowserNavigationPolicy.NavigationTimeout)
         {
             throw new ArgumentOutOfRangeException(nameof(navigationTimeout));
         }
@@ -34,7 +33,7 @@ public sealed class NuiWebViewRuntime : IWebRuntime, IAsyncDisposable
     public static WebView CreateSystemWebView() =>
         new(["org.tizen.browser"], WebView.WebEngineType.UseSystemSetting);
 
-    public async Task<WebNavigationOutcome> NavigateAsync(Uri uri, CancellationToken cancellationToken)
+    public Task<WebNavigationOutcome> NavigateAsync(Uri uri, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(uri);
         if (!uri.IsAbsoluteUri || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
@@ -42,6 +41,42 @@ public sealed class NuiWebViewRuntime : IWebRuntime, IAsyncDisposable
             throw new ArgumentException("WebView navigation requires an absolute HTTP or HTTPS URI.", nameof(uri));
         }
 
+        return ExecuteAsync(uri, () => _webView.LoadUrl(uri.AbsoluteUri), cancellationToken);
+    }
+
+    public Task<WebNavigationOutcome> ReloadAsync(CancellationToken cancellationToken) =>
+        ExecuteAsync(null, _webView.Reload, cancellationToken);
+
+    public Task<WebNavigationOutcome> GoBackAsync(CancellationToken cancellationToken) =>
+        ExecuteAsync(null, _webView.GoBack, cancellationToken);
+
+    public Task<WebNavigationOutcome> GoForwardAsync(CancellationToken cancellationToken) =>
+        ExecuteAsync(null, _webView.GoForward, cancellationToken);
+
+    public async ValueTask DisposeAsync()
+    {
+        if (Interlocked.Exchange(ref _disposed, 1) != 0)
+        {
+            return;
+        }
+
+        await _navigationGate.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            await InvokeOnNuiThreadAsync(_webView.Dispose).ConfigureAwait(false);
+        }
+        finally
+        {
+            _navigationGate.Release();
+            _navigationGate.Dispose();
+        }
+    }
+
+    private async Task<WebNavigationOutcome> ExecuteAsync(
+        Uri? requestedUri,
+        Action startNavigation,
+        CancellationToken cancellationToken)
+    {
         ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
         await _navigationGate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
@@ -58,12 +93,15 @@ public sealed class NuiWebViewRuntime : IWebRuntime, IAsyncDisposable
                 {
                     completion.TrySetResult(WebNavigationOutcome.Loaded(
                         Limit(_webView.Title, MaximumTitleLength),
-                        "Loaded in the system WebView."));
+                        "Loaded in the system WebView.",
+                        CurrentWebUri() ?? requestedUri,
+                        CaptureHistory()));
                 }
             };
-            EventHandler<WebViewPageLoadErrorEventArgs> failed = (_, eventArgs) =>
+            EventHandler<WebViewPageLoadErrorEventArgs> failed = (_, _) =>
                 completion.TrySetResult(WebNavigationOutcome.Failed(
-                    Limit(eventArgs.PageLoadError?.Description, MaximumErrorLength, "The WebView could not load the page.")));
+                    WebNavigationFailure.Network,
+                    "The page could not be loaded. Check the network connection and try again."));
 
             using var cancellationRegistration = cancellationToken.Register(() =>
             {
@@ -74,7 +112,9 @@ public sealed class NuiWebViewRuntime : IWebRuntime, IAsyncDisposable
             using var timeoutRegistration = timeout.Token.Register(() =>
             {
                 Interlocked.Exchange(ref stopRequested, 1);
-                completion.TrySetResult(WebNavigationOutcome.Failed("The WebView navigation timed out."));
+                completion.TrySetResult(WebNavigationOutcome.Failed(
+                    WebNavigationFailure.Timeout,
+                    "The WebView navigation timed out."));
             });
 
             try
@@ -84,7 +124,7 @@ public sealed class NuiWebViewRuntime : IWebRuntime, IAsyncDisposable
                     _webView.PageLoadStarted += started;
                     _webView.PageLoadFinished += finished;
                     _webView.PageLoadError += failed;
-                    _webView.LoadUrl(uri.AbsoluteUri);
+                    startNavigation();
                 }).ConfigureAwait(false);
                 return await completion.Task.ConfigureAwait(false);
             }
@@ -92,9 +132,11 @@ public sealed class NuiWebViewRuntime : IWebRuntime, IAsyncDisposable
             {
                 throw;
             }
-            catch (Exception exception)
+            catch
             {
-                return WebNavigationOutcome.Failed(Limit(exception.Message, MaximumErrorLength, "The WebView could not start navigation."));
+                return WebNavigationOutcome.Failed(
+                    WebNavigationFailure.EngineUnavailable,
+                    "The system WebView could not start navigation.");
             }
             finally
             {
@@ -117,22 +159,30 @@ public sealed class NuiWebViewRuntime : IWebRuntime, IAsyncDisposable
         }
     }
 
-    public async ValueTask DisposeAsync()
+    private WebHistoryAvailability CaptureHistory()
     {
-        if (Interlocked.Exchange(ref _disposed, 1) != 0)
-        {
-            return;
-        }
-
-        await _navigationGate.WaitAsync().ConfigureAwait(false);
         try
         {
-            await InvokeOnNuiThreadAsync(_webView.Dispose).ConfigureAwait(false);
+            return new WebHistoryAvailability(_webView.CanGoBack(), _webView.CanGoForward());
         }
-        finally
+        catch
         {
-            _navigationGate.Release();
-            _navigationGate.Dispose();
+            return default;
+        }
+    }
+
+    private Uri? CurrentWebUri()
+    {
+        try
+        {
+            return Uri.TryCreate(_webView.Url, UriKind.Absolute, out var uri) &&
+                   (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps)
+                ? uri
+                : null;
+        }
+        catch
+        {
+            return null;
         }
     }
 

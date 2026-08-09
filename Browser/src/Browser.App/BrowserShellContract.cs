@@ -1,3 +1,5 @@
+using Browser.UseCases;
+
 namespace Browser.App;
 
 /// <summary>
@@ -90,7 +92,7 @@ public sealed class BrowserShellFocusGraph
 
     private BrowserShellFocusGraph(BrowserShellFocusTarget[] commandRow) => _commandRow = commandRow;
 
-    public static BrowserShellFocusGraph Create(bool backEnabled, bool forwardEnabled)
+    public static BrowserShellFocusGraph Create(bool backEnabled, bool forwardEnabled, bool reloadEnabled = true)
     {
         var commandRow = new List<BrowserShellFocusTarget>(5);
         if (backEnabled)
@@ -103,7 +105,10 @@ public sealed class BrowserShellFocusGraph
             commandRow.Add(BrowserShellFocusTarget.Forward);
         }
 
-        commandRow.Add(BrowserShellFocusTarget.Reload);
+        if (reloadEnabled)
+        {
+            commandRow.Add(BrowserShellFocusTarget.Reload);
+        }
         commandRow.Add(BrowserShellFocusTarget.Address);
         commandRow.Add(BrowserShellFocusTarget.Tabs);
         return new BrowserShellFocusGraph(commandRow.ToArray());
@@ -125,4 +130,54 @@ public sealed class BrowserShellFocusGraph
 
     public BrowserShellFocusTarget MoveUp(BrowserShellFocusTarget current) =>
         current == BrowserShellFocusTarget.WebContent ? BrowserShellFocusTarget.Address : current;
+}
+
+public sealed record BrowserNavigationVisualState(
+    string Title,
+    string Status,
+    bool ShowsProgress,
+    bool ShowsRecovery,
+    bool ReloadEnabled)
+{
+    public static BrowserNavigationVisualState From(BrowserNavigationState state)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+        var recovery = state.Phase is BrowserNavigationPhase.Offline or BrowserNavigationPhase.EngineError or
+            BrowserNavigationPhase.Timeout or BrowserNavigationPhase.InvalidInput;
+        return new BrowserNavigationVisualState(
+            state.Phase switch
+            {
+                BrowserNavigationPhase.Home => "Start browsing",
+                BrowserNavigationPhase.Loading => "Loading page",
+                BrowserNavigationPhase.Page => state.Page?.Title ?? "Web page",
+                BrowserNavigationPhase.Offline => "You're offline",
+                BrowserNavigationPhase.EngineError => "Browser engine unavailable",
+                BrowserNavigationPhase.Timeout => "This page took too long",
+                BrowserNavigationPhase.InvalidInput => "Check the address or search",
+                _ => "Page unavailable",
+            },
+            state.Phase == BrowserNavigationPhase.Page ? "READY" : state.Phase.ToString().ToUpperInvariant(),
+            state.Phase == BrowserNavigationPhase.Loading,
+            recovery,
+            state.Phase != BrowserNavigationPhase.Loading && state.Page is not null);
+    }
+}
+
+public enum BrowserRecoveryFocusTarget
+{
+    Retry,
+    Back,
+    EditAddress,
+}
+
+public static class BrowserRecoveryFocusGraph
+{
+    private static readonly BrowserRecoveryFocusTarget[] Row =
+        [BrowserRecoveryFocusTarget.Retry, BrowserRecoveryFocusTarget.Back, BrowserRecoveryFocusTarget.EditAddress];
+
+    public static BrowserRecoveryFocusTarget Move(BrowserRecoveryFocusTarget current, int delta)
+    {
+        var index = Array.IndexOf(Row, current);
+        return Row[Math.Clamp(index + Math.Sign(delta), 0, Row.Length - 1)];
+    }
 }

@@ -25,34 +25,67 @@ internal sealed class BrowserApplication : NUIApplication
     {
         base.OnCreate();
 
-        _chrome = new BrowserChromeView(NavigateAddressFromUi);
+        _uiContext = SynchronizationContext.Current
+            ?? throw new InvalidOperationException("Browser NUI composition requires a UI synchronization context.");
+        _chrome = new BrowserChromeView(
+            NavigateAddressFromUi,
+            goBack: GoBackFromUi,
+            goForward: GoForwardFromUi,
+            reload: ReloadFromUi,
+            retry: RetryFromUi,
+            recoveryBack: HandleBackFromUi);
         Window.Default.GetDefaultLayer().Add(_chrome.Root);
         UpdateReferenceCanvasLayout();
-        _webView = NuiWebViewRuntime.CreateSystemWebView();
-        _chrome.AddWebView(_webView);
         Window.Default.Resized += OnWindowResized;
         Window.Default.InsetsChanged += OnWindowResized;
 
-        _webRuntime = new NuiWebViewRuntime(_webView, TimeSpan.FromMinutes(2));
-        _navigation = new BrowserNavigationCoordinator(_webRuntime);
-        _queries = new BrowserPageQueryService(_navigation);
-        _uiContext = SynchronizationContext.Current;
-        if (_uiContext is null)
+        IWebRuntime runtime;
+        try
         {
-            throw new InvalidOperationException("Browser NUI composition requires a UI synchronization context.");
+            _webView = NuiWebViewRuntime.CreateSystemWebView();
+            _chrome.AddWebView(_webView);
+            _webRuntime = new NuiWebViewRuntime(_webView, BrowserNavigationPolicy.NavigationTimeout);
+            runtime = _webRuntime;
         }
+        catch
+        {
+            if (_webView is not null)
+            {
+                _chrome.Canvas.Remove(_webView);
+                try
+                {
+                    _webView.Dispose();
+                }
+                catch
+                {
+                    // The engine initialization failure already owns this recovery path.
+                }
+
+                _webView = null;
+            }
+
+            runtime = new UnavailableWebRuntime();
+        }
+
+        _navigation = new BrowserNavigationCoordinator(runtime);
+        _navigation.StateChanged += OnNavigationStateChanged;
+        _queries = new BrowserPageQueryService(_navigation);
 
         BrowserActionProviderHost.Start(_queries, new NuiNavigationBridge(this, _uiContext));
         BrowserViewActionProviderHost.Start();
         FocusManager.Instance.FocusChanged += OnFocusChanged;
         Window.Default.KeyEvent += OnKeyEvent;
         _chrome.FocusAddress();
-        _ = NavigateFromUiAsync(InitialPage);
+        _ = NavigateFromUiAsync("tab-1", InitialPage.AbsoluteUri);
     }
 
     protected override void OnTerminate()
     {
         FocusManager.Instance.FocusChanged -= OnFocusChanged;
+        if (_navigation is not null)
+        {
+            _navigation.StateChanged -= OnNavigationStateChanged;
+        }
         Window.Default.Resized -= OnWindowResized;
         Window.Default.InsetsChanged -= OnWindowResized;
         Window.Default.KeyEvent -= OnKeyEvent;
@@ -84,7 +117,14 @@ internal sealed class BrowserApplication : NUIApplication
     {
         if (eventArgs.Key.State == Key.StateType.Down)
         {
-            _chrome?.TryHandleKey(eventArgs.Key.KeyPressedName);
+            if (eventArgs.Key.KeyPressedName is "XF86Back" or "Escape" or "Back")
+            {
+                HandleBackFromUi();
+            }
+            else
+            {
+                _chrome?.TryHandleKey(eventArgs.Key.KeyPressedName);
+            }
         }
     }
 
@@ -118,7 +158,7 @@ internal sealed class BrowserApplication : NUIApplication
     private void OnFocusChanged(object? sender, FocusManager.FocusChangedEventArgs eventArgs) =>
         PublishCurrentPageAnnotation();
 
-    private async Task NavigateFromUiAsync(Uri uri)
+    private async Task NavigateFromUiAsync(string pageId, string input)
     {
         if (_navigation is null)
         {
@@ -127,9 +167,7 @@ internal sealed class BrowserApplication : NUIApplication
 
         try
         {
-            var result = await _navigation.NavigateAsync("initial-page", uri.AbsoluteUri, _lifetime.Token);
-            _chrome?.UpdatePage(result.Page, result.Error);
-            PublishCurrentPageAnnotation();
+            await _navigation.NavigateInputAsync(pageId, input, _lifetime.Token);
         }
         catch (OperationCanceledException) when (_lifetime.IsCancellationRequested)
         {
@@ -139,20 +177,92 @@ internal sealed class BrowserApplication : NUIApplication
 
     private void NavigateAddressFromUi(string address)
     {
-        if (Uri.TryCreate(address, UriKind.Absolute, out var uri) &&
-            (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps))
+        _ = NavigateFromUiAsync("tab-1", address);
+    }
+
+    private void ReloadFromUi() => _ = RunNavigationCommandAsync(navigation => navigation.ReloadAsync(_lifetime.Token));
+
+    private void RetryFromUi() => _ = RunNavigationCommandAsync(navigation => navigation.RetryAsync(_lifetime.Token));
+
+    private void GoBackFromUi() => _ = RunNavigationCommandAsync(navigation => navigation.GoBackAsync(_lifetime.Token));
+
+    private void GoForwardFromUi() => _ = RunNavigationCommandAsync(navigation => navigation.GoForwardAsync(_lifetime.Token));
+
+    private async Task RunNavigationCommandAsync(Func<BrowserNavigationCoordinator, Task<BrowserNavigationResult>> command)
+    {
+        if (_navigation is null)
         {
-            _ = NavigateFromUiAsync(uri);
+            return;
+        }
+
+        try
+        {
+            await command(_navigation);
+        }
+        catch (OperationCanceledException) when (_lifetime.IsCancellationRequested)
+        {
+            // Application lifecycle ended while a local command was in flight.
+        }
+    }
+
+    private void HandleBackFromUi()
+    {
+        if (_navigation is null)
+        {
+            Exit();
+            return;
+        }
+
+        if (_navigation.DismissTransientState())
+        {
+            _chrome?.FocusAddress();
+            return;
+        }
+
+        if (_navigation.CurrentState.History.CanGoBack)
+        {
+            GoBackFromUi();
+            return;
+        }
+
+        Exit();
+    }
+
+    private void OnNavigationStateChanged(object? sender, BrowserNavigationState state)
+    {
+        var context = _uiContext;
+        if (context is null || _lifetime.IsCancellationRequested)
+        {
+            return;
+        }
+
+        if (SynchronizationContext.Current == context)
+        {
+            ApplyNavigationState(state);
         }
         else
         {
-            _chrome?.UpdatePage(null, "Enter a complete http:// or https:// address.");
+            context.Post(static value =>
+            {
+                var update = (NavigationStateUpdate)value!;
+                if (!update.Application._lifetime.IsCancellationRequested)
+                {
+                    update.Application.ApplyNavigationState(update.State);
+                }
+            }, new NavigationStateUpdate(this, state));
         }
+    }
+
+    private void ApplyNavigationState(BrowserNavigationState state)
+    {
+        _chrome?.UpdateNavigationState(state);
+        PublishCurrentPageAnnotation();
     }
 
     private void PublishCurrentPageAnnotation()
     {
-        if (_webView is null || _navigation?.CurrentPage is not { } page || _lifetime.IsCancellationRequested)
+        if (_webView is null || _navigation?.CurrentState is not { Phase: BrowserNavigationPhase.Page, Page: { } page } ||
+            _lifetime.IsCancellationRequested)
         {
             BrowserViewActionProviderHost.ClearPublishedViews();
             return;
@@ -231,7 +341,7 @@ internal sealed class BrowserApplication : NUIApplication
                     var request = (NavigationRequest)state!;
                     if (!request.Application._lifetime.IsCancellationRequested)
                     {
-                        _ = request.Application.NavigateFromUiAsync(new Uri(request.Page.Url, UriKind.Absolute));
+                        _ = request.Application.NavigateFromUiAsync(request.Page.Id, request.Page.Url);
                     }
                 },
                 new NavigationRequest(_application, page));
@@ -239,6 +349,16 @@ internal sealed class BrowserApplication : NUIApplication
         }
 
         private sealed record NavigationRequest(BrowserApplication Application, BrowserPage Page);
+    }
+
+    private sealed record NavigationStateUpdate(BrowserApplication Application, BrowserNavigationState State);
+
+    private sealed class UnavailableWebRuntime : IWebRuntime
+    {
+        public Task<WebNavigationOutcome> NavigateAsync(Uri uri, CancellationToken cancellationToken) =>
+            Task.FromResult(WebNavigationOutcome.Failed(
+                WebNavigationFailure.EngineUnavailable,
+                "The system WebView is unavailable. Try again after restarting the app."));
     }
 
     private static void Main(string[] args)

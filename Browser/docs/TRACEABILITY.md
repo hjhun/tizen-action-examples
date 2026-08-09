@@ -1,6 +1,6 @@
 # Browser 요구사항 추적성
 
-갱신일: 2026-08-09 (Stage 2A)
+갱신일: 2026-08-09 (Stage 2B)
 상태 정의: `문서화`는 구현 완료가 아니며, `부분`은 일부 source/host evidence만 존재하고 target gate가 남았다는 뜻이다.
 
 ## 기능 요구사항
@@ -8,16 +8,16 @@
 | 요구사항 | 모듈/아키텍처 | 현재/예정 source | host test | target test | screenshot/evidence | 상태 |
 |---|---|---|---|---|---|---|
 | FR-BROWSER-001 | 2A App shell | `BrowserApplication`, `BrowserChromeView`, `BrowserShellContract` | physical-root/canvas geometry + focus graph PASS | cold launch + initial focus | 과거 `native-browser-address-focus-1920x1080.png`; current native 예정 | host PASS/target 대기 |
-| FR-BROWSER-002 | 2B navigation reducer/runtime | `BrowserNavigationCoordinator`, `NuiWebViewRuntime` | `Browser.UseCases.Tests` cancellation/validation 확장 | real HTTPS submit/loading | loading HTML/native 예정 | 부분 |
-| FR-BROWSER-003 | 2B input normalization | search normalizer 예정 | URL/search/bounds table tests 예정 | keyboard submit | search HTML/native 예정 | 미구현 |
-| FR-BROWSER-004 | 2B loaded state | coordinator + page snapshot | success/stale tests 존재·확장 | real WebView HTTPS completion | page HTML/native 예정 | 부분 |
-| FR-BROWSER-005 | 2B reload | runtime/reducer command 예정 | single-intent reload test 예정 | Reload key/pointer | page reload frame/trace 예정 | 부분 |
-| FR-BROWSER-006 | 2B recovery | recovery state/view 예정 | offline/retry reducer tests 예정 | offline/error/retry | 기존 `html-browser-offline-1264x625.png`는 HTML-only | 미구현(NUI) |
-| FR-BROWSER-007 | 2B engine unavailable | runtime capability/error state 예정 | startup exception test 예정 | unavailable engine probe | engine-error HTML/native 예정 | 미구현 |
-| FR-BROWSER-008 | 2B timeout | 15초 timeout policy로 수정 예정 | fake runtime/clock test 예정 | target timeout 또는 controlled unreachable | timeout HTML/native 예정 | 미구현 |
-| FR-BROWSER-009 | 2B stale suppression | `BrowserNavigationCoordinator` | delayed A/B stale test 존재·확장 | rapid consecutive Go/input | trace + final native frame 예정 | 부분 |
-| FR-BROWSER-010 | 2B history | WebView history adapter 예정 | availability/reducer tests 예정 | Back/Forward success+disabled | focused chrome frames 예정 | 미구현 |
-| FR-BROWSER-011 | 2B/2C Back hierarchy | shared reducer 예정 | modal/tabs/history table tests 예정 | remote Back each state | error/tabs/modal native frames 예정 | 미구현 |
+| FR-BROWSER-002 | 2B navigation reducer/runtime | `BrowserNavigationCoordinator`, `NuiWebViewRuntime` | input→Loading→typed result PASS | real HTTPS submit/loading | Stage 1 loading HTML; native 예정 | host PASS/target 대기 |
+| FR-BROWSER-003 | 2B input normalization | `BrowserNavigationInput` | URL/search/empty/512·4096 bounds/credential rejection/query redaction PASS | keyboard submit | Stage 1 search HTML; native 예정 | host PASS/target 대기 |
+| FR-BROWSER-004 | 2B loaded state | coordinator immutable state + public `BrowserPage` | loaded/latest state + public URI PASS | real WebView HTTPS completion | page native 예정 | host PASS/target 대기 |
+| FR-BROWSER-005 | 2B reload | shared coordinator/runtime command | navigate→reload single pipeline PASS | Reload key/pointer | reload native frame/trace 예정 | host PASS/target 대기 |
+| FR-BROWSER-006 | 2B recovery | typed state + NUI recovery surface | offline mapping, Retry/Back restoration, 256-char error bound PASS | offline/error/retry | Stage 1 offline HTML; native 예정 | host/source PASS/target 대기 |
+| FR-BROWSER-007 | 2B engine unavailable | `UnavailableWebRuntime` + engine-error surface | typed engine mapping/visual state PASS | unavailable engine probe | engine-error native 예정 | host/source PASS/target 대기 |
+| FR-BROWSER-008 | 2B timeout | 15초 policy + runtime timeout/`StopLoading` | exact 15초 policy + typed timeout mapping PASS | controlled target timeout | timeout HTML; native 예정 | host/source PASS/target 대기 |
+| FR-BROWSER-009 | 2B stale suppression | active linked cancellation + monotonic intent | A cancellation 관찰 후 B만 publish PASS | rapid consecutive Go/input | trace + final native frame 예정 | host PASS/target 대기 |
+| FR-BROWSER-010 | 2B history | real `WebView.GoBack/GoForward/CanGo*` adapter | availability/one-step command pipeline + disabled skip PASS | Back/Forward success+disabled | focused chrome native 예정 | host/source PASS/target 대기 |
+| FR-BROWSER-011 | 2B/2C Back hierarchy | error→stable/home, page→history; tabs/modal은 2C | recovery Back + history host PASS | remote Back each state | error/tabs/modal native 예정 | 2B host PASS/2C·target 대기 |
 | FR-BROWSER-012 | 2C tabs aggregate | tab domain/use case/view 예정 | order/selected/max tests 예정 | open Tabs/select | tabs HTML/native 예정 | HTML-only 부분 |
 | FR-BROWSER-013 | 2C new tab | tab command/persistence 예정 | max-20/ID/focus tests 예정 | New tab/disabled at max | tabs-new HTML/native 예정 | HTML-only 부분 |
 | FR-BROWSER-014 | 2C select tab | tab command + runtime binding 예정 | selection/order/state tests 예정 | select via key/pointer | selected tab HTML/native 예정 | HTML-only 부분 |
@@ -32,22 +32,22 @@
 | FR-BROWSER-023 | 2D View | `BrowserViewActionService`, NUI publish | view registry/mapping tests 예정 | discovery/Find/focus/bounds/lifecycle | focused source native frame | source 부분/target 차단 |
 | FR-BROWSER-024 | 2D A2UI | canonical producer + legacy adapter 예정 | schema/catalog/equivalence/error tests 예정 | both DisplayPresentation round trips | source/render native pair | 미구현/target 차단 |
 | FR-BROWSER-025 | 1/2A/2B/2C input | HTML reducer + NUI reducer/focus graph | HTML keyboard/pointer suite + reducer tests | remote/keyboard/pointer/touch | state별 HTML/native frame | 일부 command-band remote만 증명 |
-| FR-BROWSER-026 | 2B/2D state consistency | shared immutable snapshot 예정 | state projection matrix 예정 | transient Action/View calls | loading/error source/render pair | 미구현 |
+| FR-BROWSER-026 | 2B/2D state consistency | shared immutable navigation state, page projection; A2UI는 2D | phase/public-page projection host PASS | transient Action/View calls | loading/error source/render pair | 2B host PASS/2D·target 대기 |
 
 ## 품질 요구사항
 
 | 요구사항 | 아키텍처/source | host 검증 | target/evidence | 상태 |
 |---|---|---|---|---|
 | NFR-BROWSER-001 | App shell-first startup | startup state test 예정 | cold launch timing + initial frame 예정 | 미측정 |
-| NFR-BROWSER-002 | shared input reducer | reducer latency/single-command test 예정 | key/pointer frame timing 예정 | 미측정 |
-| NFR-BROWSER-003 | immediate loading/recovery render | reducer transition test 예정 | target frame timing 예정 | 미측정 |
-| NFR-BROWSER-004 | coordinator cancellation/stale ID | delayed runtime tests 일부 존재 | rapid target navigation 예정 | host 부분 |
-| NFR-BROWSER-005 | bounded timeout | runtime timeout 현재 2분, 15초로 교정 예정 | controlled timeout 예정 | 불일치 |
-| NFR-BROWSER-006 | async gates/bounded queues | use-case concurrency tests 일부 존재 | target responsiveness 예정 | 부분 |
+| NFR-BROWSER-002 | UI/Action shared coordinator | single command pipeline host PASS | key/pointer frame timing 예정 | host PASS/latency target 대기 |
+| NFR-BROWSER-003 | synchronous Loading publish + visual-state mapping | loading/recovery transition host PASS | target ≤100/500ms timing 예정 | host PASS/timing 대기 |
+| NFR-BROWSER-004 | active CTS + stale ID | second intent의 first cancellation 관찰과 stale suppression PASS | rapid target navigation 예정 | host PASS/target 대기 |
+| NFR-BROWSER-005 | `BrowserNavigationPolicy` + runtime timeout | exact 15초와 typed timeout/Retry mapping PASS | controlled timeout 예정 | host/source PASS/target 대기 |
+| NFR-BROWSER-006 | coordinator/runtime async gates, previous request cancellation | serial runtime command + latest publish PASS | target responsiveness 예정 | host PASS/target 대기 |
 | NFR-BROWSER-007 | domain/session bounds | page/session/resolver tests 일부 존재 | oversized Action negative 예정 | 부분 |
 | NFR-BROWSER-008 | versioned atomic persistence | serializer tests 존재, file adapter 없음 | restart/corruption 예정 | 부분 |
-| NFR-BROWSER-009 | public metadata projection | serialization/View source review | screenshot/report/A2UI scan 예정 | 부분 |
-| NFR-BROWSER-010 | HTTP(S)/no auto approval | URL validation tests 일부 | real HTTPS + permission denial 예정 | 부분 |
+| NFR-BROWSER-009 | query/fragment/userinfo-free public URI + generic bounded engine errors | projection/redaction/credential tests PASS | screenshot/report/A2UI scan 예정 | host PASS/target·2D 대기 |
+| NFR-BROWSER-010 | HTTP(S), credential rejection, no approval path | URL/search/scheme/credential validation PASS | real HTTPS + permission denial 예정 | host PASS/target 대기 |
 | NFR-BROWSER-011 | accessible labels | HTML/source assertion 예정 | Aurum tree 또는 capability-limit 기록 | 부분 |
 | NFR-BROWSER-012 | contrast/two focus cues | token contrast script 예정 | screenshot visual review | two cues 일부 native 증거 |
 | NFR-BROWSER-013 | focus graph/trap/restore | Stage 2A disabled-skip command↔WebView graph PASS; modal은 2C | all-state key verification | shell host PASS/target·modal 대기 |
@@ -102,3 +102,15 @@ Playwright Chromium은 direct `file:` open에서 primary/exception flow, scrolle
 | NFR-BROWSER-016 | non-zero insets와 invalid/exhausted/NaN rejection, `Resized`+`InsetsChanged` 연결 | PASS | target non-zero inset와 last-valid frame |
 
 `Browser.App.Tests`의 RED compile failure를 확인한 뒤 최소 계약 타입과 NUI 연결을 추가했다. Domain, Persistence, UseCases, ActionProvider, App 실행형 host test 5개와 전체 solution build가 통과했다. 이 gate는 package, Common Emulator, native screenshot, Action/View/A2UI를 증명하지 않는다.
+
+## Stage 2B navigation/runtime state gate
+
+| 계약 | source/host 증거 | 결과 | 남은 target 경계 |
+|---|---|---|---|
+| FR-BROWSER-002~005 | URL/search normalization, immediate Loading, loaded public page, Reload | PASS | real HTTPS/keyboard/pointer |
+| FR-BROWSER-006~008 | Offline/EngineError/Timeout/InvalidInput, Retry/Back/Edit address, exact 15초 | PASS | controlled target error/timeout |
+| FR-BROWSER-009 | newer intent cancels active token before serialized next runtime operation; stale A never publishes | PASS | rapid real WebView navigation |
+| FR-BROWSER-010~011 | WebView Reload/GoBack/GoForward/CanGo* adapter, disabled focus skip, recovery→stable/home Back | PASS | installed remote and actual history |
+| NFR-BROWSER-007, 009, 010 | input/error bounds, HTTP(S), embedded credential rejection, query/fragment-free public projection | PASS | target log/screenshot/Entity scan |
+
+`Browser.UseCases.Tests`는 의도한 RED compile failure 뒤 input/state/cancellation/history/recovery 계약을 통과했고, `Browser.App.Tests`는 loading/recovery visual mapping과 Retry→Back→Edit address focus trap을 통과했다. 전체 solution build는 성공했다. WebView network, installed visuals, package, RPC, View/A2UI는 아직 target gate다.
