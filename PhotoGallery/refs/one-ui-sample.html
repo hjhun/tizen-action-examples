@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Photo Gallery — executable NUI preview</title>
+<style>
+  :root { color-scheme: light; --ink:#171719; --muted:#6b6b70; --surface:#fff; --page:#f6f6f7; --line:#dedee2; --accent:#1677d2; --danger:#bd2525; --focus:#1677d2; --canvas-w:1920; --canvas-h:1080; }
+  * { box-sizing:border-box; }
+  html,body { width:100%; height:100%; margin:0; background:#202124; font-family:"SamsungOne","Noto Sans KR","Segoe UI",sans-serif; color:var(--ink); overflow:hidden; }
+  button,input { font:inherit; }
+  button { cursor:pointer; }
+  #stage { width:100vw; height:100vh; display:grid; place-items:center; }
+  #app { width:1920px; height:1080px; position:relative; overflow:hidden; background:var(--page); transform-origin:center center; box-shadow:0 18px 65px #0008; }
+  .topbar { height:132px; display:flex; align-items:center; gap:24px; padding:34px 72px 24px; background:var(--surface); border-bottom:1px solid var(--line); }
+  .title { flex:1; min-width:0; }
+  .title h1 { margin:0; font-size:43px; letter-spacing:-1.8px; line-height:1.1; font-weight:720; }
+  .title p { margin:7px 0 0; font-size:20px; color:var(--muted); }
+  .icon-button,.text-button { min-width:76px; height:70px; padding:0 23px; border:1px solid var(--line); border-radius:18px; background:#fff; color:var(--ink); font-size:21px; font-weight:650; }
+  .text-button.primary { border-color:var(--accent); background:var(--accent); color:#fff; }
+  .main { height:948px; padding:34px 72px 58px; overflow:auto; }
+  .section-head { display:flex; align-items:baseline; justify-content:space-between; margin:0 0 20px; }
+  .section-head h2 { margin:0; font-size:25px; letter-spacing:-.5px; }
+  .section-head span { font-size:18px; color:var(--muted); }
+  .grid { display:grid; grid-template-columns:repeat(4,1fr); gap:24px; }
+  .photo-card { min-width:0; padding:0; border:0; text-align:left; background:transparent; border-radius:20px; position:relative; }
+  .photo-card .thumb { height:306px; overflow:hidden; position:relative; border-radius:20px; background:#c7ccd2; border:3px solid transparent; }
+  .photo-card .label { display:block; padding:12px 4px 0; font-size:21px; line-height:1.2; font-weight:620; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .photo-card .date { display:block; padding:4px 4px 0; font-size:17px; color:var(--muted); }
+  .photo-card.selected .thumb::after { content:"Selected"; position:absolute; left:16px; bottom:16px; padding:8px 12px; border-radius:12px; color:#fff; background:#171719d9; font-size:15px; font-weight:700; }
+  .focusable:focus-visible,.focusable.is-focused { outline:5px solid var(--focus); outline-offset:5px; box-shadow:0 0 0 10px #1677d230; }
+  .photo-card.is-focused .thumb { border-color:var(--focus); transform:scale(.985); }
+  .photo-card:focus-visible { outline:none; }
+  .photo-card:focus-visible .thumb { outline:5px solid var(--focus); outline-offset:5px; box-shadow:0 0 0 10px #1677d230; transform:scale(.985); }
+  .art { width:100%; height:100%; position:relative; overflow:hidden; }
+  .art::before,.art::after { content:""; position:absolute; display:block; }
+  .art-a { background:#a6bdc8; }.art-a::before { width:180%; height:65%; left:-24%; bottom:-30%; background:#385b48; transform:rotate(-12deg); }.art-a::after { width:90px; height:90px; right:32px; top:30px; background:#f5de9b; border-radius:50%; }
+  .art-b { background:#d8b7a1; }.art-b::before { width:250px; height:370px; left:28%; bottom:-80px; border-radius:55% 55% 0 0; background:#674f4a; }.art-b::after { width:145px; height:145px; left:41%; top:55px; border-radius:50%; background:#e9c2a6; }
+  .art-c { background:#b7c8dc; }.art-c::before { width:250px; height:250px; right:-60px; bottom:-50px; border-radius:50%; background:#e7ece5; }.art-c::after { width:330px; height:110px; left:-20px; bottom:55px; border-radius:50%; background:#7e9b73; transform:rotate(8deg); }
+  .art-d { background:#d5c5b4; }.art-d::before { width:100%; height:46%; bottom:0; background:#79715f; }.art-d::after { width:46%; height:88%; left:27%; bottom:-8%; background:#e3d8c7; border-radius:48% 48% 0 0; }
+  .art-e { background:#a9c8d9; }.art-e::before { width:75%; height:75%; left:13%; top:13%; border:18px solid #f5f4ed; border-radius:50%; }.art-e::after { width:22%; height:22%; right:18%; top:18%; background:#edc86d; border-radius:50%; }
+  .art-f { background:#cfb08b; }.art-f::before { width:105%; height:44%; left:-4%; bottom:0; background:#7d5a44; }.art-f::after { width:35%; height:92%; left:32%; bottom:-16%; background:#383e37; border-radius:52% 52% 0 0; }
+  .search-row { display:flex; gap:18px; align-items:center; margin:0 0 30px; }
+  .search-field { flex:1; height:76px; border:2px solid #bcbcc3; border-radius:18px; padding:0 24px; font-size:25px; background:#fff; color:var(--ink); }
+  .search-field:focus { outline:5px solid #1677d230; border-color:var(--focus); }
+  .empty,.error,.loading { min-height:500px; display:grid; place-content:center; justify-items:center; text-align:center; padding:40px; background:#fff; border-radius:24px; }
+  .empty h2,.error h2,.loading h2 { font-size:32px; margin:20px 0 10px; }.empty p,.error p,.loading p { max-width:560px; margin:0 0 26px; color:var(--muted); font-size:21px; line-height:1.5; }
+  .placeholder-icon { width:96px; height:96px; border:3px solid #8c8d93; border-radius:24px; position:relative; }.placeholder-icon::after { content:""; position:absolute; width:38px; height:38px; border-radius:50%; background:#8c8d93; right:12px; top:12px; }
+  .spinner { width:62px; height:62px; border:7px solid #d9d9dd; border-top-color:var(--accent); border-radius:50%; animation:spin .8s linear infinite; } @keyframes spin { to{transform:rotate(360deg)} }
+  .detail { display:grid; height:100%; grid-template-columns:minmax(0,1fr) 410px; gap:42px; }
+  .detail-image { min-height:710px; border-radius:24px; overflow:hidden; background:#e1e3e4; }.detail-image .art { height:100%; }
+  .details-panel { padding-top:18px; }.details-panel h2 { margin:0 0 10px; font-size:34px; letter-spacing:-1px; }.details-panel .meta { color:var(--muted); font-size:21px; line-height:1.55; margin:0 0 42px; }.danger { color:var(--danger); border-color:#d88989; }.detail-actions { display:grid; gap:14px; }
+  .modal-backdrop { position:absolute; inset:0; z-index:4; display:grid; place-items:center; background:#0008; }.modal { width:670px; padding:38px; border-radius:28px; background:#fff; box-shadow:0 20px 70px #0005; }.modal h2 { font-size:32px; margin:0 0 14px; }.modal p { font-size:21px; line-height:1.5; color:#55555a; margin:0 0 30px; }.modal-actions { display:flex; justify-content:flex-end; gap:14px; }.modal .delete { background:var(--danger); border-color:var(--danger); color:white; }
+  .toast { position:absolute; z-index:6; left:50%; bottom:48px; transform:translateX(-50%); padding:17px 25px; color:white; background:#252529; border-radius:16px; font-size:19px; box-shadow:0 8px 28px #0005; }
+  [hidden] { display:none !important; }
+  @media (max-width:850px) { .grid { grid-template-columns:repeat(3,1fr); gap:18px; }.photo-card .thumb { height:240px; } }
+</style>
+</head>
+<body>
+<div id="stage"><main id="app" aria-label="Photo Gallery preview"></main></div>
+<script>
+(() => {
+  const photos = [
+    {id:'media-101',title:'Morning walk',date:'Aug 9, 2026',group:'Today',art:'art-a'},
+    {id:'media-102',title:'Portrait study',date:'Aug 8, 2026',group:'Yesterday',art:'art-b'},
+    {id:'media-103',title:'Park light',date:'Aug 8, 2026',group:'Yesterday',art:'art-c'},
+    {id:'media-104',title:'Quiet room',date:'Aug 7, 2026',group:'This week',art:'art-d'},
+    {id:'media-105',title:'Blue sky',date:'Aug 6, 2026',group:'This week',art:'art-e'},
+    {id:'media-106',title:'Evening path',date:'Aug 5, 2026',group:'This week',art:'art-f'}
+  ];
+  const state = {screen:'pictures', query:'', selectedId:'media-101', focusId:'search', modal:false, mode:'ready', restoreFocus:'search', toast:''};
+  const app = document.querySelector('#app');
+  const visible = () => photos.filter(p => !state.query || p.title.toLowerCase().includes(state.query.toLowerCase()));
+  const photo = id => photos.find(p => p.id === id);
+  const resize = () => { const scale=Math.min(innerWidth/1920,innerHeight/1080); app.style.transform=`scale(${scale})`; };
+  addEventListener('resize', resize); resize();
+  function command(type, value) {
+    if (type === 'openSearch') { state.screen='search'; state.restoreFocus='search'; state.focusId='query'; }
+    if (type === 'closeSearch') { state.screen='pictures'; state.query=''; state.focusId=state.restoreFocus || 'search'; }
+    if (type === 'setQuery') { state.query=value; state.focusId='query'; }
+    if (type === 'openDetail') { state.selectedId=value; state.restoreFocus='photo:'+value; state.screen='detail'; state.focusId='back'; }
+    if (type === 'back') { if (state.modal) { state.modal=false; state.focusId='cancel'; } else if (state.screen==='detail') { state.screen='pictures'; state.focusId=state.restoreFocus; } else if (state.screen==='search') { command('closeSearch'); return; } }
+    if (type === 'askDelete') { state.modal=true; state.focusId='cancel'; }
+    if (type === 'cancelDelete') { state.modal=false; state.focusId='delete'; }
+    if (type === 'confirmDelete') { const i=photos.findIndex(p=>p.id===state.selectedId); if(i>=0) photos.splice(i,1); state.modal=false; state.screen='pictures'; state.selectedId=photos[0]?.id || ''; state.focusId=photos[0] ? 'photo:'+photos[0].id : 'search'; state.toast='Photo moved out of this gallery view.'; setTimeout(()=>{state.toast=''; render();},2500); }
+    if (type === 'retry') { state.mode='ready'; state.focusId='retry'; }
+    if (type === 'simulate') { state.mode=value; state.focusId=value==='error'?'retry':'search'; }
+    render();
+  }
+  function focusables() { return [...app.querySelectorAll('[data-focus]')].filter(e=>!e.disabled && e.offsetParent !== null); }
+  function moveFocus(delta) { const list=focusables(), index=list.findIndex(e=>e.dataset.focus===state.focusId); const next=list[(Math.max(0,index)+delta+list.length)%list.length]; state.focusId=next.dataset.focus; render(); }
+  function activate() { const el=focusables().find(e=>e.dataset.focus===state.focusId); el?.click(); }
+  function art(p) { return `<div class="art ${p.art}" aria-hidden="true"></div>`; }
+  function topbar() { return `<header class="topbar"><div class="title"><h1>${state.screen==='detail'?'Photo details':state.screen==='search'?'Search':'Pictures'}</h1><p>${state.screen==='pictures'?'All photos':'Gallery'}</p></div>${state.screen==='detail'?`<button class="icon-button focusable" data-focus="back" data-command="back" aria-label="Back to Pictures">Back</button>`:`<button class="icon-button focusable" data-focus="search" data-command="openSearch" aria-label="Search photos">Search</button>`}</header>`; }
+  function cards(items) { return `<div class="grid">${items.map(p=>`<button class="photo-card focusable ${p.id===state.selectedId?'selected':''}" data-focus="photo:${p.id}" data-command="openDetail" data-value="${p.id}" aria-label="Open ${p.title}"><span class="thumb">${art(p)}</span><span class="label">${p.title}</span><span class="date">${p.date}</span></button>`).join('')}</div>`; }
+  function pictures() { if(state.mode==='loading') return `<section class="loading"><div class="spinner"></div><h2>Loading photos</h2><p>Reading the device media library without blocking navigation.</p></section>`; if(state.mode==='error') return `<section class="error"><div class="placeholder-icon"></div><h2>Photos are unavailable</h2><p>The media library could not be read. Check device media access, then try again.</p><button class="text-button primary focusable" data-focus="retry" data-command="retry">Try again</button></section>`; if(!photos.length) return `<section class="empty"><div class="placeholder-icon"></div><h2>No photos yet</h2><p>Photos from the device media library will appear here when available.</p><button class="text-button primary focusable" data-focus="retry" data-command="retry">Refresh</button></section>`; return `<section><div class="section-head"><h2>Today</h2><span>${photos.length} photos</span></div>${cards(photos)}</section>`; }
+  function search() { const items=visible(); return `<section><div class="search-row"><input id="query" class="search-field" data-focus="query" aria-label="Search photos" autocomplete="off" value="${state.query.replace(/&/g,'&amp;').replace(/"/g,'&quot;')}" placeholder="Search photos"><button class="text-button focusable" data-focus="cancel-search" data-command="closeSearch">Cancel</button></div>${items.length?`<div class="section-head"><h2>Results</h2><span>${items.length} found</span></div>${cards(items)}`:`<div class="empty"><div class="placeholder-icon"></div><h2>No matching photos</h2><p>Try a different search term or return to all pictures.</p><button class="text-button primary focusable" data-focus="clear" data-command="closeSearch">Show all photos</button></div>`}</section>`; }
+  function detail() { const p=photo(state.selectedId); if(!p) return pictures(); return `<section class="detail"><div class="detail-image">${art(p)}</div><aside class="details-panel"><h2>${p.title}</h2><p class="meta">${p.date}<br>Device media item</p><div class="detail-actions"><button class="text-button danger focusable" data-focus="delete" data-command="askDelete">Delete</button></div></aside></section>`; }
+  function modal() { const p=photo(state.selectedId); return `<div class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="delete-title"><div class="modal"><h2 id="delete-title">Delete this photo?</h2><p>${p?.title||'This photo'} will no longer appear in Pictures. This action requires confirmation.</p><div class="modal-actions"><button class="text-button focusable" data-focus="cancel" data-command="cancelDelete">Cancel</button><button class="text-button delete focusable" data-focus="confirm-delete" data-command="confirmDelete">Delete</button></div></div></div>`; }
+  function render() { app.innerHTML=topbar()+`<div class="main">${state.screen==='pictures'?pictures():state.screen==='search'?search():detail()}</div>`+(state.modal?modal():'')+(state.toast?`<div class="toast" role="status">${state.toast}</div>`:'');
+    app.querySelectorAll('[data-command]').forEach(el=>el.addEventListener('click',()=>command(el.dataset.command,el.dataset.value)));
+    const input=app.querySelector('#query'); if(input) { input.addEventListener('input',e=>command('setQuery',e.target.value)); }
+    const target=app.querySelector(`[data-focus="${state.focusId}"]`); if(target) { target.classList.add('is-focused'); if(document.activeElement===app || document.activeElement===document.body) target.focus({preventScroll:true}); }
+  }
+  app.addEventListener('keydown', event => { const key=event.key; if(['ArrowLeft','ArrowUp'].includes(key)){event.preventDefault();moveFocus(-1);} else if(['ArrowRight','ArrowDown'].includes(key)){event.preventDefault();moveFocus(1);} else if(['Enter',' '].includes(key)){event.preventDefault();activate();} else if(['Escape','BrowserBack'].includes(key)){event.preventDefault();command('back');} });
+  document.addEventListener('keydown', event => { if(event.target.id==='query' && event.key==='Escape'){ event.preventDefault(); command('closeSearch'); } });
+  app.tabIndex=0; render();
+  window.photoGalleryPreview={state,command,visible,photos};
+})();
+</script>
+</body>
+</html>
