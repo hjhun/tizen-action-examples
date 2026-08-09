@@ -139,7 +139,7 @@ Before checking an app complete, its autonomous Goal must establish and verify a
 1. Work from P0 through P3 unless a Goal explicitly selects another checked-off item.
 2. Prefer an unowned, clean project directory. Do not adopt a pre-existing untracked directory automatically.
 3. Before any app implementation, the Architect stage must produce a detailed product-level requirements and design artifact. “Action works” is insufficient product scope.
-4. One Goal owns one app or a small explicitly named integration pair. It finishes or reports a reproducible blocker before the next Goal starts.
+4. One autonomous portfolio batch may own up to three explicitly named apps concurrently. Each app keeps independent Goal state and disjoint app-directory ownership; shared Dashboard, solution, manifest, Git index, commit, and push operations are coordinated separately.
 5. Do not call the signing choice a “default profile.” Packaging/signing mode is selected explicitly per target and is recorded as build evidence; no signing profile is implied by this dashboard.
 6. For GitHub repositories, a Goal may commit and push only when its Goal explicitly authorizes it and the repository's remote/branch policy is verified. For Gerrit repositories, a Goal updates the existing Change-Id as an amended patchset rather than creating a parallel commit series.
-7. Each autonomous run preserves existing local work, runs on a 20-minute cadence, and reports milestones, blockers, and final verification to the configured Telegram target.
+7. Each autonomous app worker runs on a recurring one-minute cadence and reports every run, meaningful milestone, blocker, screenshot evidence, and final verification to the configured Telegram destination.
