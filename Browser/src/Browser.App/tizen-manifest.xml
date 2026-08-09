@@ -14,5 +14,10 @@
                   api-version="14">
     <label>Browser</label>
     <metadata key="http://tizen.org/metadata/prefer_dotnet_aot" value="true" />
+    <metadata key="http://tizen.org/metadata/action/provider" value="Tv_Tizen.Action.Browser_GetCurrent" />
+    <metadata key="http://tizen.org/metadata/action/provider" value="Tv_Tizen.Action.Browser_Go" />
+    <metadata key="http://tizen.org/metadata/action/provider" value="Tv_Tizen.Action.Browser_ToCalendar" />
+    <metadata key="http://tizen.org/metadata/action/provider" value="Tv_Tizen.Action.Browser_ToPresentation" />
+    <metadata key="http://tizen.org/metadata/action/provider" value="Tv_Tizen.Action.Browser_GetBrowserByIds" />
   </ui-application>
 </manifest>

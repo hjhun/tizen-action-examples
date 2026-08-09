@@ -9,5 +9,6 @@
     <PackageReference Include="Tizen.NET" Version="14.0.0.19326" />
     <ProjectReference Include="../Browser.Domain/Browser.Domain.csproj" />
     <ProjectReference Include="../Browser.UseCases/Browser.UseCases.csproj" />
+    <ProjectReference Include="../Browser.ActionProvider/Browser.ActionProvider.csproj" />
   </ItemGroup>
 </Project>

@@ -1,3 +1,5 @@
+using Browser.ActionProvider;
+using Browser.Domain;
 using Browser.UseCases;
 using Tizen.NUI;
 using Tizen.NUI.BaseComponents;
@@ -15,6 +17,8 @@ internal sealed class BrowserApplication : NUIApplication
     private WebView? _webView;
     private NuiWebViewRuntime? _webRuntime;
     private BrowserNavigationCoordinator? _navigation;
+    private BrowserPageQueryService? _queries;
+    private SynchronizationContext? _uiContext;
 
     protected override void OnCreate()
     {
@@ -27,6 +31,14 @@ internal sealed class BrowserApplication : NUIApplication
 
         _webRuntime = new NuiWebViewRuntime(_webView, TimeSpan.FromMinutes(2));
         _navigation = new BrowserNavigationCoordinator(_webRuntime);
+        _queries = new BrowserPageQueryService(_navigation);
+        _uiContext = SynchronizationContext.Current;
+        if (_uiContext is null)
+        {
+            throw new InvalidOperationException("Browser NUI composition requires a UI synchronization context.");
+        }
+
+        BrowserActionProviderHost.Start(_queries, new NuiNavigationBridge(this, _uiContext));
         _ = NavigateFromUiAsync(InitialPage);
     }
 
@@ -81,6 +93,41 @@ internal sealed class BrowserApplication : NUIApplication
         {
             await _webRuntime.DisposeAsync();
         }
+    }
+
+    private sealed class NuiNavigationBridge : IBrowserActionNavigation
+    {
+        private readonly BrowserApplication _application;
+        private readonly SynchronizationContext _uiContext;
+
+        public NuiNavigationBridge(BrowserApplication application, SynchronizationContext uiContext)
+        {
+            _application = application;
+            _uiContext = uiContext;
+        }
+
+        public bool RequestNavigation(BrowserPage page)
+        {
+            ArgumentNullException.ThrowIfNull(page);
+            if (_application._lifetime.IsCancellationRequested)
+            {
+                return false;
+            }
+
+            _uiContext.Post(
+                static state =>
+                {
+                    var request = (NavigationRequest)state!;
+                    if (!request.Application._lifetime.IsCancellationRequested)
+                    {
+                        _ = request.Application.NavigateFromUiAsync(new Uri(request.Page.Url, UriKind.Absolute));
+                    }
+                },
+                new NavigationRequest(_application, page));
+            return true;
+        }
+
+        private sealed record NavigationRequest(BrowserApplication Application, BrowserPage Page);
     }
 
     private static void Main(string[] args)

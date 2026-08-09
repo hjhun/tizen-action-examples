@@ -15,6 +15,11 @@ public sealed class BrowserActionService : TizenActionBrowser.ServiceBase
     private readonly BrowserPageQueryService _queries;
     private readonly IBrowserActionNavigation _navigation;
 
+    public BrowserActionService()
+        : this(BrowserActionProviderState.Queries, BrowserActionProviderState.Navigation)
+    {
+    }
+
     public BrowserActionService(BrowserPageQueryService queries, IBrowserActionNavigation navigation)
     {
         _queries = queries ?? throw new ArgumentNullException(nameof(queries));
