@@ -1,0 +1,20 @@
+{
+  "name": "tizen-action-examples",
+  "version": "1.0.0",
+  "description": "Tizen Action Framework 2.0 domain example applications with native NUI interfaces, generated Action providers, Entities, and ViewAnnotations.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hjhun/tizen-action-examples.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/hjhun/tizen-action-examples/issues"
+  },
+  "homepage": "https://github.com/hjhun/tizen-action-examples#readme"
+}
