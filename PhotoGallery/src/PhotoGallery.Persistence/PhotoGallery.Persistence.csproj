@@ -5,7 +5,7 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Tizen.NET" Version="10.0.0.17508" />
+    <PackageReference Include="Tizen.NET" Version="14.0.0.19326" />
     <ProjectReference Include="../PhotoGallery.Domain/PhotoGallery.Domain.csproj" />
     <ProjectReference Include="../PhotoGallery.UseCases/PhotoGallery.UseCases.csproj" />
   </ItemGroup>
