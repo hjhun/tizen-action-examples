@@ -63,6 +63,8 @@ Common Emulator의 host/build/target/UI 증거는 각각 별도 gate다. 실제 
 
 ## 7. 현재 evidence와 다음 slice
 
-2026-08-11 baseline은 `./PhotoGallery/build.sh` 성공(기존 generated nullable warnings 48개) 및 host `PhotoGallery.Domain.Tests`, `PhotoGallery.UseCases.Tests` PASS다. 이것은 NUI, TPK, target, MediaContent, Action dispatch, ViewAnnotation, A2UI 또는 Samsung Gallery parity 증거가 아니다.
+2026-08-11에 `PhotoGallery/` scoped Graphify graph를 `$HOME/.graphify/samba/workspace/tizen-action-examples/PhotoGallery/graphify-out/`에 새로 작성했다. 52개 파일(약 12,095 단어)을 탐지했고 AST 추출은 164 nodes/361 edges, 생성 graph는 162 nodes/206 edges/36 communities였다. 이 실행 환경에는 semantic extraction용 delegated-agent 도구가 없었으므로 해당 graph는 구조적 code discovery용이며 문서 의미 관계의 완전한 audit이 아니다.
 
-다음 strict single-writer slice: browser runtime preflight를 해결하고 executable sample의 primary/exception flow를 browser에서 검증한다. production code는 그 후에만 시작한다.
+같은 날 `./build.sh`를 다시 실행하여 Release build와 host `PhotoGallery.Domain.Tests`, `PhotoGallery.UseCases.Tests`가 성공함을 확인했다(기존 generated nullable 경고 48개, error 0). 이것은 NUI, TPK, target, MediaContent, Action dispatch, ViewAnnotation, A2UI 또는 Samsung Gallery parity 증거가 아니다.
+
+`refs/one-ui-sample.html`은 Pictures, search, detail, delete confirmation, loading/empty/error 및 keyboard command path를 구현한 canonical executable sample로 source inspection을 통과했다. 그러나 이 host에는 Chromium 계열 browser와 Playwright가 설치되어 있지 않아 실제 browser runtime interaction/capture는 아직 검증하지 못했다. 다음 strict single-writer slice는 사용 가능한 browser runtime을 preflight한 뒤 primary 및 exceptional sample flow를 실행·검증하고 `UI_PARITY.md`에 browser evidence를 기록하는 것이다. production UI code는 그 gate 후에만 시작한다.
