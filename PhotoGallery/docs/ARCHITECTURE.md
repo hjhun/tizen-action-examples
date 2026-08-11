@@ -93,4 +93,4 @@ Remote/D-pad은 row/column spatial order, Enter activation, Back hierarchy를 �
 
 ## 8. 다음 구현 slice
 
-`PhotoGallery.Domain`과 `PhotoGallery.UseCases`의 Tizen-free model/query seam 및 RED tests를 먼저 추가한다. media adapter, provider generated source, NUI 및 package는 그 후의 dependent slice다.
+`PhotoGallery.Domain`과 `PhotoGallery.UseCases`의 Tizen-free model/query seam 및 stable ID/order/duplicate/unresolved, bound validation, stale completion, cancellation, reducer delete/focus tests는 이미 구현되어 host baseline에서 통과했다. 다음 dependent slice는 선택된 Action toolchain/target ABI에 대한 complete-category codegen provenance와 concrete provider compile probe다. 이 선행 조건이 해소되기 전에는 media adapter, provider generated source, NUI 및 package 구현을 시작하지 않는다.
