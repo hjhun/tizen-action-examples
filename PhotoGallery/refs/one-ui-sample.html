@@ -79,15 +79,15 @@
     if (type === 'closeSearch') { state.screen='pictures'; state.query=''; state.focusId=state.restoreFocus || 'search'; }
     if (type === 'setQuery') { state.query=value; state.focusId='query'; }
     if (type === 'openDetail') { state.selectedId=value; state.restoreFocus='photo:'+value; state.screen='detail'; state.focusId='back'; }
-    if (type === 'back') { if (state.modal) { state.modal=false; state.focusId='cancel'; } else if (state.screen==='detail') { state.screen='pictures'; state.focusId=state.restoreFocus; } else if (state.screen==='search') { command('closeSearch'); return; } }
+    if (type === 'back') { if (state.modal) { state.modal=false; state.focusId='delete'; } else if (state.screen==='detail') { state.screen='pictures'; state.focusId=state.restoreFocus; } else if (state.screen==='search') { command('closeSearch'); return; } }
     if (type === 'askDelete') { state.modal=true; state.focusId='cancel'; }
     if (type === 'cancelDelete') { state.modal=false; state.focusId='delete'; }
     if (type === 'confirmDelete') { const i=photos.findIndex(p=>p.id===state.selectedId); if(i>=0) photos.splice(i,1); state.modal=false; state.screen='pictures'; state.selectedId=photos[0]?.id || ''; state.focusId=photos[0] ? 'photo:'+photos[0].id : 'search'; state.toast='Photo moved out of this gallery view.'; setTimeout(()=>{state.toast=''; render();},2500); }
-    if (type === 'retry') { state.mode='ready'; state.focusId='retry'; }
+    if (type === 'retry') { state.mode='ready'; state.focusId='search'; }
     if (type === 'simulate') { state.mode=value; state.focusId=value==='error'?'retry':'search'; }
     render();
   }
-  function focusables() { return [...app.querySelectorAll('[data-focus]')].filter(e=>!e.disabled && e.offsetParent !== null); }
+  function focusables() { const scope=state.modal ? app.querySelector('.modal') : app; return [...scope.querySelectorAll('[data-focus]')].filter(e=>!e.disabled && e.offsetParent !== null); }
   function moveFocus(delta) { const list=focusables(), index=list.findIndex(e=>e.dataset.focus===state.focusId); const next=list[(Math.max(0,index)+delta+list.length)%list.length]; state.focusId=next.dataset.focus; render(); }
   function activate() { const el=focusables().find(e=>e.dataset.focus===state.focusId); el?.click(); }
   function art(p) { return `<div class="art ${p.art}" aria-hidden="true"></div>`; }

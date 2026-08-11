@@ -59,14 +59,15 @@ Privacy boundary: external presentation may use a title and stable ID only after
 
 | Slice/state | HTML capture | Installed Aurum capture | Comparison: hierarchy / geometry / type / spacing / color / controls / density / focus / state / scaling | Status |
 |---|---|---|---|---|
-| Pictures, initial focused search | Pending browser capture | Not implemented/installed | Cannot compare until native Pictures exists. | Open |
-| Pictures, focused photo card | Pending browser capture | Not implemented/installed | Cannot compare until native card and real measured focus exist. | Open |
-| Search, matching results | Pending browser capture | Not implemented/installed | Cannot compare until NUI text input and cancellable real media query exist. | Open |
-| Search, empty results | Pending browser capture | Not implemented/installed | Cannot compare until native recovery route exists. | Open |
-| Detail | Pending browser capture | Not implemented/installed | Cannot compare until target thumbnail loading is real. | Open |
-| Delete confirmation / Cancel focus restoration | Pending browser capture | Not implemented/installed | Cannot compare until real mutation capability and NUI modal exist. | Open |
-| Media unavailable | Pending browser capture | Not implemented/installed | Cannot compare until target capability preflight returns a real failure. | Open |
+| Pictures, initial focused search | Playwright Chromium headless [1920×1080 capture](images/html-pictures-1920x1080.png) | Not implemented/installed | Browser hierarchy and Search focus render; native comparison remains unavailable. | Browser pass / native open |
+| Pictures, focused photo card | D-pad ArrowRight asserted the first card focus cue | Not implemented/installed | Browser focus movement works; native card and measured focus remain unavailable. | Browser pass / native open |
+| Search, matching results | `Morning` query produced one result, then pointer activation opened detail | Not implemented/installed | Browser query/result flow works; native text input and cancellable real media query remain unavailable. | Browser pass / native open |
+| Search, empty results | `missing` query rendered no-result recovery; Show all returned Pictures | Not implemented/installed | Browser recovery works; native route remains unavailable. | Browser pass / native open |
+| Detail | Search result pointer activation rendered detail | Not implemented/installed | Browser detail works; target thumbnail loading remains unavailable. | Browser pass / native open |
+| Delete confirmation / Cancel focus restoration | Escape closed modal and restored `Delete`; confirmation returned to Pictures with visible outcome | Not implemented/installed | Browser modal focus defect was fixed; actual mutation capability and NUI modal remain unavailable. | Browser pass / native open |
+| Media unavailable | Test-only state injection rendered unavailable; Retry returned Pictures and restored Search focus | Not implemented/installed | The preview state is covered, but target capability preflight remains unavailable. | Browser pass / native open |
+| Loading / responsive canvas | Test-only state injection [1920×1080](images/html-loading-1920x1080.png) and [1280×720](images/html-loading-1280x720.png) captures; smaller viewport asserted a non-identity canvas transform | Not implemented/installed | Browser loading and reference-canvas scaling work; native viewport behavior remains unavailable. | Browser pass / native open |
 
 ## Evidence boundary
 
-Browser verification may prove the sample’s interaction and responsive canvas only. It does **not** prove MediaContent access, generated bindings, NUI rendering, package signing, provider discovery, ViewAnnotation, A2UI, DisplayPresentation rendering, Aurum input, or Telegram screenshot delivery. Each must be added to this ledger with retained installed-target evidence before the corresponding status becomes pass.
+Browser verification may prove the sample’s interaction and responsive canvas only. On 2026-08-11, Playwright Chromium headless ran D-pad card focus, Pictures → Search matching/no-result → Detail → Delete cancel/confirm plus injected unavailable/loading states, and retained the linked 1920×1080 and 1280×720 PNG captures. The injected states are test seams, not user-reachable product commands. It does **not** prove MediaContent access, generated bindings, NUI rendering, package signing, provider discovery, ViewAnnotation, A2UI, DisplayPresentation rendering, Aurum input, or Telegram screenshot delivery. Each must be added to this ledger with retained installed-target evidence before the corresponding status becomes pass.
