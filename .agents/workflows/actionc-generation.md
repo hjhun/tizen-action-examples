@@ -41,7 +41,7 @@ For Browser:
 
 ```sh
 actionc -a Tizen.Action.Browser -l C# -d "$ACTIONC_DATA_DIR" -o TizenActionBrowser
-actionc -a Tizen.Internal.Action.View -l C# -d "$ACTIONC_DATA_DIR" -o TizenInternalActionView
+actionc -a Tizen.Action.View -l C# -d "$ACTIONC_DATA_DIR" -o TizenInternalActionView
 ```
 
 ## Required verification
