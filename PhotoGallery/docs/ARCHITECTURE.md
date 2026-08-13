@@ -27,7 +27,7 @@ PhotoGallery는 `Tizen.Action.Photo`를 제공하는 독립 Tizen NUI 갤러리�
 | `Tv_Tizen.Action.Photo_ToPresentation` | 사진 display handoff | 해당 Photo에서 얻은 `Presentation`을 반환한다. |
 | `Tv_Tizen.Action.Photo_GetPhotoByIds` | 정확한 Entity refresh | 요청 순서와 duplicate를 보존하고 찾지 못한 ID를 `unresolvedIds`에 명시한다. |
 
-`action.seq`의 위 순서가 generated TIDL method ID를 정한다. provider binding은 `actionc -a Tizen.Action.Photo`로 **category 전체**를 생성하며, 생성물은 수동 수정하지 않는다. 실제 manifest에는 구현·advertise한 정확한 Action만 등록한다. View provider 역시 `actionc -a Tizen.Internal.Action.View`로 전체 category를 생성한다.
+`action.seq`의 위 순서가 generated TIDL method ID를 정한다. provider binding은 `actionc -a Tizen.Action.Photo`로 **category 전체**를 생성하며, 생성물은 수동 수정하지 않는다. 실제 manifest에는 구현·advertise한 정확한 Action만 등록한다. View provider 역시 `actionc -a Tizen.Action.View`로 전체 category를 생성한다.
 
 `Tizen.Entity.Photo`에는 `Location`, `Date`, `Path`, `Note`가 있다. `Path`와 `Note`는 개인 데이터일 수 있으므로 UI annotation과 A2UI에는 generated `ToJson()`의 canonical snapshot을 쓰되, full local path를 external presentation에 노출할지 target privacy review로 확정한다. 임시로 별도 JSON serializer나 가짜 ID를 만들지 않는다.
 

@@ -18,8 +18,7 @@ usage() {
 Usage: ./build.sh [build|generate|all]
 
   build     Build the app's solution or primary application project (default).
-  generate  Regenerate every declared Action category with actionc, then apply
-            the documented fail-closed tidlc HasPrivilegeLocal workaround.
+  generate  Regenerate every declared Action category with actionc.
   all       Run generate, then build.
 
 Environment:
@@ -39,28 +38,32 @@ require_command() {
     }
 }
 
-apply_tidlc_workaround() {
+apply_tidlc_compatibility() {
     local generated_file="$1"
-
     python3 - "$generated_file" <<'PY'
 from pathlib import Path
 import sys
 
 path = Path(sys.argv[1])
 text = path.read_text()
-needle = "has = HasPrivilegeLocal(b.Sender, item);"
-count = text.count(needle)
-if count != 1:
-    raise SystemExit(f"{path}: expected exactly one generated HasPrivilegeLocal call, found {count}")
-
-line_start = text.rfind("\n", 0, text.index(needle)) + 1
-indent = text[line_start:text.index(needle)]
-replacement = (
-    "// has = HasPrivilegeLocal(b.Sender, item);\n"
-    f"{indent}// Disabled for compatibility with runtimes that omit StubBase.HasPrivilegeLocal.\n"
-    f"{indent}has = false;"
-)
-path.write_text(text.replace(needle, replacement, 1))
+direct = "has = HasPrivilegeLocal(b.Sender, item);"
+legacy_commented = "//has = HasPrivilegeLocal(b.Sender, item);"
+spaced_commented = "// has = HasPrivilegeLocal(b.Sender, item);"
+if text.count(legacy_commented) == 1:
+    text = text.replace(legacy_commented, "// has = HasPrivilegeLocal(b.Sender, item);\n" +
+                        "                        // Disabled for compatibility with runtimes that omit StubBase.HasPrivilegeLocal.\n" +
+                        "                        has = false;", 1)
+elif text.count(spaced_commented) == 1 and text.count("has = false;") >= 1:
+    pass
+elif text.count(direct) == 1:
+    start = text.rfind("\n", 0, text.index(direct)) + 1
+    indent = text[start:text.index(direct)]
+    text = text.replace(direct, "// has = HasPrivilegeLocal(b.Sender, item);\n" +
+                        f"{indent}// Disabled for compatibility with runtimes that omit StubBase.HasPrivilegeLocal.\n" +
+                        f"{indent}has = false;", 1)
+else:
+    raise SystemExit(f"{path}: unsupported HasPrivilegeLocal generation shape")
+path.write_text(text)
 PY
 }
 
@@ -86,7 +89,7 @@ generate_bindings() {
             echo "actionc did not create expected binding: $generated_file" >&2
             exit 3
         }
-        apply_tidlc_workaround "$generated_file"
+        apply_tidlc_compatibility "$generated_file"
         if [[ "$generated_file" != "$target_file" ]]; then
             mv "$generated_file" "$target_file"
         fi

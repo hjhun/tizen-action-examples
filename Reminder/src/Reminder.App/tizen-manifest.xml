@@ -21,9 +21,9 @@
     <metadata key="http://tizen.org/metadata/action/provider" value="Tv_Tizen.Action.Schedule_GetReservations" />
     <metadata key="http://tizen.org/metadata/action/provider" value="Tv_Tizen.Action.Schedule_SearchReminder" />
     <metadata key="http://tizen.org/metadata/action/provider" value="Tv_Tizen.Action.Schedule_UpdateReminder" />
-    <metadata key="http://tizen.org/metadata/action/provider" value="Common_Tizen.Internal.Action.View_FindById" />
-    <metadata key="http://tizen.org/metadata/action/provider" value="Common_Tizen.Internal.Action.View_GetAnnotatedViews" />
-    <metadata key="http://tizen.org/metadata/action/provider" value="Common_Tizen.Internal.Action.View_GetFocusedView" />
-    <metadata key="http://tizen.org/metadata/action/provider" value="Common_Tizen.Internal.Action.View_ToPresentation" />
+    <metadata key="http://tizen.org/metadata/action/provider" value="Common_Tizen.Action.View_FindById" />
+    <metadata key="http://tizen.org/metadata/action/provider" value="Common_Tizen.Action.View_GetAnnotatedViews" />
+    <metadata key="http://tizen.org/metadata/action/provider" value="Common_Tizen.Action.View_GetFocusedView" />
+    <metadata key="http://tizen.org/metadata/action/provider" value="Common_Tizen.Action.View_ToPresentation" />
   </ui-application>
 </manifest>

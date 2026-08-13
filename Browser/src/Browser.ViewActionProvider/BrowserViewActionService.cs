@@ -1,16 +1,16 @@
 using Browser.Domain;
 using Browser.UseCases;
-using RPCPort.TizenInternalActionView;
-using RPCPort.TizenInternalActionView.Stub;
+using RPCPort.TizenActionView;
+using RPCPort.TizenActionView.Stub;
 using BrowserEntity = RPCPort.TizenActionBrowser.TizenEntityBrowser;
 
 namespace Browser.ViewActionProvider;
 
 /// <summary>
-/// Maps the current visible Browser page to the generated internal View Action category.
+/// Maps the current visible Browser page to the generated current View Action category.
 /// The NUI root publishes only measured, visible normal-mode page snapshots.
 /// </summary>
-public sealed class BrowserViewActionService : TizenInternalActionView.ServiceBase
+public sealed class BrowserViewActionService : TizenActionView.ServiceBase
 {
     public override void OnCreate()
     {
@@ -20,7 +20,7 @@ public sealed class BrowserViewActionService : TizenInternalActionView.ServiceBa
     {
     }
 
-    public override RPCPort.TizenInternalActionView.TizenEntityStatus FindById(string id, out TizenEntityView view)
+    public override RPCPort.TizenActionView.TizenEntityStatus FindById(string id, out TizenEntityView view)
     {
         if (string.IsNullOrWhiteSpace(id))
         {
@@ -33,22 +33,22 @@ public sealed class BrowserViewActionService : TizenInternalActionView.ServiceBa
             : Failure("not_found");
     }
 
-    public override RPCPort.TizenInternalActionView.TizenEntityStatus GetAnnotatedViews(out List<TizenEntityView> views)
+    public override RPCPort.TizenActionView.TizenEntityStatus GetAnnotatedViews(out List<TizenEntityView> views)
     {
         views = BrowserViewProviderState.GetAnnotatedViews();
         return Success();
     }
 
-    public override RPCPort.TizenInternalActionView.TizenEntityStatus GetFocusedView(out TizenEntityView view)
+    public override RPCPort.TizenActionView.TizenEntityStatus GetFocusedView(out TizenEntityView view)
     {
         return BrowserViewProviderState.TryGetFocused(out view)
             ? Success()
             : Failure("not_found");
     }
 
-    public override RPCPort.TizenInternalActionView.TizenEntityStatus ToPresentation(
+    public override RPCPort.TizenActionView.TizenEntityStatus ToPresentation(
         TizenEntityView view,
-        out RPCPort.TizenInternalActionView.TizenEntityPresentation result)
+        out RPCPort.TizenActionView.TizenEntityPresentation result)
     {
         result = EmptyPresentation();
         if (!BrowserViewProviderState.TryGetCurrentSnapshot(view, out var snapshot))
@@ -83,15 +83,15 @@ public sealed class BrowserViewActionService : TizenInternalActionView.ServiceBa
         },
     };
 
-    private static RPCPort.TizenInternalActionView.TizenEntityPresentation EmptyPresentation() => new()
+    private static RPCPort.TizenActionView.TizenEntityPresentation EmptyPresentation() => new()
     {
         Template = string.Empty,
         Document = string.Empty,
     };
 
-    private static RPCPort.TizenInternalActionView.TizenEntityStatus Success() => new() { Success = true, Reason = string.Empty };
+    private static RPCPort.TizenActionView.TizenEntityStatus Success() => new() { Success = true, Reason = string.Empty };
 
-    private static RPCPort.TizenInternalActionView.TizenEntityStatus Failure(string reason) => new() { Success = false, Reason = reason };
+    private static RPCPort.TizenActionView.TizenEntityStatus Failure(string reason) => new() { Success = false, Reason = reason };
 }
 
 internal static class BrowserViewProviderState

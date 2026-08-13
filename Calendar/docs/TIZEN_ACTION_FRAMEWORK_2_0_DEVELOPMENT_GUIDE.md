@@ -167,7 +167,7 @@ View category:
 
 ```bash
 actionc \
-  -a Tizen.Internal.Action.View \
+  -a Tizen.Action.View \
   -d "$DEFAULT_ACTIONS" \
   -l 'C#' \
   -o src/Calendar.ViewActionProvider/Generated/CalendarViewActionProvider
@@ -277,10 +277,10 @@ pause/terminate 시 published view snapshot을 비우며 resume/render 후 다�
 manifest에 등록된 View Actions:
 
 ```text
-Common_Tizen.Internal.Action.View_FindById
-Common_Tizen.Internal.Action.View_GetAnnotatedViews
-Common_Tizen.Internal.Action.View_GetFocusedView
-Common_Tizen.Internal.Action.View_ToPresentation
+Common_Tizen.Action.View_FindById
+Common_Tizen.Action.View_GetAnnotatedViews
+Common_Tizen.Action.View_GetFocusedView
+Common_Tizen.Action.View_ToPresentation
 ```
 
 `ToPresentation`은 Annotation의 generated Calendar Entity JSON에서 presentation을 만들며 다음 A2UI message를 반환합니다.

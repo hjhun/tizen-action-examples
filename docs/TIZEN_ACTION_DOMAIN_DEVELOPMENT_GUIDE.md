@@ -11,7 +11,7 @@
 
 > 이 문서의 명령과 결과는 개발 기준이다. 실제 source, target capability, 현재 Action schema, 그리고 fresh command output이 최종 진실이다.
 >
-> UI/UX 기준은 [UI/UX 개발 가이드](UI_UX_DEVELOPMENT_GUIDELINES.md)를 함께 적용한다. `tidlc`가 생성하는 C# UDS `HasPrivilegeLocal` 문제의 명시적 임시 예외는 [ActionC binding generation workflow](../.agents/workflows/actionc-generation.md)를 따른다.
+> UI/UX 기준은 [UI/UX 개발 가이드](UI_UX_DEVELOPMENT_GUIDELINES.md)를 함께 적용한다. 생성 binding과 target RPCPort runtime의 ABI가 맞지 않으면 generated source를 편집하지 말고, framework generator/runtime 결함으로 기록하고 수정한다.
 
 ---
 
@@ -45,7 +45,7 @@ TV profile validation: NOT VERIFIED (Common emulator only)
 1. `git status --short`와 branch를 기록한다.
 2. 기존 untracked tree, local patch, `.dev/`, `.hermes/`를 삭제/clean/reset하지 않는다.
 3. 사용자가 요청하지 않는 commit/push를 하지 않는다.
-4. generated code는 원칙적으로 generator input 또는 template을 수정하고 재생성한다. 단, `tidlc` C# UDS `HasPrivilegeLocal` bug는 framework 수정 전까지 `.agents/workflows/actionc-generation.md`의 post-generation fail-closed exception을 적용한다.
+4. generated code는 generator input 또는 template을 수정하고 재생성한다. 생성 binding이 `HasPrivilegeLocal` 등 target runtime에 없는 ABI를 요구하면 generated source를 우회 편집하지 않고 generator/runtime 결함으로 처리한다.
 5. Platform-owned Action schema와 application-owned implementation을 섞지 않는다.
 6. `action.seq`의 기존 method order는 ABI다. 기존 항목을 재정렬하지 않고 추가만 한다.
 

@@ -52,11 +52,11 @@ actionc -a Tizen.Action.Schedule -d "$CATALOG" -l 'C#' \
   -o "$TMP/ReminderScheduleActionProvider"
 ACTIONC_ACTION2TIDL=$(command -v action2tidl) \
 ACTIONC_TIDLC=$(command -v tidlc) \
-actionc -a Tizen.Internal.Action.View -d "$CATALOG" -l 'C#' \
+actionc -a Tizen.Action.View -d "$CATALOG" -l 'C#' \
   -o "$TMP/ReminderViewActionProvider"
 ```
 
-Compare each output with its checked-in `Generated/*.cs`. The only permitted difference is the same Tizen.NET 13 compatibility guard used by Calendar around `HasPrivilegeLocal`: when the API is unavailable, it sets `has = false` and denies access. Schedule MethodIds must remain `2..11` in authoritative `action.seq` order; View MethodIds must remain `2..5`.
+Compare each output byte-for-byte with its checked-in `Generated/*.cs`. A generated `HasPrivilegeLocal` dependency that is unavailable in the selected target RPCPort runtime is a framework generator/runtime blocker; do not add a compatibility guard or otherwise edit generated output. Schedule MethodIds must remain `2..11` in authoritative `action.seq` order; View MethodIds must remain `2..5`.
 
 ## Package
 

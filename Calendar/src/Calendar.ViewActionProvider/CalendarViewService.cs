@@ -7,7 +7,7 @@ using CalendarEntity = RPCPort.CalendarActionProvider.TizenEntityCalendar;
 
 namespace Calendar.ViewActionProvider;
 
-public sealed class CalendarViewService : TizenInternalActionView.ServiceBase
+public sealed class CalendarViewService : TizenActionView.ServiceBase
 {
     public override void OnCreate()
     {

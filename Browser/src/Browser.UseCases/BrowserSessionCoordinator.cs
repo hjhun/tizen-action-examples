@@ -34,10 +34,16 @@ public sealed class BrowserSessionCoordinator : IAsyncDisposable
 
     public async Task<BrowserSessionRestoreResult> RestoreAsync(CancellationToken cancellationToken)
     {
+        ThrowIfDisposed();
+        cancellationToken.ThrowIfCancellationRequested();
+        var priorOperationId = Volatile.Read(ref _latestOperationId);
         var operationId = BeginOperation();
-        await _operationGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        var gateHeld = false;
         try
         {
+            await _operationGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+            gateHeld = true;
+            ThrowIfDisposed();
             cancellationToken.ThrowIfCancellationRequested();
             string? serialized;
             try
@@ -71,9 +77,17 @@ public sealed class BrowserSessionCoordinator : IAsyncDisposable
                 return new BrowserSessionRestoreResult(BrowserSessionRestoreStatus.InvalidSession, null);
             }
         }
+        catch (OperationCanceledException) when (!gateHeld && cancellationToken.IsCancellationRequested)
+        {
+            Interlocked.CompareExchange(ref _latestOperationId, priorOperationId, operationId);
+            throw;
+        }
         finally
         {
-            _operationGate.Release();
+            if (gateHeld)
+            {
+                _operationGate.Release();
+            }
         }
     }
 
@@ -82,22 +96,35 @@ public sealed class BrowserSessionCoordinator : IAsyncDisposable
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(snapshot);
+        ThrowIfDisposed();
+        cancellationToken.ThrowIfCancellationRequested();
 
+        var priorOperationId = Volatile.Read(ref _latestOperationId);
         var operationId = BeginOperation();
         var serialized = BrowserSessionSnapshotSerializer.Serialize(snapshot);
-        await _operationGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        var gateHeld = false;
         try
         {
+            await _operationGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+            gateHeld = true;
+            ThrowIfDisposed();
             cancellationToken.ThrowIfCancellationRequested();
             await _store.SaveAsync(serialized, cancellationToken).ConfigureAwait(false);
-            cancellationToken.ThrowIfCancellationRequested();
 
             return new BrowserSessionSaveResult(
                 IsSuperseded(operationId) ? BrowserSessionSaveStatus.Superseded : BrowserSessionSaveStatus.Saved);
         }
+        catch (OperationCanceledException) when (!gateHeld && cancellationToken.IsCancellationRequested)
+        {
+            Interlocked.CompareExchange(ref _latestOperationId, priorOperationId, operationId);
+            throw;
+        }
         finally
         {
-            _operationGate.Release();
+            if (gateHeld)
+            {
+                _operationGate.Release();
+            }
         }
     }
 
@@ -115,9 +142,11 @@ public sealed class BrowserSessionCoordinator : IAsyncDisposable
 
     private long BeginOperation()
     {
-        ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
+        ThrowIfDisposed();
         return Interlocked.Increment(ref _latestOperationId);
     }
+
+    private void ThrowIfDisposed() => ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
 
     private bool IsSuperseded(long operationId) => Volatile.Read(ref _latestOperationId) != operationId;
 }

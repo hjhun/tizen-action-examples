@@ -42,6 +42,309 @@ await using (var saveCoordinator = new BrowserSessionCoordinator(saveStore))
 
 Console.WriteLine("PASS: Browser session use cases restore public state and suppress stale serialized save completions.");
 
+using (var cancellation = new CancellationTokenSource())
+{
+    var committedStore = new CancelsAfterDurableSaveStore(cancellation);
+    await using var committedCoordinator = new BrowserSessionCoordinator(committedStore);
+    var committedResult = await committedCoordinator.SaveAsync(snapshot, cancellation.Token);
+    if (committedResult.Status != BrowserSessionSaveStatus.Saved || committedStore.SaveCount != 1)
+    {
+        throw new InvalidOperationException("A cancellation observed after a durable session save must preserve the committed result.");
+    }
+}
+
+Console.WriteLine("PASS: Browser session save reports committed durability when cancellation arrives after the store returns.");
+
+var cancelledSessionStore = new DelayedFirstSaveStore();
+await using (var cancelledSessionCoordinator = new BrowserSessionCoordinator(cancelledSessionStore))
+{
+    var activeSave = cancelledSessionCoordinator.SaveAsync(snapshot, CancellationToken.None);
+    await cancelledSessionStore.FirstSaveStarted.Task;
+    using var cancellation = new CancellationTokenSource();
+    cancellation.Cancel();
+    try
+    {
+        await cancelledSessionCoordinator.SaveAsync(snapshot, cancellation.Token);
+        throw new InvalidOperationException("A pre-cancelled session save must not complete.");
+    }
+    catch (OperationCanceledException)
+    {
+        cancelledSessionStore.ReleaseFirstSave();
+        var activeResult = await activeSave;
+        if (activeResult.Status != BrowserSessionSaveStatus.Saved || cancelledSessionStore.SaveCount != 1)
+        {
+            throw new InvalidOperationException("A pre-cancelled session save must not supersede or add a write to an active save.");
+        }
+    }
+}
+
+Console.WriteLine("PASS: Pre-cancelled Browser session saves leave active durable work unsuperseded.");
+
+var cancelledQueuedSaveStore = new DelayedFirstSaveStore();
+await using (var cancelledQueuedSaveCoordinator = new BrowserSessionCoordinator(cancelledQueuedSaveStore))
+{
+    var activeSave = cancelledQueuedSaveCoordinator.SaveAsync(snapshot, CancellationToken.None);
+    await cancelledQueuedSaveStore.FirstSaveStarted.Task;
+    using var cancellation = new CancellationTokenSource();
+    var cancelledSave = cancelledQueuedSaveCoordinator.SaveAsync(snapshot, cancellation.Token);
+    cancellation.Cancel();
+    try
+    {
+        await cancelledSave;
+        throw new InvalidOperationException("A queued cancelled session save must not complete.");
+    }
+    catch (OperationCanceledException)
+    {
+        cancelledQueuedSaveStore.ReleaseFirstSave();
+        var activeResult = await activeSave;
+        if (activeResult.Status != BrowserSessionSaveStatus.Saved || cancelledQueuedSaveStore.SaveCount != 1)
+        {
+            throw new InvalidOperationException("A queued cancelled session save must restore the active save result without adding a write.");
+        }
+    }
+}
+
+Console.WriteLine("PASS: Cancelled queued Browser session saves leave active durable work unsuperseded.");
+
+var cancelledQueuedRestoreStore = new DelayedFirstSaveStore();
+await using (var cancelledQueuedRestoreCoordinator = new BrowserSessionCoordinator(cancelledQueuedRestoreStore))
+{
+    var activeSave = cancelledQueuedRestoreCoordinator.SaveAsync(snapshot, CancellationToken.None);
+    await cancelledQueuedRestoreStore.FirstSaveStarted.Task;
+    using var cancellation = new CancellationTokenSource();
+    var cancelledRestore = cancelledQueuedRestoreCoordinator.RestoreAsync(cancellation.Token);
+    cancellation.Cancel();
+    try
+    {
+        await cancelledRestore;
+        throw new InvalidOperationException("A queued cancelled session restore must not complete.");
+    }
+    catch (OperationCanceledException)
+    {
+        cancelledQueuedRestoreStore.ReleaseFirstSave();
+        var activeResult = await activeSave;
+        if (activeResult.Status != BrowserSessionSaveStatus.Saved || cancelledQueuedRestoreStore.SaveCount != 1)
+        {
+            throw new InvalidOperationException("A queued cancelled session restore must not supersede or add work to an active save.");
+        }
+    }
+}
+
+Console.WriteLine("PASS: Cancelled queued Browser session restores leave active durable work unsuperseded.");
+
+var disposeQueuedSessionStore = new DelayedFirstSaveStore();
+var disposeQueuedSessionCoordinator = new BrowserSessionCoordinator(disposeQueuedSessionStore);
+try
+{
+    var activeSave = disposeQueuedSessionCoordinator.SaveAsync(snapshot, CancellationToken.None);
+    await disposeQueuedSessionStore.FirstSaveStarted.Task;
+    var queuedRestore = disposeQueuedSessionCoordinator.RestoreAsync(CancellationToken.None);
+    var disposal = disposeQueuedSessionCoordinator.DisposeAsync().AsTask();
+    disposeQueuedSessionStore.ReleaseFirstSave();
+    try
+    {
+        await queuedRestore;
+        throw new InvalidOperationException("A session operation queued before disposal must not run after disposal begins.");
+    }
+    catch (ObjectDisposedException)
+    {
+        var activeResult = await activeSave;
+        if (activeResult.Status != BrowserSessionSaveStatus.Superseded || disposeQueuedSessionStore.SaveCount != 1)
+        {
+            throw new InvalidOperationException("Disposal must not add a queued persistence operation after the active save completes.");
+        }
+    }
+
+    await disposal;
+}
+finally
+{
+    await disposeQueuedSessionCoordinator.DisposeAsync();
+}
+
+Console.WriteLine("PASS: Browser session disposal prevents queued persistence operations from starting.");
+
+await using (var disposedSessionCoordinator = new BrowserSessionCoordinator(new InMemorySessionStore(null)))
+{
+    await disposedSessionCoordinator.DisposeAsync();
+    using var cancellation = new CancellationTokenSource();
+    cancellation.Cancel();
+    foreach (var sessionCommand in new Func<CancellationToken, Task>[]
+             {
+                 async token => await disposedSessionCoordinator.RestoreAsync(token),
+                 async token => await disposedSessionCoordinator.SaveAsync(snapshot, token),
+             })
+    {
+        try
+        {
+            await sessionCommand(cancellation.Token);
+            throw new InvalidOperationException("A disposed Browser session command must not return cancellation before lifecycle validation.");
+        }
+        catch (ObjectDisposedException)
+        {
+        }
+    }
+}
+
+Console.WriteLine("PASS: Disposed Browser session commands fail before cancellation or persistence work.");
+
+await using (var cancelledInputCoordinator = new BrowserNavigationCoordinator(new HistoryNavigationRuntime()))
+{
+    using var cancellation = new CancellationTokenSource();
+    cancellation.Cancel();
+    try
+    {
+        await cancelledInputCoordinator.NavigateInputAsync("tab-cancelled", " ", cancellation.Token);
+        throw new InvalidOperationException("A pre-cancelled navigation input must not complete.");
+    }
+    catch (OperationCanceledException)
+    {
+        if (cancelledInputCoordinator.CurrentState != BrowserNavigationState.Initial)
+        {
+            throw new InvalidOperationException("A pre-cancelled navigation input must leave the published state unchanged.");
+        }
+    }
+}
+
+Console.WriteLine("PASS: Pre-cancelled Browser input leaves the navigation state untouched.");
+
+await using (var cancelledUrlCoordinator = new BrowserNavigationCoordinator(new HistoryNavigationRuntime()))
+{
+    using var cancellation = new CancellationTokenSource();
+    cancellation.Cancel();
+    try
+    {
+        await cancelledUrlCoordinator.NavigateAsync("tab-cancelled", "not a valid URL", cancellation.Token);
+        throw new InvalidOperationException("A pre-cancelled direct navigation must not complete.");
+    }
+    catch (OperationCanceledException)
+    {
+        if (cancelledUrlCoordinator.CurrentState != BrowserNavigationState.Initial)
+        {
+            throw new InvalidOperationException("A pre-cancelled direct navigation must leave the published state unchanged.");
+        }
+    }
+}
+
+Console.WriteLine("PASS: Pre-cancelled Browser direct navigation leaves the state untouched before URL validation.");
+
+await using (var cancelledReloadCoordinator = new BrowserNavigationCoordinator(new HistoryNavigationRuntime()))
+{
+    await cancelledReloadCoordinator.NavigateAsync("tab-cancelled-reload", "https://example.com/current", CancellationToken.None);
+    var publishedState = cancelledReloadCoordinator.CurrentState;
+    using var cancellation = new CancellationTokenSource();
+    cancellation.Cancel();
+    try
+    {
+        await cancelledReloadCoordinator.ReloadAsync(cancellation.Token);
+        throw new InvalidOperationException("A pre-cancelled reload must not complete.");
+    }
+    catch (OperationCanceledException)
+    {
+        if (cancelledReloadCoordinator.CurrentState != publishedState)
+        {
+            throw new InvalidOperationException("A pre-cancelled reload must leave the published page state untouched.");
+        }
+    }
+}
+
+Console.WriteLine("PASS: Pre-cancelled Browser reload leaves the published page state untouched.");
+
+await using (var cancelledUnavailableCommands = new BrowserNavigationCoordinator(new HistoryNavigationRuntime()))
+{
+    using var cancellation = new CancellationTokenSource();
+    cancellation.Cancel();
+    foreach (var command in new Func<CancellationToken, Task<BrowserNavigationResult>>[]
+             {
+                 cancelledUnavailableCommands.ReloadAsync,
+                 cancelledUnavailableCommands.GoBackAsync,
+                 cancelledUnavailableCommands.GoForwardAsync,
+                 cancelledUnavailableCommands.RetryAsync,
+             })
+    {
+        try
+        {
+            await command(cancellation.Token);
+            throw new InvalidOperationException("A pre-cancelled navigation command must not complete as unavailable.");
+        }
+        catch (OperationCanceledException)
+        {
+            if (cancelledUnavailableCommands.CurrentState != BrowserNavigationState.Initial)
+            {
+                throw new InvalidOperationException("A pre-cancelled unavailable navigation command must leave state untouched.");
+            }
+        }
+    }
+}
+
+Console.WriteLine("PASS: Pre-cancelled Browser commands leave unavailable state untouched before availability checks.");
+
+await using (var disposedCommandCoordinator = new BrowserNavigationCoordinator(new HistoryNavigationRuntime()))
+{
+    await disposedCommandCoordinator.DisposeAsync();
+    foreach (var command in new Func<CancellationToken, Task<BrowserNavigationResult>>[]
+             {
+                 disposedCommandCoordinator.ReloadAsync,
+                 disposedCommandCoordinator.GoBackAsync,
+                 disposedCommandCoordinator.GoForwardAsync,
+                 disposedCommandCoordinator.RetryAsync,
+             })
+    {
+        try
+        {
+            await command(CancellationToken.None);
+            throw new InvalidOperationException("A disposed Browser navigation command must not return an unavailable result.");
+        }
+        catch (ObjectDisposedException)
+        {
+        }
+    }
+
+    try
+    {
+        disposedCommandCoordinator.DismissTransientState();
+        throw new InvalidOperationException("A disposed Browser transient-state command must not inspect stale state.");
+    }
+    catch (ObjectDisposedException)
+    {
+    }
+}
+
+Console.WriteLine("PASS: Disposed Browser commands fail before inspecting availability or transient state.");
+
+var callerCancelledRuntime = new CancelsSecondNavigationRuntime();
+await using (var callerCancelledCoordinator = new BrowserNavigationCoordinator(callerCancelledRuntime))
+{
+    await callerCancelledCoordinator.NavigateAsync("tab-stable", "https://example.com/stable", CancellationToken.None);
+    var publishedState = callerCancelledCoordinator.CurrentState;
+    using var cancellation = new CancellationTokenSource();
+    var cancelledNavigation = callerCancelledCoordinator.NavigateAsync("tab-cancelled", "https://example.com/cancelled", cancellation.Token);
+    await callerCancelledRuntime.SecondNavigationStarted.Task;
+    cancellation.Cancel();
+    try
+    {
+        await cancelledNavigation;
+        throw new InvalidOperationException("A caller-cancelled navigation must not complete.");
+    }
+    catch (OperationCanceledException)
+    {
+        if (callerCancelledCoordinator.CurrentState != publishedState ||
+            callerCancelledCoordinator.CurrentPage != publishedState.Page)
+        {
+            throw new InvalidOperationException("A caller-cancelled navigation must restore the prior stable published page state.");
+        }
+    }
+
+    var retry = await callerCancelledCoordinator.RetryAsync(CancellationToken.None);
+    if (retry.Status != BrowserNavigationStatus.Loaded ||
+        retry.Page?.Url != "https://example.com/stable")
+    {
+        throw new InvalidOperationException("A caller-cancelled navigation must not replace the stable retry target.");
+    }
+}
+
+Console.WriteLine("PASS: Caller-cancelled Browser navigation restores the stable page and retry target.");
+
 await using (var invalidRestoreCoordinator = new BrowserSessionCoordinator(new InMemorySessionStore("{not-json")))
 {
     var invalidRestore = await invalidRestoreCoordinator.RestoreAsync(CancellationToken.None);
@@ -403,6 +706,20 @@ sealed class InMemorySessionStore(string? serialized) : IBrowserSessionStore
     public Task SaveAsync(string serializedSnapshot, CancellationToken cancellationToken) => Task.CompletedTask;
 }
 
+sealed class CancelsAfterDurableSaveStore(CancellationTokenSource cancellation) : IBrowserSessionStore
+{
+    public int SaveCount { get; private set; }
+
+    public Task<string?> LoadAsync(CancellationToken cancellationToken) => Task.FromResult<string?>(null);
+
+    public Task SaveAsync(string serializedSnapshot, CancellationToken cancellationToken)
+    {
+        SaveCount++;
+        cancellation.Cancel();
+        return Task.CompletedTask;
+    }
+}
+
 sealed class DelayedFirstSaveStore : IBrowserSessionStore
 {
     private readonly TaskCompletionSource _firstSaveStarted = new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -455,6 +772,24 @@ sealed class FailingNavigationRuntime : IWebRuntime
 {
     public Task<WebNavigationOutcome> NavigateAsync(Uri uri, CancellationToken cancellationToken) =>
         Task.FromResult(WebNavigationOutcome.Failed("offline"));
+}
+
+sealed class CancelsSecondNavigationRuntime : IWebRuntime
+{
+    private int _navigationCount;
+
+    public TaskCompletionSource SecondNavigationStarted { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+    public async Task<WebNavigationOutcome> NavigateAsync(Uri uri, CancellationToken cancellationToken)
+    {
+        if (Interlocked.Increment(ref _navigationCount) == 2)
+        {
+            SecondNavigationStarted.TrySetResult();
+            await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+        }
+
+        return WebNavigationOutcome.Loaded("Stable", "Public summary", uri);
+    }
 }
 
 sealed class CancellableFirstNavigationRuntime : IWebRuntime

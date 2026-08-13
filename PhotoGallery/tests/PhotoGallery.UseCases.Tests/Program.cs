@@ -1,5 +1,37 @@
+using System.Diagnostics;
 using PhotoGallery.Domain;
 using PhotoGallery.UseCases;
+
+var diagnostic = PhotoActionDiagnostics.Format(
+    "Tv_Tizen.Action.Photo_Search",
+    PhotoActionDiagnostics.Correlate("media-safe-id"),
+    "valid",
+    "completed",
+    "success",
+    Stopwatch.StartNew(),
+    new InvalidOperationException("/media/private/photo?query=secret"));
+if (!diagnostic.Contains("action=Tv_Tizen.Action.Photo_Search", StringComparison.Ordinal) ||
+    diagnostic.Contains("media-safe-id", StringComparison.Ordinal) ||
+    diagnostic.Contains("/media/", StringComparison.Ordinal) ||
+    diagnostic.Contains("query=secret", StringComparison.Ordinal) ||
+    !diagnostic.Contains("exception=InvalidOperationException", StringComparison.Ordinal))
+{
+    throw new InvalidOperationException("Action diagnostics must retain required fields without raw media or query content.");
+}
+
+var batchCorrelation = PhotoActionDiagnostics.Correlate(new[] { "media-a", "media-b" });
+if (!batchCorrelation.StartsWith("set-2-", StringComparison.Ordinal) ||
+    batchCorrelation.Contains("media-a", StringComparison.Ordinal))
+{
+    throw new InvalidOperationException("Batch Action diagnostics must only retain a bounded hashed correlation ID.");
+}
+
+if (PhotoActionDiagnostics.Correlate((string?)null) != "none" ||
+    PhotoActionDiagnostics.Correlate(string.Empty) != "none" ||
+    PhotoActionDiagnostics.Correlate(Array.Empty<string>()) != "none")
+{
+    throw new InvalidOperationException("Empty Action identifiers must have an explicit safe correlation value.");
+}
 
 var firstRead = new TaskCompletionSource<IReadOnlyList<PhotoRecord>>(TaskCreationOptions.RunContinuationsAsynchronously);
 var library = new SequencedLibrary(

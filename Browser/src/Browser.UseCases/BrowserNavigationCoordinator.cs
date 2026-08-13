@@ -221,6 +221,7 @@ public sealed class BrowserNavigationCoordinator : IAsyncDisposable
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(pageId);
         ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
+        cancellationToken.ThrowIfCancellationRequested();
         if (!BrowserNavigationInput.TryNormalize(input, out var request, out var error))
         {
             return Task.FromResult(PublishInvalidInput(error!));
@@ -237,6 +238,7 @@ public sealed class BrowserNavigationCoordinator : IAsyncDisposable
         ArgumentException.ThrowIfNullOrWhiteSpace(pageId);
         ArgumentException.ThrowIfNullOrWhiteSpace(url);
         ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
+        cancellationToken.ThrowIfCancellationRequested();
 
         if (!BrowserNavigationInput.TryNormalize(url, out var request, out _) || request.IsSearch)
         {
@@ -248,6 +250,8 @@ public sealed class BrowserNavigationCoordinator : IAsyncDisposable
 
     public Task<BrowserNavigationResult> ReloadAsync(CancellationToken cancellationToken)
     {
+        ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
+        cancellationToken.ThrowIfCancellationRequested();
         var current = CurrentPage;
         if (current is null)
         {
@@ -263,6 +267,8 @@ public sealed class BrowserNavigationCoordinator : IAsyncDisposable
 
     public Task<BrowserNavigationResult> GoBackAsync(CancellationToken cancellationToken)
     {
+        ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
+        cancellationToken.ThrowIfCancellationRequested();
         var current = CurrentPage;
         if (current is null || !CurrentState.History.CanGoBack)
         {
@@ -278,6 +284,8 @@ public sealed class BrowserNavigationCoordinator : IAsyncDisposable
 
     public Task<BrowserNavigationResult> GoForwardAsync(CancellationToken cancellationToken)
     {
+        ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
+        cancellationToken.ThrowIfCancellationRequested();
         var current = CurrentPage;
         if (current is null || !CurrentState.History.CanGoForward)
         {
@@ -293,6 +301,8 @@ public sealed class BrowserNavigationCoordinator : IAsyncDisposable
 
     public Task<BrowserNavigationResult> RetryAsync(CancellationToken cancellationToken)
     {
+        ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
+        cancellationToken.ThrowIfCancellationRequested();
         BrowserNavigationRequest? request;
         string? pageId;
         lock (_activeRequestLock)
@@ -311,6 +321,7 @@ public sealed class BrowserNavigationCoordinator : IAsyncDisposable
 
     public bool DismissTransientState()
     {
+        ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
         var state = CurrentState;
         if (state.Phase is not (BrowserNavigationPhase.Offline or BrowserNavigationPhase.EngineError or
             BrowserNavigationPhase.Timeout or BrowserNavigationPhase.InvalidInput))
@@ -367,31 +378,43 @@ public sealed class BrowserNavigationCoordinator : IAsyncDisposable
         BrowserNavigationRequest request,
         CancellationToken cancellationToken)
     {
-        lock (_activeRequestLock)
-        {
-            _lastPageId = pageId;
-            _lastRequest = request;
-        }
-        return ExecuteAsync(pageId, request.NavigationUri, token => _webRuntime.NavigateAsync(request.NavigationUri, token), cancellationToken);
+        return ExecuteAsync(
+            pageId,
+            request.NavigationUri,
+            token => _webRuntime.NavigateAsync(request.NavigationUri, token),
+            cancellationToken,
+            request);
     }
 
     private async Task<BrowserNavigationResult> ExecuteAsync(
         string pageId,
         Uri requestedUri,
         Func<CancellationToken, Task<WebNavigationOutcome>> operation,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        BrowserNavigationRequest? retryRequest = null)
     {
         ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
+        cancellationToken.ThrowIfCancellationRequested();
         var navigationId = Interlocked.Increment(ref _latestNavigationId);
         var requestCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         CancellationTokenSource? previous;
+        BrowserNavigationRequest? priorRetryRequest;
+        string? priorRetryPageId;
         lock (_activeRequestLock)
         {
             previous = _activeRequest;
             _activeRequest = requestCancellation;
+            priorRetryRequest = _lastRequest;
+            priorRetryPageId = _lastPageId;
+            if (retryRequest is not null)
+            {
+                _lastRequest = retryRequest;
+                _lastPageId = pageId;
+            }
         }
 
         previous?.Cancel();
+        var priorState = CurrentState;
         Publish(new BrowserNavigationState(
             navigationId,
             BrowserNavigationPhase.Loading,
@@ -437,6 +460,21 @@ public sealed class BrowserNavigationCoordinator : IAsyncDisposable
                 null,
                 outcome.History));
             return new BrowserNavigationResult(BrowserNavigationStatus.Loaded, page, null);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested &&
+                                                 !IsSuperseded(navigationId) &&
+                                                 Volatile.Read(ref _disposed) == 0)
+        {
+            Publish(priorState);
+            lock (_activeRequestLock)
+            {
+                if (ReferenceEquals(_activeRequest, requestCancellation))
+                {
+                    _lastRequest = priorRetryRequest;
+                    _lastPageId = priorRetryPageId;
+                }
+            }
+            throw;
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested &&
                                                  (IsSuperseded(navigationId) || Volatile.Read(ref _disposed) != 0))

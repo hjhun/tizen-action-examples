@@ -56,7 +56,7 @@
 | NFR-BROWSER-016 | insets/invalid retention | non-zero inset + invalid/transient retention host matrix PASS, resize+inset event source 연결 | non-zero inset target 예정 | host PASS/target 대기 |
 | NFR-BROWSER-017 | localization | string catalog/longest-string tests 예정 | ko/en frames 예정 | 미구현 |
 | NFR-BROWSER-018 | pause clear/save, resume state/layout republish, terminate cancellation/unsubscribe | session stale save + source lifecycle review PASS | pause/terminate/relaunch | host/source PASS/target 대기 |
-| NFR-BROWSER-019 | generated ABI | whole-category fresh C# generation byte-identical for Browser/View | installed runtime compatibility | host provenance PASS/runtime 차단 |
+| NFR-BROWSER-019 | generated ABI | authoritative whole-category pure `actionc` generation contains `HasPrivilegeLocal`; tracked fail-closed compatibility bindings are intentionally non-identical | pure output reproduces Common Emulator ABI failure; compatibility path has separate target-RPC evidence | canonical provenance/runtime compatibility 차단 |
 | NFR-BROWSER-020 | A2UI v0.9.1/legacy split | official envelope/catalog schema + actual legacy parser PASS | legacy DisplayPresentation target; canonical transport blocked | host PASS/target 분리 |
 | NFR-BROWSER-021 | actual View bounds | finite positive/complete window geometry + find/focus/clear registry PASS | RPC + Aurum | host PASS/target 차단 |
 | NFR-BROWSER-022 | bounded/redacted logs | log projection tests 예정 | target log scan 예정 | 미구현 |
@@ -136,7 +136,7 @@ Domain/Persistence/UseCases/App RED→GREEN tests와 실행형 host test 5개, c
 | FR-BROWSER-024 | official v0.9.1 create/components/data/delete + Basic Catalog; separately named legacy Display adapter | 4 official schema validations + current Display parser semantic-tree PASS | 두 legacy RPC→Display native round trip; canonical target transport blocker |
 | FR-BROWSER-026 | navigation + selected tab + workspace + lifecycle의 한 atomic projection | Home/Page/Loading/Tabs/hidden/stale-selected mismatch suppression PASS | 전환 중 installed Action/View query |
 | NFR-BROWSER-009, 020 | query/fragment redaction, 256-char display fields, total 256KiB budget, version/profile non-mixing | private marker/bounds/schema/parser tests PASS | installed payload/log/privacy scan |
-| NFR-BROWSER-019 | whole-category generator provenance | fresh Browser 5-action/View 4-action C# output SHA-256가 tracked source와 byte-identical | installed `StubBase.HasPrivilegeLocal` compatibility |
+| NFR-BROWSER-019 | whole-category generator provenance | fresh pure Browser 5-action/View 4-action output contains `HasPrivilegeLocal` and is not byte-identical to tracked fail-closed compatibility bindings | pure output reproduces installed `StubBase.HasPrivilegeLocal` ABI failure; compatibility target-RPC evidence is non-canonical |
 
 generated service 객체는 Tizen reference assembly가 host 실행 구현을 제공하지 않아 desktop process에서 직접 생성할 수 없었다. 이 시도를 PASS로 세지 않았다. portable contracts와 current Display parser는 host에서 실행했고 generated adapters는 compile했으며, 실제 dispatch/status/DTO wire는 Stage 3 Common Emulator RPC gate로 남겼다. 현재 두 문자열 `Tizen.Entity.Presentation`과 Display parser에는 ordered canonical v0.9.1 transport가 없으므로 canonical target render는 Browser-only 범위에서 해소할 수 없다. 자세한 경계는 [`A2UI_CONTRACT.md`](A2UI_CONTRACT.md)에 기록했다.
 
@@ -156,4 +156,4 @@ generated service 객체는 Tizen reference assembly가 host 실행 구현을 �
 
 target에서 persisted blank title이 preview 첫 글자 계산 중 종료되는 문제를 발견해 blank/whitespace→`New tab`, 최대 80자 계약과 App host regression test를 추가했다. 모든 Browser 실행형 host test 5개와 clean solution build가 통과했다. package는 `-s` 없는 emulator-test-only signer로 만들고 archive/manifest/payload/signature를 검사한 뒤 update-install했다.
 
-이 gate는 시각 모듈만 닫는다. Aurum semantic tree는 `root_count: 0`이라 접근성 tree를 PASS로 세지 않는다. generated `HasPrivilegeLocal` direct call은 framework `tidlc` 수정 전 documented fail-closed compatibility exception으로 우회하며, Browser/View Action과 resolver/ViewAnnotation target RPC는 별도 E2E PASS다. legacy Display round trip은 아직 실행하지 않았고 canonical A2UI target render는 two-string Presentation transport 때문에 독립 차단이며 offline mode는 transport를 끊으므로 재실행하지 않았다.
+이 gate는 시각 모듈만 닫는다. Aurum semantic tree는 `root_count: 0`이라 접근성 tree를 PASS로 세지 않는다. Browser/View Action과 resolver/ViewAnnotation target RPC의 historical E2E는 generated `HasPrivilegeLocal` call을 fail-closed compatibility experiment로 제외한 package에서 얻은 증거이며, 현 정책은 fresh generation에 그 edit를 허용하지 않는다. legacy Display round trip은 아직 실행하지 않았고 canonical A2UI target render는 two-string Presentation transport 때문에 독립 차단이며 offline mode는 transport를 끊으므로 재실행하지 않았다.

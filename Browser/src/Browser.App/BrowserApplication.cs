@@ -548,7 +548,16 @@ internal sealed class BrowserApplication : NUIApplication
         }
     }
 
-    private void ReloadFromUi() => _ = RunNavigationCommandAsync(navigation => navigation.ReloadAsync(_lifetime.Token));
+    private void ReloadFromUi()
+    {
+        if (_navigation?.CurrentState.Phase == BrowserNavigationPhase.Home)
+        {
+            NavigateAddressFromUi("https://www.tizen.org/");
+            return;
+        }
+
+        _ = RunNavigationCommandAsync(navigation => navigation.ReloadAsync(_lifetime.Token));
+    }
 
     private void RetryFromUi() => _ = RunNavigationCommandAsync(navigation => navigation.RetryAsync(_lifetime.Token));
 

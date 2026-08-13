@@ -105,7 +105,7 @@ Back/Forward/Tabs를 TV용 좌측 rail에 고정하고 address를 상단에 둔�
 - HTML에서 keyboard/D-pad, Enter/Back, pointer/touch, disabled state, modal trap/restoration, 1920×1080·1280×720·1440×1080·2560×1080 scaling을 먼저 검증한다.
 - NUI는 Browser host executable tests와 clean solution build 후 Common Emulator에 update-install한다.
 - Aurum root가 계속 0이면 semantic accessibility tree는 `BLOCKED/capability limit`로 유지하고 key/coordinate input+fresh screenshot만 증거로 사용한다.
-- generated `HasPrivilegeLocal` direct call은 framework `tidlc` 수정 전 documented fail-closed post-generation exception으로 처리한다. Browser/View Action E2E는 별도 검증하되 canonical A2UI transport blocker와 transport를 끊는 offline gate는 재수정·재실험하지 않고 차단 상태를 유지한다.
+- generated `HasPrivilegeLocal` direct call과 target RPCPort ABI가 맞지 않으면 generated binding을 수정하지 않고 framework generator/runtime blocker로 기록한다. 이전 post-generation compatibility experiment는 historical evidence이며 새 generation에 재적용하지 않는다. Browser/View Action E2E는 별도 검증하되 canonical A2UI transport blocker와 transport를 끊는 offline gate는 재수정·재실험하지 않고 차단 상태를 유지한다.
 
 ## 5. 구현·검증 결과
 
@@ -142,4 +142,4 @@ Back/Forward/Tabs를 TV용 좌측 rail에 고정하고 address를 상단에 둔�
 
 The refs-first prototype and installed NUI now use a compact address/Reload header, a separate Back/Forward/Tabs dock, and a full-canvas tab manager with preview/title/URL cards. Playwright covered keyboard, pointer, touch, disabled states, modal trapping/restoration, bounds, and four viewport shapes. The final Common Emulator package was update-installed and visually validated at 1920×1080 for Home, a real public HTTPS page, Tabs, and the close dialog; remote close changed the tab count from three to two.
 
-This completes only the Browser visual-fidelity module. Aurum returned an empty accessibility tree, so semantic accessibility remains unverified. The documented fail-closed `tidlc` compatibility exception enables Browser/View Action, resolver, and ViewAnnotation `action-tool` E2E; legacy Display round trips were not part of this Browser package run. Canonical A2UI target rendering remains blocked by the two-string Presentation transport, and the transport-breaking offline experiment was not repeated.
+This completes only the Browser visual-fidelity module. Aurum returned an empty accessibility tree, so semantic accessibility remains unverified. Historical Browser/View Action, resolver, and ViewAnnotation `action-tool` E2E used a compatibility experiment that current project policy no longer permits for fresh generation; legacy Display round trips were not part of this Browser package run. Canonical A2UI target rendering remains blocked by the two-string Presentation transport, and the transport-breaking offline experiment was not repeated.

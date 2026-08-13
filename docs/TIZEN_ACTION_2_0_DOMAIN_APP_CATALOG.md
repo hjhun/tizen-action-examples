@@ -17,7 +17,7 @@
 ## 구현 단위 원칙
 
 1. 아래의 **도메인 앱**은 원칙적으로 category당 하나의 독립 예제 프로젝트로 둔다. 한 앱이 여러 category의 일부 Action을 흉내 내는 방식은 provider discovery와 Entity 소유권을 흐린다.
-2. `Display`와 `Tizen.Internal.Action.View`는 일반 도메인 앱이 아니라 다른 앱을 지원하는 **공통 infrastructure fixture**로 둔다.
+2. `Display`와 `Tizen.Action.View`는 일반 도메인 앱이 아니라 다른 앱을 지원하는 **공통 infrastructure fixture**로 둔다.
 3. 이미 Calendar 초안이 있는 경우에도 CRUD, stable-ID resolver, Search, Presentation, persistence/restart 및 알람 보상까지 검증될 때만 완료로 처리한다.
 4. 플랫폼 전역 상태를 실제로 바꾸는 category는 예제에서 안전한 in-app simulator/repository를 사용하고, 실제 system adapter는 capability와 권한을 확인할 수 있는 target에서 별도 검증한다.
 
@@ -51,7 +51,7 @@
 
 | 프로젝트 제안 | Action category | Action 수 | 역할 | 연결 대상 |
 |---|---|---:|---|---|
-| `ViewContextFixture` | `Tizen.Internal.Action.View` | 4 | focused/annotated view 조회, ID lookup, View→Presentation 변환을 제공하는 framework fixture | Agent-facing UI annotation, `DisplayPresentation`, 모든 NUI 도메인 앱 |
+| `ViewContextFixture` | `Tizen.Action.View` | 4 | focused/annotated view 조회, ID lookup, View→Presentation 변환을 제공하는 framework fixture | Agent-facing UI annotation, `DisplayPresentation`, 모든 NUI 도메인 앱 |
 | `DisplayPresentation` | `Tizen.Action.Display` | 1 | `Presentation` entity를 실제 화면 또는 deterministic test view로 출력 | `ToPresentation` Action을 가진 Calendar, Browser, Art, Health, Music, Photo, Video, Broadcast |
 
 ## 단계별 구현 우선순위

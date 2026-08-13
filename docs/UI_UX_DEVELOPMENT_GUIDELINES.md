@@ -180,8 +180,8 @@ Each tracked app provides `build.sh`:
 ```
 
 - `build` is the safe default: it builds without changing generated source.
-- `generate` regenerates full Action categories with `actionc`, then applies the
-  documented fail-closed `tidlc` `HasPrivilegeLocal` workaround.
+- `generate` regenerates full Action categories with `actionc` without editing
+  generated output.
 - `all` runs generation followed by a Release build.
 
 Run every tracked app in a stable order from the repository root:

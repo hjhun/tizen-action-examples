@@ -1,0 +1,142 @@
+{
+  "PhotoGallery.sln": {
+    "mtime": 1786253954.197525,
+    "ast_hash": "6ae41970084c40ee5430a340da25f6c0",
+    "semantic_hash": ""
+  },
+  "build.sh": {
+    "mtime": 1786318137.4686716,
+    "ast_hash": "93fddfea95b454e829ac595f43b8abaa",
+    "semantic_hash": ""
+  },
+  "src/PhotoGallery.ActionProvider/Generated/PhotoGalleryActionProvider.cs": {
+    "mtime": 1786316345.590374,
+    "ast_hash": "3b17b87972dcf5bef5ac673ec6c2f447",
+    "semantic_hash": ""
+  },
+  "src/PhotoGallery.ActionProvider/PhotoGallery.ActionProvider.csproj": {
+    "mtime": 1786253964.0548172,
+    "ast_hash": "7d111240be53b14b55eb416d336e7591",
+    "semantic_hash": ""
+  },
+  "src/PhotoGallery.ActionProvider/PhotoGalleryActionProviderHost.cs": {
+    "mtime": 1786253949.9771907,
+    "ast_hash": "d56be3f3e58164433d56a0bd09d33e05",
+    "semantic_hash": ""
+  },
+  "src/PhotoGallery.ActionProvider/PhotoGalleryService.cs": {
+    "mtime": 1786253940.8120718,
+    "ast_hash": "bd6d4076769b6838e75d9c2bba9cb5ef",
+    "semantic_hash": ""
+  },
+  "src/PhotoGallery.Domain/GalleryInteractionReducer.cs": {
+    "mtime": 1786252294.763623,
+    "ast_hash": "16e6e653a1d3f6d7b0dfe72ca07ee6a0",
+    "semantic_hash": ""
+  },
+  "src/PhotoGallery.Domain/PhotoGallery.Domain.csproj": {
+    "mtime": 1786247756.7903206,
+    "ast_hash": "c13a79da26b85c4b6dce48f27a1f984e",
+    "semantic_hash": ""
+  },
+  "src/PhotoGallery.Domain/PhotoRecord.cs": {
+    "mtime": 1786247756.8025322,
+    "ast_hash": "54e86e061822c1a3ca31323edf4e6a00",
+    "semantic_hash": ""
+  },
+  "src/PhotoGallery.Domain/PhotoResolver.cs": {
+    "mtime": 1786247756.7781088,
+    "ast_hash": "ad6930ce51d6d03d9fd009fed672a56c",
+    "semantic_hash": ""
+  },
+  "src/PhotoGallery.Domain/PhotoSearchCriteria.cs": {
+    "mtime": 1786247756.7943912,
+    "ast_hash": "1a96cfeb7478d1f9d903831c78a7179d",
+    "semantic_hash": ""
+  },
+  "src/PhotoGallery.Persistence/MediaContentPhotoLibrary.cs": {
+    "mtime": 1786248716.9565277,
+    "ast_hash": "b74a2a8170b503470086c0753292f5ea",
+    "semantic_hash": ""
+  },
+  "src/PhotoGallery.Persistence/PhotoGallery.Persistence.csproj": {
+    "mtime": 1786248707.8634028,
+    "ast_hash": "3bc713924fa49cf0d14bd30017a269c1",
+    "semantic_hash": ""
+  },
+  "src/PhotoGallery.UseCases/IPhotoLibrary.cs": {
+    "mtime": 1786247756.7943912,
+    "ast_hash": "4922f642549512aefc8fbecdb3947ef1",
+    "semantic_hash": ""
+  },
+  "src/PhotoGallery.UseCases/PhotoGallery.UseCases.csproj": {
+    "mtime": 1786247756.7862499,
+    "ast_hash": "f48aa60d12932932ada316747ffc679d",
+    "semantic_hash": ""
+  },
+  "src/PhotoGallery.UseCases/PhotoLibraryRefreshCoordinator.cs": {
+    "mtime": 1786249556.8752532,
+    "ast_hash": "d7fc8bcc25567c6f14f36924fc6bc962",
+    "semantic_hash": ""
+  },
+  "src/PhotoGallery.UseCases/PhotoQueryService.cs": {
+    "mtime": 1786247756.8188143,
+    "ast_hash": "cb7d7d12038ecd0b3935500201532955",
+    "semantic_hash": ""
+  },
+  "tests/PhotoGallery.Domain.Tests/PhotoGallery.Domain.Tests.csproj": {
+    "mtime": 1786247788.4631042,
+    "ast_hash": "33eb9155d2cac02d4e838b944660d3aa",
+    "semantic_hash": ""
+  },
+  "tests/PhotoGallery.Domain.Tests/Program.cs": {
+    "mtime": 1786252308.916037,
+    "ast_hash": "4af66319126676c07277658da33a527b",
+    "semantic_hash": ""
+  },
+  "tests/PhotoGallery.UseCases.Tests/PhotoGallery.UseCases.Tests.csproj": {
+    "mtime": 1786247788.4707093,
+    "ast_hash": "8e51ed347988109ad4d69e86fb5ab214",
+    "semantic_hash": ""
+  },
+  "tests/PhotoGallery.UseCases.Tests/Program.cs": {
+    "mtime": 1786249592.3530679,
+    "ast_hash": "d0264b6d98a617ae2fd72f2018acf912",
+    "semantic_hash": ""
+  },
+  "docs/ARCHITECTURE.md": {
+    "mtime": 1786418711.903118,
+    "ast_hash": "51ea2f693d921ea9d4195daa4af59295",
+    "semantic_hash": ""
+  },
+  "docs/PRODUCT_REQUIREMENTS.md": {
+    "mtime": 1786418711.7997508,
+    "ast_hash": "dcf09701c5e00959930abd65eaa9aefc",
+    "semantic_hash": ""
+  },
+  "docs/UI_PARITY.md": {
+    "mtime": 1786416674.5476766,
+    "ast_hash": "4d28418305d6b213d68a2d8434068d9c",
+    "semantic_hash": ""
+  },
+  "refs/one-ui-sample.html": {
+    "mtime": 1786416621.669837,
+    "ast_hash": "23601c706b95c2b235cbdd8f08d9ccdd",
+    "semantic_hash": ""
+  },
+  "docs/images/html-loading-1280x720.png": {
+    "mtime": 1786416650.0807703,
+    "ast_hash": "11d9c9b1ab2b91c92b49fcec95c3578c",
+    "semantic_hash": ""
+  },
+  "docs/images/html-loading-1920x1080.png": {
+    "mtime": 1786416650.0807703,
+    "ast_hash": "1ff5433f6240156f5b2160ddf48cfca4",
+    "semantic_hash": ""
+  },
+  "docs/images/html-pictures-1920x1080.png": {
+    "mtime": 1786416650.0769105,
+    "ast_hash": "eb311eb43c3362f6a3d3b957acfd3334",
+    "semantic_hash": ""
+  }
+}

@@ -111,8 +111,8 @@ if (restoredFocus.Observe(new BrowserNavigationState(21, BrowserNavigationPhase.
     throw new InvalidOperationException("A superseding navigation must invalidate restored WebView focus intent.");
 }
 
-if (BrowserInitialFocusPolicy.Resolve(showsHomeSurface: true) != BrowserInitialFocusTarget.HomeQuickAccess ||
-    BrowserInitialFocusPolicy.Resolve(showsHomeSurface: false) != BrowserInitialFocusTarget.HomeDock ||
+if (BrowserInitialFocusPolicy.Resolve(showsHomeSurface: true) != BrowserInitialFocusTarget.Reload ||
+    BrowserInitialFocusPolicy.Resolve(showsHomeSurface: false) != BrowserInitialFocusTarget.Reload ||
     !BrowserHiddenHomeFocusPolicy.ShouldFocusWebView(isHomeControlFocused: true, BrowserNavigationPhase.Page) ||
     BrowserHiddenHomeFocusPolicy.ShouldFocusWebView(isHomeControlFocused: true, BrowserNavigationPhase.Loading) ||
     BrowserHiddenHomeFocusPolicy.ShouldFocusWebView(isHomeControlFocused: false, BrowserNavigationPhase.Page))
@@ -177,7 +177,7 @@ var invalidVisual = BrowserNavigationVisualState.From(new BrowserNavigationState
     3, BrowserNavigationPhase.InvalidInput, null, null, "invalid", default));
 if (!loadingVisual.ShowsProgress || loadingVisual.ShowsRecovery || loadingVisual.ReloadEnabled ||
     offlineVisual.ShowsProgress || !offlineVisual.ShowsRecovery || offlineVisual.Title != "You're offline" ||
-    homeVisual.Title != "Start page" || homeVisual.Status != "HOME" ||
+    homeVisual.Title != "Start page" || homeVisual.Status != "HOME" || !homeVisual.ReloadEnabled ||
     invalidVisual.Title != "Check the address" || invalidVisual.Status != "CHECK")
 {
     throw new InvalidOperationException("Home, loading, and recovery phases must use unclipped deterministic NUI labels.");

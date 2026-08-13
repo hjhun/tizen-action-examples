@@ -147,10 +147,10 @@ resume 후 fresh geometry를 다시 수집합니다.
 Calendar 앱은 다음 exact View Actions를 등록합니다.
 
 ```text
-Common_Tizen.Internal.Action.View_FindById
-Common_Tizen.Internal.Action.View_GetAnnotatedViews
-Common_Tizen.Internal.Action.View_GetFocusedView
-Common_Tizen.Internal.Action.View_ToPresentation
+Common_Tizen.Action.View_FindById
+Common_Tizen.Action.View_GetAnnotatedViews
+Common_Tizen.Action.View_GetFocusedView
+Common_Tizen.Action.View_ToPresentation
 ```
 
 - `GetAnnotatedViews`: 현재 visible annotated view 목록

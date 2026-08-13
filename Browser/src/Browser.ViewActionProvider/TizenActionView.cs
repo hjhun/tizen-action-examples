@@ -13,7 +13,7 @@ using Tizen.Applications.RPCPort;
 
 namespace RPCPort
 {
-    namespace TizenInternalActionView
+    namespace TizenActionView
     {
         internal class LocalExecution
         {
@@ -1702,8 +1702,7 @@ namespace RPCPort
                         // Disabled for compatibility with runtimes that omit StubBase.HasPrivilegeLocal.
                         has = false;
 #else
-                        // Older released Tizen.NET packages do not expose the
-                        // UDS-specific API. Deny rather than weakening checks.
+                        // Missing target runtime API: deny declared privileges.
                         has = false;
 #endif
                         if (has == false) {

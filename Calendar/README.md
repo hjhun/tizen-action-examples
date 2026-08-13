@@ -137,10 +137,10 @@ Calendar는 플랫폼이 제공하는 `Window.Default.WindowSize`와 `Window.Def
 
 | Action | 설명 |
 |---|---|
-| `Common_Tizen.Internal.Action.View_FindById` | stable View ID 조회 |
-| `Common_Tizen.Internal.Action.View_GetAnnotatedViews` | 현재 visible annotated event views 조회 |
-| `Common_Tizen.Internal.Action.View_GetFocusedView` | actual NUI focus를 가진 annotated view 조회 |
-| `Common_Tizen.Internal.Action.View_ToPresentation` | annotation Entity를 A2UI로 변환 |
+| `Common_Tizen.Action.View_FindById` | stable View ID 조회 |
+| `Common_Tizen.Action.View_GetAnnotatedViews` | 현재 visible annotated event views 조회 |
+| `Common_Tizen.Action.View_GetFocusedView` | actual NUI focus를 가진 annotated view 조회 |
+| `Common_Tizen.Action.View_ToPresentation` | annotation Entity를 A2UI로 변환 |
 
 ## ViewAnnotation과 좌표
 

@@ -11,7 +11,7 @@ Do not reduce architecture analysis, One UI research, prototype fidelity, implem
 Before designing an app surface:
 
 1. Name the primary user task and surface type.
-2. Select the matching **Android Samsung stock application** as the primary reference wherever one exists. Examples include Samsung Internet for Browser and Samsung Gallery for PhotoGallery. For generic components and system states, inspect the relevant current Samsung Android applications and One UI system surfaces rather than inventing an app-specific visual language.
+2. Select the matching **Android Samsung stock application** as the primary reference wherever one exists. Use Samsung Internet for Browser, Samsung Gallery for PhotoGallery, Samsung Music for Music, Samsung Video for Video, and the nearest relevant Samsung app or One UI system surface for other domains. For generic components and system states, inspect the relevant current Samsung Android applications and One UI system surfaces rather than inventing an app-specific visual language.
 3. Inspect official Samsung screenshots/help, an available current Android Samsung app, or official One UI guidance. Record the app, screen, source, One UI/app version when known, access date, and which behavior was directly verified.
 4. Extract the Samsung app's information architecture, navigation, content hierarchy, component family, typography posture, spacing, shape, state treatment, dialogs, empty/loading/error behavior, and interaction model. Reuse the design principles and recognizable Samsung component behavior without copying trademarks, account data, copyrighted media, or proprietary assets.
 5. Adapt the Android touch layout to Tizen NUI viewport, safe areas, remote/D-pad, keyboard, pointer, and touch. Preserve the Samsung app's mental model and component hierarchy; do not merely stretch a phone screenshot or replace it with TV-style invented chrome.
@@ -21,7 +21,13 @@ App-specific baselines for the active batch:
 
 - Browser: current Android Samsung Internet information architecture, navigation, address/search, tabs, loading/error, and privacy-state patterns.
 - PhotoGallery: current Android Samsung Gallery Pictures/albums/search/detail/selection/delete-confirmation patterns.
-- DisplayPresentation: current One UI component behavior synthesized from Android Samsung stock apps appropriate to each semantic A2UI component; it must not invent a separate DisplayPresentation visual brand.
+- Music: current Samsung Music library/search/album/artist/playlist/now-playing patterns.
+- Video: current Samsung Video library/folder/search/detail/playback patterns.
+- DisplayPresentation: Google A2UI is the protocol and semantic-component contract; current One UI component behavior synthesized from relevant Samsung stock apps and system surfaces is the renderer design reference. It must not invent either a separate A2UI dialect or a separate DisplayPresentation visual brand.
+
+### Protected 1920×1080 translation exemplar
+
+`Music/refs/music-design.html` is a protected, user-approved example of translating a Samsung Android product language to a 1920×1080 TV canvas. Inspect it read-only when establishing a new large-screen UI baseline. Reuse only the translation method: a fixed 1920×1080 reference canvas with centered uniform viewport scaling; strong page title and compact context/action chrome; generous TV-distance type and spacing; content-first list/grid/detail hierarchy; persistent contextual controls where the task needs them; two-cue focus treatment (for example outline plus surface/elevation/scale); deterministic screen/state transitions; and adaptation of touch density to remote, keyboard, pointer, and touch. Do **not** copy its Music name/logo, rose token, fonts, media, gradients, playback/library controls, domain data, or exact geometry into another app. Each app still derives its own tokens and semantic components from its selected Samsung reference and target evidence.
 
 ## 3. HTML is an executable application sample
 
@@ -92,7 +98,8 @@ An app supports DisplayPresentation when it exposes or consumes a `Presentation`
 
 For every such app, A2UI is mandatory:
 
-- produce separate valid `surfaceUpdate` Template JSON and `dataModelUpdate` Document JSON;
+- preserve the repository's existing split `surfaceUpdate` Template / `dataModelUpdate` Document wire as an explicitly versioned **legacy v0.8 compatibility profile** until the Presentation Entity contract is migrated; do not mislabel that pair as current v0.9.1;
+- for new canonical support, negotiate a declared A2UI version/catalog and implement the matching lifecycle and message names rather than mixing versions;
 - derive both from the same current generated Entity snapshot and rendered state;
 - represent current content, loading/error state, focus/selection, and available controls where applicable;
 - never return a canned fixture unrelated to the current UI;
@@ -100,17 +107,40 @@ For every such app, A2UI is mandatory:
 - verify app Action → Presentation → DisplayPresentation render and ViewAnnotation → `View_ToPresentation` round trips on the Common Emulator;
 - capture the rendered DisplayPresentation state and focused/annotated source state with Aurum.
 
-### DisplayPresentation is the Samsung One UI A2UI renderer
+### Canonical A2UI baseline (source audit 2026-08-09)
 
-`DisplayPresentation` must not flatten A2UI into an arbitrary title/body card or apply a self-invented skin. It is the repository's reference renderer for presenting bounded A2UI through Samsung One UI-adapted Tizen NUI components.
+The canonical upstream is <https://github.com/a2ui-project/a2ui> (the former `google/A2UI` location redirects there). At revision [`ec97cb0d7499932e67003ffe5b709a3db7e7033a`](https://github.com/a2ui-project/a2ui/tree/ec97cb0d7499932e67003ffe5b709a3db7e7033a), committed 2026-08-07 and inspected 2026-08-09:
+
+- v0.9.1 is **Current Production**; v1.0 is **Candidate**, not stable. Do not declare v1.0 production support merely because its schema parses.
+- v0.9.1 surface lifecycle is `createSurface` → `updateComponents` / `updateDataModel` → `deleteSurface`; client interaction uses `action`. v1.0 retains a versioned lifecycle and adds/changes candidate contracts such as action IDs/`actionResponse` and `surfaceProperties`.
+- `catalogId` selects the agreed component/function catalog. A renderer validates that catalog and renders with renderer-owned native components and design system. Payload semantics/data must not bypass renderer-controlled styling.
+- An A2UI surface is logical protocol/render-model state. The specification does **not** select an OS pixel format, create a 32-bit window, request per-pixel alpha, define input pass-through, or set window focus/compositor policy.
+
+Repository producers that still emit v0.8 `surfaceUpdate` / `dataModelUpdate` remain supported through a bounded compatibility adapter. Migration must be additive and fixture-tested; it must not silently reinterpret legacy envelopes as v0.9.1 or break current Calendar/Reminder/Browser/PhotoGallery producers.
+
+### DisplayPresentation transparent-overlay capability gate
+
+Keep these three layers separate:
+
+1. **32-bit ARGB8888 buffer:** four 8-bit channels in a render buffer. This is pixel storage/format evidence only.
+2. **Per-pixel-alpha native window:** a compositor-managed translucent window created/configured for transparency. Tizen NUI API availability includes `NUIApplication(string, WindowMode.Transparent)`, `Window.SetTransparency(true)`, and an alpha-zero clear such as `Color.Transparent`; `SetOpaqueState` is only a window-manager visibility hint for a transparent window, not a conversion to an opaque window. Transparent pixels do not imply input pass-through or correct focus.
+3. **A2UI logical surface:** versioned components, data, lifecycle, catalog, and actions rendered inside a host. It has no native-window contract.
+
+Transparent overlay mode is optional and capability-gated. DisplayPresentation must always retain a complete opaque full-window fallback. Enable/claim overlay mode only after an installed **Common Emulator** run proves, with native screenshots and input/focus traces: the underlying app remains visibly composited through alpha regions; opaque/semitransparent/fully transparent pixels render correctly; D-pad/key focus is acquired, trapped/restored as designed; pointer/touch is accepted only in declared regions (or intentionally passed through by separately verified window/input configuration); Back/dismiss and pause/resume lifecycle are correct; and fallback activates safely when the capability/probe fails. Host compile, an ARGB8888 allocation, `Color.Transparent` on a View/root, or `SetTransparency(true)` invocation alone proves none of those runtime properties.
+
+### DisplayPresentation은 Google A2UI 계약과 Samsung One UI 표현을 분리한다
+
+`DisplayPresentation`은 공식 Google A2UI version, message lifecycle, catalog, semantic component, data binding과 action contract를 protocol 기준으로 사용한다. 지원하는 A2UI 의미를 Samsung One UI-adapted Tizen NUI component로 표현하되, A2UI를 임의의 title/body card로 평탄화하거나 저장소 전용 dialect 또는 자체 skin을 표준처럼 만들지 않는다.
 
 Its architecture must separate:
 
-1. untrusted A2UI parsing and bounded semantic component tree;
-2. a versioned supported-component/profile matrix;
-3. deterministic semantic A2UI → One UI NUI component mapping;
-4. One UI design tokens and responsive/focus policy;
-5. NUI rendering, input dispatch, ViewAnnotation, and A2UI round-trip publication.
+1. 공식 Google A2UI version/message/catalog 검증과 legacy compatibility adapter;
+2. untrusted A2UI parsing and bounded semantic component tree;
+3. versioned supported-component/property/function matrix;
+4. deterministic semantic A2UI → Samsung One UI-adapted NUI component mapping;
+5. One UI design tokens and responsive/focus policy;
+6. NUI rendering, input dispatch, ViewAnnotation, and semantically equivalent A2UI round-trip publication;
+7. capability-gated native transparent-overlay hosting from the mandatory opaque hosting fallback; the semantic renderer must not depend on either window mode.
 
 For every supported A2UI component and variant, the profile records accepted properties and bindings, corresponding NUI component, One UI hierarchy/type/spacing/shape/elevation treatment, disabled/loading/error/selected/focused behavior, D-pad/keyboard/pointer semantics, privacy bounds, and unsupported-property result. Presentation payloads provide bounded semantics and data; they cannot inject arbitrary colors, fonts, scripts, HTML, remote assets, or unbounded layout that bypasses the Samsung One UI profile.
 

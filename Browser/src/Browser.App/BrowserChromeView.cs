@@ -552,8 +552,8 @@ internal sealed class BrowserChromeView
     {
         var showsHomeSurface = _navigationState.Phase == BrowserNavigationPhase.Home &&
                                _workspace?.Surface == BrowserWorkspaceSurface.Page;
-        var target = BrowserInitialFocusPolicy.Resolve(showsHomeSurface) == BrowserInitialFocusTarget.HomeQuickAccess
-            ? _homeTizenDocs ?? _home
+        var target = BrowserInitialFocusPolicy.Resolve(showsHomeSurface) == BrowserInitialFocusTarget.Reload
+            ? _reload
             : _home;
         FocusManager.Instance.SetCurrentFocusView(target);
     }

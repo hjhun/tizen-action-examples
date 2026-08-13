@@ -25,7 +25,7 @@ test('Browser Samsung visual refinement interaction and evidence', async ({ brow
   await page.goto(sample);
 
   await expect(page.locator('.product-name')).toContainText('Internet');
-  await expect(page.locator('#address')).toBeFocused();
+  await expect(page.locator('#reload')).toBeFocused();
   await expect(page.locator('#back')).toBeDisabled();
   await expect(page.locator('#forward')).toBeDisabled();
   await expect(page.locator('#home')).toBeEnabled();
@@ -49,8 +49,6 @@ test('Browser Samsung visual refinement interaction and evidence', async ({ brow
   expect(shellGeometry).toEqual({ headerHeight: 84, dockHeight: 64, dockBottom: 28 });
   await page.screenshot({ path: path.join(images, 'html-browser-home-1920x1080.png') });
 
-  await page.keyboard.press('ArrowRight');
-  await expect(page.locator('#reload')).toBeFocused();
   await page.keyboard.press('ArrowDown');
   await expect(page.getByRole('button', { name: 'Open Tizen Docs' })).toBeFocused();
   await page.keyboard.press('ArrowUp');

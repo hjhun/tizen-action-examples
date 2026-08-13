@@ -46,7 +46,7 @@ NUI App / Display Service / View Service
 - `DisplayPresentation.ActionProvider` is a thin whole-category generated `Tizen.Action.Display` adapter. It maps generated Presentation DTOs to the use case and returns initialized typed Status values.
 - `DisplayPresentation.App` owns the NUI thread, reference-canvas root, focus, and lifecycle cancellation. It shares one `RenderCoordinator` with providers; it never calls its own RPC.
 - A narrow window-host policy selects `Opaque` or capability-gated `TransparentOverlay` before/at window creation and reports the effective mode. The semantic renderer and coordinator do not branch on that mode. Opaque mode is always complete; overlay failure never leaves a blank/noninteractive app.
-- `DisplayPresentation.ViewActionProvider` is generated from the complete `Tizen.Internal.Action.View` category. It reads an immutable, lock-protected visible snapshot registry and does not retain NUI views.
+- `DisplayPresentation.ViewActionProvider` is generated from the complete `Tizen.Action.View` category. It reads an immutable, lock-protected visible snapshot registry and does not retain NUI views.
 
 ## Contract trace
 

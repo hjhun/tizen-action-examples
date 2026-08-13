@@ -16,11 +16,11 @@ public sealed record CalendarEventViewSnapshot(
 
 public static class CalendarViewActionProviderHost
 {
-    private static TizenInternalActionView? _stub;
+    private static TizenActionView? _stub;
 
     public static void Start()
     {
-        _stub ??= new TizenInternalActionView();
+        _stub ??= new TizenActionView();
         if (!_stub.GetListenStatus())
         {
             _stub.Listen(typeof(CalendarViewService));

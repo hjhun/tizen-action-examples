@@ -1,5 +1,5 @@
 using Browser.UseCases;
-using RPCPort.TizenInternalActionView.Stub;
+using RPCPort.TizenActionView.Stub;
 
 namespace Browser.ViewActionProvider;
 
@@ -8,11 +8,11 @@ namespace Browser.ViewActionProvider;
 /// </summary>
 public static class BrowserViewActionProviderHost
 {
-    private static TizenInternalActionView? _stub;
+    private static TizenActionView? _stub;
 
     public static void Start()
     {
-        _stub ??= new TizenInternalActionView();
+        _stub ??= new TizenActionView();
         if (!_stub.GetListenStatus())
         {
             _stub.Listen(typeof(BrowserViewActionService));

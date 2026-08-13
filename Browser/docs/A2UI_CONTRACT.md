@@ -34,6 +34,6 @@ canonical stream을 target `Display_Show`까지 전달하려면 별도의 negoti
 
 - official A2UI v0.9.1 `server_to_client.json`, Basic Catalog, common types schema에 create/components/data/delete 4개 message가 모두 통과했다.
 - current DisplayPresentation `A2UiPresentationParser`가 Browser legacy Column/Text tree를 실제로 parse하고 context/title/public URL/details 순서를 보존했다.
-- fresh whole-category `actionc -a Tizen.Action.Browser`와 `actionc -a Tizen.Internal.Action.View` C# output이 tracked generated source와 각각 byte-identical했다. 생성 source는 수정하지 않았다.
+- authoritative `default-actions` catalog로 fresh whole-category `actionc -a Tizen.Action.Browser`와 `actionc -a Tizen.Action.View`를 생성했다. 두 pure output은 `HasPrivilegeLocal(b.Sender, item)`를 포함하며 tracked compatibility bindings와 byte-identical하지 않다. pure output은 Common Emulator 10.1 RPCPort ABI failure를 재현하고, tracked post-generation fail-closed exclusion은 target-RPC compatibility evidence일 뿐 canonical provenance가 아니다.
 - host에서 Tizen generated service 객체 직접 실행을 시도하면 reference-only `Tizen.Applications.Common` runtime assembly를 load할 수 없다. 이 경계는 portable tests로 성공 처리하지 않으며 Stage 3 installed RPC gate로 남긴다.
 - Common Emulator의 typed Action/View RPC, measured bounds/focus, 두 legacy Presentation round trip, DisplayPresentation native render는 아직 미검증이다.

@@ -51,7 +51,7 @@ PhotoGallery supports Presentation through `Tv_Tizen.Action.Photo_ToPresentation
 | Producer | Required output | Consumer and proof still required |
 |---|---|---|
 | `Tv_Tizen.Action.Photo_ToPresentation` for a resolved current `Photo` | Valid JSON `Presentation.Template` with `surfaceUpdate`, and independent JSON `Presentation.Document` with matching `dataModelUpdate`; bounded One UI profile semantics for title/image state, selection, availability, and controls | DisplayPresentation’s versioned Samsung One UI A2UI profile must render the real PhotoGallery output on the Common Emulator. No target evidence yet. |
-| `Tizen.Internal.Action.View_ToPresentation` for `pictures:<id>` / `detail:<id>` | Same two JSON documents derived from `Annotation.EntityInfo` created by generated `Photo.ToJson()`, plus live focus/visible state | Discover annotated View, parse nested `EntityInfo`, call View action, then compare DisplayPresentation render. No provider or target evidence yet. |
+| `Common_Tizen.Action.View_ToPresentation` for `pictures:<id>` / `detail:<id>` | Same two JSON documents derived from `Annotation.EntityInfo` created by generated `Photo.ToJson()`, plus live focus/visible state | Discover annotated View, parse nested `EntityInfo`, call View action, then compare DisplayPresentation render. No provider or target evidence yet. |
 
 Privacy boundary: external presentation may use a title and stable ID only after the generated schema is inspected. It must not expose raw MediaContent paths, location, notes, thumbnail bytes, accounts, or unbounded metadata. The exact generated `Photo.ToJson()` fields and projection policy remain a code-generation gate.
 

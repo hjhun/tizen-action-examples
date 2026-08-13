@@ -10,7 +10,7 @@ using ScheduleProgram = RPCPort.ReminderScheduleActionProvider.TizenEntityProgra
 
 namespace Reminder.ViewActionProvider;
 
-public sealed class ReminderViewService : TizenInternalActionView.ServiceBase
+public sealed class ReminderViewService : TizenActionView.ServiceBase
 {
     public override void OnCreate() { }
     public override void OnTerminate() { }

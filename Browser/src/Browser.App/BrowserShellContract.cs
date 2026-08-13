@@ -140,6 +140,7 @@ public sealed class BrowserRestoredFocusTracker
 
 public enum BrowserInitialFocusTarget
 {
+    Reload,
     HomeQuickAccess,
     HomeDock,
 }
@@ -147,7 +148,7 @@ public enum BrowserInitialFocusTarget
 public static class BrowserInitialFocusPolicy
 {
     public static BrowserInitialFocusTarget Resolve(bool showsHomeSurface) =>
-        showsHomeSurface ? BrowserInitialFocusTarget.HomeQuickAccess : BrowserInitialFocusTarget.HomeDock;
+        BrowserInitialFocusTarget.Reload;
 }
 
 public static class BrowserHiddenHomeFocusPolicy
@@ -343,7 +344,7 @@ public sealed record BrowserNavigationVisualState(
             },
             state.Phase == BrowserNavigationPhase.Loading,
             recovery,
-            state.Phase != BrowserNavigationPhase.Loading && state.Page is not null);
+            state.Phase is BrowserNavigationPhase.Home or BrowserNavigationPhase.Page);
     }
 }
 

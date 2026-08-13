@@ -1,0 +1,17 @@
+{
+  "0": "TizenActionPhoto",
+  "1": "PhotoGallery.Domain",
+  "2": "PhotoGalleryService",
+  "3": ".OnReceivedEvent",
+  "4": "PhotoRecord",
+  "5": "IPhotoLibrary",
+  "6": "PhotoLibraryRefreshCoordinator",
+  "7": "PhotoGallery.sln",
+  "8": "SequencedLibrary",
+  "9": "PhotoGallery 아키텍처 및 제품 계약",
+  "10": "PhotoGallery 제품 요구사항과 Architect Gate",
+  "11": "PhotoGallery UI parity ledger",
+  "12": ".ResolveByIds",
+  "13": "LocalExecution",
+  "14": "build.sh"
+}
