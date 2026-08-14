@@ -1,0 +1,38 @@
+APPNAME = calendar-native
+type = app
+profile = common-10.0
+
+USER_SRCS = src/main.cc \
+    src/ui/calendar_app.cc \
+    src/provider/action_services.cc \
+    src/provider/calendar_service_core.cc \
+    src/provider/calendar_view_registry.cc \
+    src/provider/calendar_action_provider.cc \
+    src/provider/schedule_action_provider.cc \
+    src/provider/view_action_provider.cc \
+    src/state/calendar_interaction_state.cc \
+    src/state/calendar_ui_state.cc \
+    src/state/calendar_projection.cc \
+    src/usecases/calendar_command_service.cc \
+    src/persistence/calendar_json_store.cc \
+    src/domain/calendar_event.cc \
+    src/domain/calendar_event_repository.cc \
+    src/domain/calendar_reminder.cc \
+    src/domain/calendar_reminder_repository.cc \
+    src/domain/calendar_search_criteria.cc \
+    src/domain/calendar_search_query_adapter.cc \
+    src/base/date.cc \
+    src/base/json.cc \
+    src/base/local_zone.cc \
+    src/base/offset_date_time.cc \
+    src/base/strings.cc
+
+USER_INC_DIRS = src
+
+USER_CPP_DEFS =
+
+USER_CPP_OPTS = -std=c++17 -Wall -Werror -Werror=shadow -g -O0
+
+USER_LIBS = capi-appfw-alarm
+
+USER_LDFLAGS =

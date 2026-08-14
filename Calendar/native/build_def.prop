@@ -1,0 +1,5 @@
+APPNAME = calendar-native
+type = app
+profile = common-10.0
+
+USER_EXT_PKGS = elementary capi-appfw-application action-service efl-extension
