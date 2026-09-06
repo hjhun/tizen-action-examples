@@ -1,19 +1,51 @@
 # Reminder
 
-Production-style Tizen NUI example for the complete `Tizen.Action.Schedule` category.
+Tizen NUI/API 14 Reminder provider with smart lists, detail/editing, completion,
+delete confirmation, current ViewAnnotations and Presentation integration.
 
-- **Product shell:** approved B Focused Workspace — smart navigation, bounded list, detail/editor
-- **App ID:** `org.tizen.actionexamples.reminder`
-- **Target:** Tizen 10.1 Common Emulator compatible package, Tizen.NET 13
-- **Actions:** all 10 Schedule methods
-- **View:** current `ScreenBounds` / `WindowBounds` / `Annotation.EntityInfo` contract
-- **Common behavior:** viewing/recording reservations are deterministic app-owned simulations, not TV tuner operations
+- App ID: `org.tizen.actionexamples.reminder`
+- Standard Reminder: Add, Delete, Search, ToPresentation, Update
+- ReminderCustom: AddRecording, AddViewing, CancelRecording, CancelViewing, GetReminderByIds, GetReservations
+- View: FindById, GetAnnotatedViews, GetFocusedView, ToPresentation
+- Reservations are deterministic app-owned Common Emulator simulations.
 
-Architecture keeps `Reminder.Domain`, `Reminder.Persistence`, and `Reminder.UseCases` free of Tizen runtime dependencies. NUI, Schedule RPC, and View RPC are adapters around the same `ScheduleService` instance.
+UI and providers share the same use-case service and repositories. Domain,
+persistence and use-case tests run without Tizen runtime assemblies. Providers
+inherit complete actionc-generated classes; generated originals are not patched.
 
-See [approved requirements](docs/REQUIREMENTS_DRAFT.md), [architecture review](docs/REQUIREMENTS_ARCHITECTURE_REVIEW.md), and [build/E2E guide](docs/BUILD_E2E_GUIDE.md).
+See [build and target commands](docs/BUILD_E2E_GUIDE.md),
+[stage 1 verification](../Calendar/docs/STAGE1_VALIDATION.md),
+[View contract](docs/VIEW_ANNOTATION.md), and [preview parity](docs/UI_PARITY.md).
+The executable [One UI adaptation preview](refs/one-ui-sample.html) models the
+existing Tizen three-pane layout; it is not an Action runtime or requirements doc.
 
-## Primary pages
+## Current API 14 native evidence
+
+![API 14 Reminder completion](docs/images/reminder-api14-completed.png)
+
+![API 14 Reminder delete confirmation](docs/images/reminder-api14-delete.png)
+
+| UHD 3840×2160 | DCI 4K 4096×2160 |
+|---|---|
+| ![Reminder UHD](docs/images/reminder-api14-uhd.png) | ![Reminder DCI 4K](docs/images/reminder-api14-dci.png) |
+
+## Resolution and evidence boundaries
+
+Initialization reads public SystemInfo screen capabilities and NUI WindowSize /
+GetInsets. The actual drawable window determines a centered 1920×1080 reference
+canvas with `scale = min(availableWidth/1920, availableHeight/1080)`. One ancestor
+transform scales layout, PixelSize typography, radius, border and focus geometry.
+Children use design units. Resize/inset changes update the transform while
+preserving unsaved editor state and focus; invalid geometry retains the frame.
+Annotations publish finite positive measured native bounds with no size fallback.
+
+The final evidence record distinguishes host tests, API 14 builds, signed TPKs,
+action-tool calls, UI interactions and native resolution measurements. The Common
+Emulator's SystemInfo capability can remain 1280×720 on a larger native window.
+Aurum tree returned empty roots; captures use remote keys and calibrated native
+coordinates. The lower-right Back/Home overlay belongs to the emulator.
+
+## Historical API 13 UI reference (2026-08-09)
 
 The six smart-list pages below were opened through the repository Aurum UI-automation wrapper using remote Down/Enter input. Deterministic fixtures were created through the app's public Schedule Actions; the app data file and platform databases were not edited directly.
 
@@ -43,62 +75,5 @@ The Today fixture also demonstrates that an item due earlier on the current day 
 
 The reservation route is navigable by D-pad as `Reservations → Search → first reservation`. Since Reservations has no time filter row, Down from Search goes directly to the first reservation rather than attempting to focus a hidden filter.
 
-## Proportional viewport scaling
 
-Both Reminder and Calendar use the live NUI window dimensions supplied by the platform through `Window.Default.WindowSize`. They do not assume that the active surface is always 1920×1080.
-
-Reminder derives a centered proportional canvas from a 1920×1080 design space:
-
-```text
-availableWidth  = windowWidth  - insetStart - insetEnd
-availableHeight = windowHeight - insetTop   - insetBottom
-scale           = min(availableWidth / 1920, availableHeight / 1080)
-contentWidth    = 1920 × scale
-contentHeight   = 1080 × scale
-offsetX         = insetStart + (availableWidth  - contentWidth)  / 2
-offsetY         = insetTop   + (availableHeight - contentHeight) / 2
-```
-
-- Root-level header and three panes receive the centered canvas offsets.
-- `Window.Default.GetInsets()` constrains the available platform area before scale and centering are calculated.
-- Coordinates inside each pane remain local and use the same uniform scale.
-- Font sizes, spacing, pane bounds, cards, buttons, borders, and focus geometry share the uniform scale.
-- The root background still fills the complete physical window.
-- `Window.Default.Resized` or `Window.Default.InsetsChanged` triggers a fresh render, so runtime window/inset changes do not retain stale geometry.
-- Actual NUI geometry remains the source for published `ScreenBounds` and `WindowBounds`.
-
-The zero-platform-inset geometry cases are:
-
-| Window | Scale | Centered offset | Purpose |
-|---|---:|---:|---|
-| 1920×1080 | 1.0 | 0, 0 | reference canvas |
-| 1280×720 | 0.6667 | 0, 0 | smaller 16:9 device |
-| 1440×1080 | 0.75 | 0, 135 | 4:3 vertical letterbox |
-| 2560×1080 | 1.0 | 320, 0 | ultrawide horizontal letterbox |
-
-The native screenshots in this README are from a 1920×1080 Common Emulator. The 1280×720 and non-16:9 entries are deterministic geometry-test coverage, not a claim that a second native Emulator profile was captured.
-
-## UI-automation provenance
-
-All ten screenshots were freshly captured from the packaged and installed TPK on 2026-08-09.
-
-- target: Public Tizen Common Emulator
-- profile: Public Tizen Common Emulator
-- resolution: 1920×1080
-- app ID: `org.tizen.actionexamples.reminder`
-- automation: `.agents/skills/tizen-aurum-ui-automation/scripts/aurum-ui`
-- input: Aurum remote-key and coordinate-click RPCs
-- capture: native Aurum screenshot RPC
-- image verification: ten PNG files, each exactly 1920×1080
-
-The Aurum accessibility tree on this Emulator returned `root_count: 0`; therefore the verification uses remote-key state transitions plus pixel screenshots rather than claiming semantic element lookup. The lower-right Back/Home area is the Common Emulator platform overlay.
-
-## Verification summary
-
-- `Reminder.Core.Tests: PASS (31 assertions)`, including four viewport shapes, platform insets, invalid-size rejection, and transient inset exhaustion
-- `Reminder.ActionProvider.Tests: PASS`
-- Reminder App Release build: 0 warnings, 0 errors
-- latest TPK archive payload/signatures verified, installed, and launched
-- all 10 Schedule Actions exercised through the generated device wire path
-- all four View Actions plus missing-ID failure exercised
-- six primary pages and four interaction/detail states captured from the final package
+The gallery above predates the API 14 migration. It documents historical page structure; use the current evidence links for final-package acceptance.

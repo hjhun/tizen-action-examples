@@ -55,6 +55,11 @@ internal readonly record struct ProportionalViewport(
         }
 
         var scale = Math.Min(availableWidth / ReferenceWidth, availableHeight / ReferenceHeight);
+        if (!float.IsFinite(scale) || scale <= 0)
+        {
+            viewport = default;
+            return false;
+        }
         var contentWidth = ReferenceWidth * scale;
         var contentHeight = ReferenceHeight * scale;
         viewport = new ProportionalViewport(

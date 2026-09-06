@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Reminder</title>
+<style>
+*{box-sizing:border-box}body{margin:0;overflow:hidden;background:#f7f6fb;color:#272330;font-family:Arial,sans-serif}#canvas{position:absolute;width:1920px;height:1080px;transform-origin:top left}button,input,textarea{font:28px Arial;color:#292531;border:1px solid #d4cddd;border-radius:12px;padding:12px;background:#fff}button{cursor:pointer}button:focus,input:focus,textarea:focus{outline:4px solid #6b42b8;outline-offset:3px;background:#ede5fa}button.selected{background:#ded5f5}h1{position:absolute;left:58px;top:28px;width:550px;height:84px;margin:0;font-size:76px;font-weight:400}.subtitle{position:absolute;left:62px;top:104px;color:#746f7e;font-size:26px}#add{position:absolute;left:1550px;top:50px;width:310px;height:68px}.pane{position:absolute;top:164px;height:850px;border-radius:28px;padding:32px}nav{left:50px;width:300px;background:#ece9f3}nav button{display:block;width:256px;height:74px;margin:24px -10px 26px}.eyebrow{color:#777181;font-size:22px;margin:0 0 24px}#list{left:374px;width:700px;background:#fff}h2{font-size:50px;font-weight:400;margin:0 0 20px}.count{position:absolute;right:34px;top:44px;color:#777181;font-size:24px}#search{width:460px;height:62px}#apply{width:158px;height:62px;margin-left:18px}#filters{display:flex;gap:9px;margin:14px 0 26px}#filters button{width:118px;height:48px;padding:6px;font-size:22px}.item{display:block;width:636px;height:80px;margin:0 0 16px;text-align:left;background:#f7f6fb;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.empty{text-align:center;color:#40394e;margin:120px 48px}.empty h3{font-size:40px;font-weight:400}.empty p{font-size:26px;line-height:1.5;color:#777181}#detail{left:1098px;width:772px;background:#f0edf5;padding:38px 42px}.detail-card{background:#fff;border-radius:22px;padding:30px;height:505px}.detail-card h3{font-size:53px;font-weight:400;margin:40px 0}.detail-card p{font-size:28px;white-space:pre-wrap;overflow-wrap:anywhere}.actions{position:absolute;bottom:115px;left:40px;right:40px;display:flex;gap:22px;justify-content:flex-end}.actions button{width:204px;height:70px}form input,form textarea{width:688px;display:block;margin:28px 0}form input{height:72px}form textarea{height:220px;resize:none}#error{color:#b3261e;font-size:24px}.help{font-size:21px;color:#746f7e;position:absolute;bottom:38px;width:240px;line-height:1.5}dialog{width:760px;border:0;border-radius:28px;padding:48px;background:#fff;font-size:30px}dialog::backdrop{background:#0006}dialog button{margin:20px 10px 0;width:200px}dialog h2{font-size:42px}
+</style>
+<div id="canvas">
+  <h1>Reminder</h1><div class="subtitle">Focused workspace · Common Emulator simulator</div>
+  <button id="add">+ Add reminder</button>
+  <nav class="pane" aria-label="Smart lists"><p class="eyebrow">SMART LISTS</p><div id="nav"></div><p class="help">Reservations use deterministic<br>app-owned simulator jobs.</p></nav>
+  <main id="list" class="pane"><h2 id="heading">Today</h2><span id="count" class="count"></span><input id="search" placeholder="Search title or note" aria-label="Search reminders"><button id="apply">Search</button><div id="filters"></div><div id="items"></div></main>
+  <aside id="detail" class="pane" aria-label="Reminder detail"></aside>
+  <dialog id="confirm"><h2>Delete reminder?</h2><p>This reminder will be removed.</p><button id="cancelDelete">Cancel</button><button id="delete">Delete</button></dialog>
+</div>
+<script>
+const $=id=>document.getElementById(id), sections=['Today','Upcoming','Overdue','Completed','All','Reservations'], filters=['All','Morning','Afternoon','Evening','No alert'];
+let section='Today', filter='All', query='', selected=null, editing=false, nextId=1, reminders=[], reservations=[];
+function scale(){const s=Math.min(innerWidth/1920,innerHeight/1080);Object.assign($('canvas').style,{left:(innerWidth-1920*s)/2+'px',top:(innerHeight-1080*s)/2+'px',transform:`scale(${s})`})}addEventListener('resize',scale);scale();
+function button(label,action,cls=''){const b=document.createElement('button');b.textContent=label;b.className=cls;b.onclick=action;return b}
+function current(){const now=new Date();return (section==='Reservations'?reservations:reminders).filter(r=>{
+ if(!`${r.title} ${r.note||''}`.toLowerCase().includes(query.toLowerCase()))return false;
+ if(section==='Reservations')return true; const due=r.due?new Date(r.due):null;
+ if(section==='Completed'&&!r.completed||['Today','Upcoming','Overdue'].includes(section)&&r.completed)return false;
+ if(section==='Today'&&(!due||due.toDateString()!==now.toDateString()))return false;
+ if(section==='Upcoming'&&(!due||due<now)||section==='Overdue'&&(!due||due>=now))return false;
+ const hour=due?.getHours();return filter==='All'||filter==='No alert'&&!due||filter==='Morning'&&hour<12||filter==='Afternoon'&&hour>=12&&hour<18||filter==='Evening'&&hour>=18;
+})}
+function render(){
+ $('nav').replaceChildren(...sections.map(s=>button((section===s?'●  ':'○  ')+s,()=>{section=s;selected=null;editing=false;render()},section===s?'selected':'')));
+ $('add').textContent=section==='Reservations'?'+ Add simulated reservation':'+ Add reminder';$('heading').textContent=section;
+ $('filters').replaceChildren(...(section==='Reservations'?[]:filters.map(f=>button(f,()=>{filter=f;render()},filter===f?'selected':''))));
+ const items=current();$('count').textContent=`${items.length} items`;
+ $('items').replaceChildren(...items.slice(0,6).map(r=>button(`${r.title}  ·  ${r.completed?'Completed':r.due?new Date(r.due).toLocaleString():'No alert'}`,()=>{selected=r.id;editing=false;render()},'item'+(selected===r.id?' selected':''))));
+ if(!items.length)$('items').innerHTML='<div class="empty"><h3>Nothing here yet</h3><p>Choose Add reminder to create your first item.</p></div>';
+ const item=(section==='Reservations'?reservations:reminders).find(r=>r.id===selected);$('detail').replaceChildren();
+ if(editing){editor(item);return}
+ const e=document.createElement('p');e.className='eyebrow';e.textContent=section==='Reservations'?'RESERVATION · COMMON SIMULATOR':'DETAIL';$('detail').append(e);
+ if(!item){$('detail').insertAdjacentHTML('beforeend','<div class="empty"><h3>Select a reminder</h3><p>The reminder’s due time, note, and actions will appear here.</p></div>');return}
+ const card=document.createElement('div');card.className='detail-card';const state=document.createElement('p');state.className='eyebrow';state.textContent=item.completed?'✓  COMPLETED':'○  ACTIVE';const title=document.createElement('h3');title.textContent=item.title;const due=document.createElement('p');due.textContent='DUE\n'+(item.due||'No alert');const note=document.createElement('p');note.textContent='NOTE\n'+(item.note||'No note');card.append(state,title,due,note);$('detail').append(card);
+ const actions=document.createElement('div');actions.className='actions';
+ if(section==='Reservations')actions.append(button('Cancel reservation',()=>{reservations=reservations.filter(r=>r.id!==selected);selected=null;render()}));
+ else{if(!item.completed)actions.append(button('Complete',()=>{item.completed=true;render()}));actions.append(button('Edit',()=>{editing=true;render()}),button('Delete',()=>{$('confirm').showModal();$('cancelDelete').focus()}))}$('detail').append(actions);
+}
+function editor(item){
+ const f=document.createElement('form');f.innerHTML='<p class="eyebrow">'+(item?'EDIT REMINDER':'NEW REMINDER')+'</p><input id="title" placeholder="Title" aria-label="Title" maxlength="200"><input id="due" placeholder="RFC 3339 due time; leave blank for no alert" aria-label="Due time"><textarea id="note" placeholder="Note (optional)" aria-label="Note" maxlength="2000"></textarea><p id="error" role="alert"></p><div class="actions"></div>';$('detail').append(f);
+ $('title').value=item?.title||'';$('due').value=item?.due??new Date(Date.now()+3600000).toISOString();$('note').value=item?.note||'';
+ const cancel=button('Cancel',()=>{editing=false;render()});cancel.type='button';const save=button('Save',()=>{});save.type='submit';f.querySelector('.actions').append(cancel,save);
+ f.onsubmit=e=>{e.preventDefault();const title=$('title').value.trim(),due=$('due').value,note=$('note').value.trim();if(!title){$('error').textContent='Title is required.';return}if(due&&(!/(Z|[+-]\d\d:\d\d)$/.test(due)||!Number.isFinite(Date.parse(due))||Date.parse(due)<=Date.now())){$('error').textContent='Use a future RFC 3339 time with an offset.';return}if(item)Object.assign(item,{title,due,note});else{const created={id:'preview-'+nextId++,title,due,note,completed:false};reminders.push(created);selected=created.id}editing=false;section='All';render()};$('title').focus();
+}
+$('add').onclick=()=>{if(section==='Reservations'){const r={id:'reservation-'+nextId++,title:'Simulated viewing reservation',due:new Date(Date.now()+3600000).toISOString(),note:'Common Emulator simulator'};reservations.push(r);selected=r.id;render()}else{selected=null;editing=true;render()}};
+$('apply').onclick=()=>{query=$('search').value;render()};$('cancelDelete').onclick=()=>{$('confirm').close();render()};$('delete').onclick=()=>{reminders=reminders.filter(r=>r.id!==selected);selected=null;$('confirm').close();render()};
+addEventListener('keydown',e=>{if(e.key==='Escape'){if($('confirm').open){e.preventDefault();$('confirm').close()}else if(editing){editing=false;render()}return}if(!e.key.startsWith('Arrow')||['INPUT','TEXTAREA'].includes(document.activeElement.tagName))return;e.preventDefault();const scope=$('confirm').open?$('confirm'):editing?$('detail'):$('canvas');const controls=[...scope.querySelectorAll('button,input,textarea')].filter(x=>x.getClientRects().length&&!x.closest('dialog:not([open])'));const at=controls.indexOf(document.activeElement),delta=['ArrowRight','ArrowDown'].includes(e.key)?1:-1;controls[Math.max(0,Math.min(controls.length-1,at+delta))]?.focus()});
+render();$('nav').querySelector('button').focus();
+</script>
+</html>

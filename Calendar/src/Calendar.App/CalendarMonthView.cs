@@ -7,6 +7,7 @@ namespace Calendar.App;
 internal static class CalendarMonthView
 {
     public static View Create(
+        CalendarDisplayMetrics display,
         CalendarUiState state,
         CalendarEventRepository repository,
         DateOnly today,
@@ -18,15 +19,7 @@ internal static class CalendarMonthView
     {
         var theme = CalendarTheme.Light;
         var presentation = CalendarMonthPresentation.Create(state, repository, today);
-        var windowSize = Window.Default.WindowSize;
-        var insets = Window.Default.GetInsets();
-        var viewport = ProportionalViewport.Create(
-            windowSize.Width,
-            windowSize.Height,
-            insets.Start,
-            insets.Top,
-            insets.End,
-            insets.Bottom);
+        var viewport = display.Viewport;
         var safeX = (float)theme.SafeInsetHorizontal;
         var safeY = (float)theme.SafeInsetVertical;
         var contentWidth = ProportionalViewport.ReferenceWidth - (theme.SafeInsetHorizontal * 2.0f);
@@ -138,7 +131,7 @@ internal static class CalendarMonthView
             root.Add(CalendarDateCellView.CreateLabel(
                 weekdayNames[column],
                 column == 0 ? theme.SundayAccent : theme.TextSecondary,
-                pointSize: 3.1f,
+                pixelSize: 24.8f,
                 new Position(left + (column * (cellWidth + columnGap)), top),
                 new Size(cellWidth, weekdayHeight),
                 HorizontalAlignment.Center));

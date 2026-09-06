@@ -1,4 +1,5 @@
 using System.Globalization;
+using ActionExamples.ViewAnnotations;
 using Reminder.Domain;
 using Reminder.Persistence;
 using Reminder.ScheduleActionProvider;
@@ -21,15 +22,21 @@ internal sealed class ReminderApplication : NUIApplication
     private string? _selectedId;
     private bool _editing;
     private bool _newItem;
-    private string _keyword = string.Empty;
+    private bool _confirmDelete;
+    private ReminderSearchState _search = new();
+    private IReadOnlyList<string> _renderedItemIds = [];
     private string _timeFilter = "All";
     private SynchronizationContext? _uiContext;
-    private IReadOnlyList<ReminderViewSnapshot> _published = [];
-    private ProportionalViewport _viewport;
+    private Tizen.NUI.Timer? _annotationTimer;
+    private bool _paused;
+    private ReminderDisplayMetrics? _display;
+    private View? _canvas;
 
     protected override void OnCreate()
     {
         base.OnCreate();
+        _annotationTimer = new Tizen.NUI.Timer(50);
+        _annotationTimer.Tick += (_, _) => { PublishAnnotations(); return false; };
         _uiContext = SynchronizationContext.Current;
         var dataPath = Tizen.Applications.Application.Current.DirectoryInfo.Data;
         _service = new ScheduleService(
@@ -40,6 +47,7 @@ internal sealed class ReminderApplication : NUIApplication
         ReminderViewActionProviderHost.Start();
         Window.Default.KeyEvent += OnKeyEvent;
         Window.Default.Resized += OnWindowResized;
+        Window.Default.Moved += OnWindowMoved;
         Window.Default.InsetsChanged += OnWindowResized;
         FocusManager.Instance.FocusChanged += OnFocusChanged;
         Render();
@@ -47,14 +55,16 @@ internal sealed class ReminderApplication : NUIApplication
 
     protected override void OnPause()
     {
-        _published = [];
-        ReminderViewActionProviderHost.Clear();
+        _paused = true;
+        _annotationTimer?.Stop();
+        ReminderViewActionProviderHost.ClearPublishedViews();
         base.OnPause();
     }
 
     protected override void OnResume()
     {
         base.OnResume();
+        _paused = false;
         Render();
     }
 
@@ -63,15 +73,29 @@ internal sealed class ReminderApplication : NUIApplication
         if (_service is not null) _service.Changed -= OnServiceChanged;
         Window.Default.InsetsChanged -= OnWindowResized;
         Window.Default.Resized -= OnWindowResized;
+        Window.Default.Moved -= OnWindowMoved;
         Window.Default.KeyEvent -= OnKeyEvent;
         FocusManager.Instance.FocusChanged -= OnFocusChanged;
-        ReminderViewActionProviderHost.Clear();
+        _paused = true;
+        _activeRoot = null;
+        _annotationTimer?.Stop();
+        _annotationTimer?.Dispose();
+        _annotationTimer = null;
+        ReminderViewActionProviderHost.ClearPublishedViews();
         base.OnTerminate();
     }
 
+    private void OnWindowMoved(object? sender, EventArgs args) => QueueAnnotationRefresh();
+
     private void OnWindowResized(object? sender, EventArgs args)
     {
-        Render();
+        if (_paused || !TryReadDisplay(out var display)) return;
+        if (_root is null || _canvas is null) { Render(); return; }
+        // Keep text edits, caret and focus alive when resolution or insets change.
+        _root.Size = new Size(display.WindowWidth, display.WindowHeight);
+        _canvas.Position = new Position(display.Viewport.OffsetX, display.Viewport.OffsetY);
+        _canvas.Scale = new Vector3(display.Viewport.Scale, display.Viewport.Scale, 1);
+        QueueAnnotationRefresh();
     }
 
     private void OnServiceChanged()
@@ -86,7 +110,13 @@ internal sealed class ReminderApplication : NUIApplication
         var key = args.Key.KeyPressedName;
         if (key is "XF86Back" or "Escape")
         {
-            if (_editing)
+            if (_confirmDelete)
+            {
+                _confirmDelete = false;
+                Render();
+                FocusByName("ReminderDetailDelete");
+            }
+            else if (_editing)
             {
                 _editing = false;
                 _newItem = false;
@@ -98,6 +128,24 @@ internal sealed class ReminderApplication : NUIApplication
 
         var current = FocusManager.Instance.GetCurrentFocusView();
         var name = current?.Name ?? string.Empty;
+        if (_confirmDelete)
+        {
+            if (key is "Left" or "Up") FocusByName("ReminderDeleteCancel");
+            else if (key is "Right" or "Down") FocusByName("ReminderDeleteConfirm");
+            return;
+        }
+        if (_editing)
+        {
+            // Keep the editor's focus order inside the form; arrows within text remain native.
+            if (key is "Tab" || current is not (TextField or TextEditor) && key is "Up" or "Down" or "Left" or "Right")
+            {
+                var order = new[] { "ReminderEditorTitle", "ReminderEditorDue", "ReminderEditorNote", "ReminderEditorCancel", "ReminderEditorSave" };
+                var index = Array.IndexOf(order, name);
+                var delta = key is "Up" or "Left" ? -1 : 1;
+                FocusByName(order[(Math.Max(index, 0) + delta + order.Length) % order.Length]);
+            }
+            return;
+        }
         if (key == "Down")
         {
             if (name.StartsWith("ReminderNav-", StringComparison.Ordinal))
@@ -172,98 +220,132 @@ internal sealed class ReminderApplication : NUIApplication
         }
     }
 
-    private void OnFocusChanged(object? sender, FocusManager.FocusChangedEventArgs args) => PublishAnnotations();
+    private void OnFocusChanged(object? sender, FocusManager.FocusChangedEventArgs args) => QueueAnnotationRefresh();
+
+    private bool TryReadDisplay(out ReminderDisplayMetrics display)
+    {
+        display = default;
+        int screenWidth = 0, screenHeight = 0;
+        try
+        {
+            var width = Tizen.System.Information.TryGetValue("http://tizen.org/feature/screen.width", out screenWidth);
+            var height = Tizen.System.Information.TryGetValue("http://tizen.org/feature/screen.height", out screenHeight);
+            if (!width || !height) screenWidth = screenHeight = 0;
+        }
+        catch (Exception exception) { Tizen.Log.Warn("Reminder", $"Screen size unavailable: {exception.Message}"); }
+        try
+        {
+            var size = Window.Default.WindowSize;
+            var insets = Window.Default.GetInsets();
+            if (!ReminderDisplayMetrics.TryCreate(size.Width, size.Height, screenWidth, screenHeight,
+                    insets.Start, insets.Top, insets.End, insets.Bottom, out display)) return false;
+            if (_display != display)
+            {
+                Tizen.Log.Info("Reminder", $"Screen={screenWidth}x{screenHeight}, Window={size.Width}x{size.Height}, " +
+                    $"Insets={insets.Start}/{insets.Top}/{insets.End}/{insets.Bottom}, CanvasScale={display.Viewport.Scale}");
+                _display = display;
+            }
+            return true;
+        }
+        catch (Exception exception)
+        {
+            Tizen.Log.Warn("Reminder", $"Window geometry unavailable: {exception.Message}");
+            return false;
+        }
+    }
 
     private void Render()
     {
-        if (_service is null) return;
+        if (_service is null || _paused) return;
 
-        var size = Window.Default.WindowSize;
-        var insets = Window.Default.GetInsets();
-        if (!ProportionalViewport.TryCreate(
-                size.Width,
-                size.Height,
-                insets.Start,
-                insets.Top,
-                insets.End,
-                insets.Bottom,
-                out var viewport))
-        {
-            return;
-        }
+        if (!TryReadDisplay(out var display)) return;
 
+        _activeRoot = null;
+        ReminderViewActionProviderHost.ClearPublishedViews();
         if (_root is not null)
         {
             Window.Default.GetDefaultLayer().Remove(_root);
             _root.Dispose();
         }
 
-        _viewport = viewport;
-        var scale = _viewport.Scale;
         _root = new View
         {
             Name = "ReminderWorkspace",
             AccessibilityName = "Reminder focused workspace",
-            Size = new Size(size.Width, size.Height),
+            Size = new Size(display.WindowWidth, display.WindowHeight),
             BackgroundColor = new Color("#F7F6FB"),
             FocusableChildren = true,
         };
-        AddHeader(_root, scale, size.Width);
-        AddNavigation(_root, scale);
-        AddList(_root, scale);
-        AddDetail(_root, scale);
+        _canvas = new View
+        {
+            Name = "ReminderDesignCanvas",
+            ParentOrigin = ParentOrigin.TopLeft, PivotPoint = PivotPoint.TopLeft,
+            Size = new Size(ProportionalViewport.ReferenceWidth, ProportionalViewport.ReferenceHeight),
+            Position = new Position(display.Viewport.OffsetX, display.Viewport.OffsetY),
+            Scale = new Vector3(display.Viewport.Scale, display.Viewport.Scale, 1),
+            FocusableChildren = true,
+        };
+        _root.Add(_canvas);
+        AddHeader(_canvas);
+        AddNavigation(_canvas);
+        AddList(_canvas);
+        AddDetail(_canvas);
+        if (_confirmDelete) AddDeleteConfirmation(_canvas);
         Window.Default.GetDefaultLayer().Add(_root);
-        _activeRoot = _root;
+        _activeRoot = _confirmDelete ? _canvas.FindChildByName("ReminderDeleteDialog") : _canvas;
+        NuiViewAnnotations.Observe(_root, QueueAnnotationRefresh);
 
-        var preferred = _selectedId is not null ? _root.FindChildByName($"ReminderEntity-{_selectedId}") : null;
+        var preferred = _confirmDelete ? _root.FindChildByName("ReminderDeleteCancel") :
+            _editing ? _root.FindChildByName("ReminderEditorTitle") :
+            _selectedId is not null ? _root.FindChildByName($"ReminderEntity-{_selectedId}") : null;
         preferred ??= _root.FindChildByName($"ReminderNav-{_section}");
         if (preferred is not null) FocusManager.Instance.SetCurrentFocusView(preferred);
-        PublishAnnotations();
+        QueueAnnotationRefresh();
     }
 
-    private void AddHeader(View root, float scale, float width)
+    private void AddHeader(View root)
     {
-        root.Add(CanvasLabel("Reminder", "#201D29", 9.5f * scale, 58, 28, 550, 84, scale));
-        root.Add(CanvasLabel("Focused workspace · Common Emulator simulator", "#746F7E", 3.3f * scale, 62, 104, 720, 42, scale));
-        var add = CanvasButton(_section == "Reservations" ? "+ Add simulated reservation" : "+ Add reminder", 1550, 50, 310, 68, scale, OpenNew);
+        root.Add(Label("Reminder", "#201D29", 76f, 58, 28, 550, 84));
+        root.Add(Label("Focused workspace · Common Emulator simulator", "#746F7E", 26.4f, 62, 104, 720, 42));
+        var add = Button(_section == "Reservations" ? "+ Add simulated reservation" : "+ Add reminder", 1550, 50, 310, 68, OpenNew);
         add.Name = "ReminderAdd";
         add.AccessibilityName = _section == "Reservations" ? "Add simulated reservation" : "Add reminder";
         root.Add(add);
     }
 
-    private void AddNavigation(View root, float scale)
+    private void AddNavigation(View root)
     {
-        var panel = CanvasSurface(50, 164, 300, 850, scale, "#ECE9F3", 28);
+        var panel = Surface(50, 164, 300, 850, "#ECE9F3", 28);
         panel.Name = "ReminderNavigation";
-        panel.Add(Label("SMART LISTS", "#777181", 2.8f * scale, 28, 24, 240, 40, scale));
+        panel.Add(Label("SMART LISTS", "#777181", 22.4f, 28, 24, 240, 40));
         for (var index = 0; index < Navigation.Length; index++)
         {
             var name = Navigation[index];
             var selected = name == _section;
-            var button = Button((selected ? "●  " : "○  ") + name, 22, 82 + index * 100, 256, 74, scale, () => SelectSection(name));
+            var button = Button((selected ? "●  " : "○  ") + name, 22, 82 + index * 100, 256, 74, () => SelectSection(name));
             button.Name = $"ReminderNav-{name}";
             button.AccessibilityName = $"{name} smart list{(selected ? ", selected" : string.Empty)}";
             button.BackgroundColor = new Color(selected ? "#DED5F5" : "#F7F6FB");
             button.TextColor = new Color("#292531");
             panel.Add(button);
         }
-        panel.Add(Label("Reservations use deterministic\napp-owned simulator jobs.", "#746F7E", 2.6f * scale, 28, 720, 240, 74, scale));
+        panel.Add(Label("Reservations use deterministic\napp-owned simulator jobs.", "#746F7E", 20.8f, 28, 720, 240, 104));
         root.Add(panel);
     }
 
-    private void AddList(View root, float scale)
+    private void AddList(View root)
     {
-        var panel = CanvasSurface(374, 164, 700, 850, scale, "#FFFFFF", 28);
+        var panel = Surface(374, 164, 700, 850, "#FFFFFF", 28);
         panel.Name = "ReminderListPane";
         var items = GetCurrentItems();
-        panel.Add(Label(_section, "#272330", 6.2f * scale, 34, 25, 430, 65, scale));
-        panel.Add(Label($"{items.Count} items", "#777181", 3.0f * scale, 565, 39, 100, 40, scale));
-        var search = Field(_keyword, "Search title or note", 32, 88, 460, 62, scale);
+        panel.Add(Label(_section, "#272330", 49.6f, 34, 25, 430, 65));
+        panel.Add(Label($"{items.Count} items", "#777181", 24f, 565, 39, 100, 40));
+        var search = Field(_search.DraftKeyword, "Search title or note", 32, 88, 460, 62);
         search.Name = "ReminderSearch";
         search.AccessibilityName = "Search reminders";
-        search.TextChanged += (_, args) => _keyword = args.TextField.Text;
+        search.TextChanged += (_, args) => _search = _search.WithDraft(args.TextField.Text);
         panel.Add(search);
-        var applySearch = Button("Search", 510, 88, 158, 62, scale, Render);
+        var applySearch = Button("Search", 510, 88, 158, 62, () => { _search = _search.Apply(); Render(); });
         applySearch.Name = "ReminderSearchApply";
         applySearch.AccessibilityName = "Apply reminder search";
         panel.Add(applySearch);
@@ -273,8 +355,9 @@ internal sealed class ReminderApplication : NUIApplication
             for (var filterIndex = 0; filterIndex < TimeFilters.Length; filterIndex++)
             {
                 var filter = TimeFilters[filterIndex];
-                var chip = Button(filter, 32 + filterIndex * 127, 164, 118, 48, scale, () => { _timeFilter = filter; Render(); });
+                var chip = Button(filter, 32 + filterIndex * 127, 164, 118, 48, () => { _timeFilter = filter; Render(); });
                 chip.Name = $"ReminderFilter-{filter.Replace(" ", string.Empty)}";
+                chip.TextLabel.PixelSize = 22;
                 chip.AccessibilityName = $"{filter} reminder filter{(filter == _timeFilter ? ", selected" : string.Empty)}";
                 chip.BackgroundColor = new Color(filter == _timeFilter ? "#2D2933" : "#F0EDF5");
                 chip.TextColor = new Color(filter == _timeFilter ? "#FFFFFF" : "#40394E");
@@ -284,10 +367,11 @@ internal sealed class ReminderApplication : NUIApplication
         }
         root.Add(panel);
 
+        _renderedItemIds = items.Take(6).Select(item => item.Id).ToArray();
         if (items.Count == 0)
         {
-            panel.Add(Label("Nothing here yet", "#40394E", 5.0f * scale, 80, 280, 540, 70, scale, HorizontalAlignment.Center));
-            panel.Add(Label(_section == "Reservations" ? "Add a deterministic viewing or recording simulation." : "Choose Add reminder to create your first item.", "#777181", 3.2f * scale, 80, 360, 540, 100, scale, HorizontalAlignment.Center));
+            panel.Add(Label("Nothing here yet", "#40394E", 40f, 80, 280, 540, 70, HorizontalAlignment.Center));
+            panel.Add(Label(_section == "Reservations" ? "Add a deterministic viewing or recording simulation." : "Choose Add reminder to create your first item.", "#777181", 25.6f, 80, 360, 540, 100, HorizontalAlignment.Center));
             return;
         }
 
@@ -295,7 +379,7 @@ internal sealed class ReminderApplication : NUIApplication
         {
             var item = items[index];
             var isSelected = item.Id == _selectedId;
-            var button = Button(item.Primary + "  ·  " + item.Secondary, 32, listTop + index * 96, 636, 80, scale, () => SelectItem(item.Id));
+            var button = Button(item.Primary + "  ·  " + item.Secondary, 32, listTop + index * 96, 636, 80, () => SelectItem(item.Id));
             button.Name = $"ReminderEntity-{item.Id}";
             button.AccessibilityName = item.Primary + ", " + item.Secondary;
             button.BackgroundColor = new Color(isSelected ? "#E6DDF8" : "#F7F6FB");
@@ -304,67 +388,72 @@ internal sealed class ReminderApplication : NUIApplication
         }
     }
 
-    private void AddDetail(View root, float scale)
+    private void AddDetail(View root)
     {
-        var panel = CanvasSurface(1098, 164, 772, 850, scale, "#F0EDF5", 28);
+        var panel = Surface(1098, 164, 772, 850, "#F0EDF5", 28);
         panel.Name = "ReminderDetailPane";
-        if (_editing && _section != "Reservations") AddReminderEditor(panel, scale);
-        else if (_section == "Reservations") AddReservationDetail(panel, scale);
-        else AddReminderDetail(panel, scale);
+        if (_editing && _section != "Reservations") AddReminderEditor(panel);
+        else if (_section == "Reservations") AddReservationDetail(panel);
+        else AddReminderDetail(panel);
         root.Add(panel);
     }
 
-    private void AddReminderDetail(View panel, float scale)
+    private void AddReminderDetail(View panel)
     {
         var item = _service!.Snapshot.Reminders.FirstOrDefault(x => x.Id == _selectedId);
-        panel.Add(Label("DETAIL", "#777181", 2.8f * scale, 42, 28, 260, 36, scale));
+        panel.Add(Label("DETAIL", "#777181", 22.4f, 42, 28, 260, 36));
         if (item is null)
         {
-            panel.Add(Label("Select a reminder", "#40394E", 5.5f * scale, 52, 235, 668, 75, scale, HorizontalAlignment.Center));
-            panel.Add(Label("The reminder's due time, note, and actions will appear here.", "#777181", 3.2f * scale, 80, 330, 612, 100, scale, HorizontalAlignment.Center));
+            panel.Add(Label("Select a reminder", "#40394E", 44f, 52, 235, 668, 75, HorizontalAlignment.Center));
+            panel.Add(Label("The reminder's due time, note, and actions will appear here.", "#777181", 25.6f, 80, 330, 612, 100, HorizontalAlignment.Center));
             return;
         }
-        var detail = Surface(38, 86, 696, 505, scale, "#FFFFFF", 22);
+        var detail = Surface(38, 86, 696, 505, "#FFFFFF", 22);
         detail.Name = $"ReminderDetailEntity-{item.Id}";
-        detail.Add(Label(item.Completed ? "✓  COMPLETED" : item.DueAt < DateTimeOffset.Now ? "!  OVERDUE" : "○  ACTIVE", item.Completed ? "#55705B" : "#6B42B8", 2.8f * scale, 30, 28, 620, 38, scale));
-        detail.Add(Label(item.Title, "#272330", 6.6f * scale, 30, 82, 630, 105, scale));
-        detail.Add(Label("DUE", "#777181", 2.5f * scale, 30, 205, 120, 30, scale));
-        detail.Add(Label(item.DueAt?.ToLocalTime().ToString("ddd, MMM d · HH:mm") ?? "No alert", "#40394E", 3.8f * scale, 30, 240, 620, 48, scale));
-        detail.Add(Label("NOTE", "#777181", 2.5f * scale, 30, 320, 120, 30, scale));
-        detail.Add(Label(string.IsNullOrWhiteSpace(item.Note) ? "No note" : item.Note, "#40394E", 3.4f * scale, 30, 355, 620, 105, scale));
+        detail.Add(Label(item.Completed ? "✓  COMPLETED" : item.DueAt < DateTimeOffset.Now ? "!  OVERDUE" : "○  ACTIVE", item.Completed ? "#55705B" : "#6B42B8", 22.4f, 30, 28, 620, 38));
+        detail.Add(Label(item.Title, "#272330", 52.8f, 30, 82, 630, 105));
+        detail.Add(Label("DUE", "#777181", 20f, 30, 205, 120, 30));
+        detail.Add(Label(item.DueAt?.ToLocalTime().ToString("ddd, MMM d · HH:mm") ?? "No alert", "#40394E", 30.4f, 30, 240, 620, 48));
+        detail.Add(Label("NOTE", "#777181", 20f, 30, 320, 120, 30));
+        detail.Add(Label(string.IsNullOrWhiteSpace(item.Note) ? "No note" : item.Note, "#40394E", 27.2f, 30, 355, 620, 105));
         panel.Add(detail);
         if (!item.Completed)
         {
-            var complete = Button("Complete", 40, 630, 204, 70, scale, () => { _service.CompleteReminder(item.Id); });
+            var complete = Button("Complete", 40, 630, 204, 70, () => { _service.CompleteReminder(item.Id); });
             complete.Name = "ReminderDetailComplete";
             panel.Add(complete);
         }
-        var edit = Button("Edit", 266, 630, 204, 70, scale, () => { _editing = true; _newItem = false; Render(); });
+        var edit = Button("Edit", 266, 630, 204, 70, () => { _editing = true; _newItem = false; Render(); });
         edit.Name = "ReminderDetailEdit";
         panel.Add(edit);
-        var delete = Button("Delete", 492, 630, 204, 70, scale, () => { _service.DeleteReminder(item.Id); _selectedId = null; });
+        var delete = Button("Delete", 492, 630, 204, 70, () => { _confirmDelete = true; Render(); });
         delete.Name = "ReminderDetailDelete";
         panel.Add(delete);
     }
 
-    private void AddReminderEditor(View panel, float scale)
+    private void AddReminderEditor(View panel)
     {
         var original = _newItem ? null : _service!.Snapshot.Reminders.FirstOrDefault(x => x.Id == _selectedId);
-        panel.Add(Label(_newItem ? "NEW REMINDER" : "EDIT REMINDER", "#777181", 2.8f * scale, 42, 28, 360, 36, scale));
-        var title = Field(original?.Title ?? string.Empty, "Title", 42, 95, 688, 72, scale);
-        var due = Field(original?.DueAt?.ToString("O") ?? DateTimeOffset.Now.AddHours(1).ToString("O"), "RFC 3339 due time; leave blank for no alert", 42, 196, 688, 68, scale);
+        panel.Add(Label(_newItem ? "NEW REMINDER" : "EDIT REMINDER", "#777181", 22.4f, 42, 28, 360, 36));
+        var title = Field(original?.Title ?? string.Empty, "Title", 42, 95, 688, 72);
+        var due = Field(original?.DueAt?.ToString("O") ?? DateTimeOffset.Now.AddHours(1).ToString("O"), "RFC 3339 due time; leave blank for no alert", 42, 196, 688, 68);
         var note = new TextEditor
         {
             Text = original?.Note ?? string.Empty,
             PlaceholderText = "Note (optional)",
             PlaceholderTextColor = new Color(0.48f, 0.46f, 0.52f, 1),
-            EnableEditing = true, Focusable = true,
-            Position = P(42, 300, scale), Size = S(688, 220, scale), BackgroundColor = new Color("#FFFFFF"),
+            EnableEditing = true, Focusable = true, PixelSize = 28,
+            Position = P(42, 300), Size = S(688, 220), BackgroundColor = new Color("#FFFFFF"),
         };
-        var validation = Label(string.Empty, "#B3261E", 3.0f * scale, 42, 550, 688, 54, scale);
+        title.Name = "ReminderEditorTitle";
+        due.Name = "ReminderEditorDue";
+        note.Name = "ReminderEditorNote";
+        var validation = Label(string.Empty, "#B3261E", 24f, 42, 550, 688, 54);
         panel.Add(title); panel.Add(due); panel.Add(note); panel.Add(validation);
-        panel.Add(Button("Cancel", 278, 655, 210, 72, scale, () => { _editing = false; _newItem = false; Render(); }));
-        panel.Add(Button("Save", 514, 655, 216, 72, scale, () =>
+        var cancel = Button("Cancel", 278, 655, 210, 72, () => { _editing = false; _newItem = false; Render(); });
+        cancel.Name = "ReminderEditorCancel";
+        panel.Add(cancel);
+        var save = Button("Save", 514, 655, 216, 72, () =>
         {
             DateTimeOffset? dueAt = null;
             if (!string.IsNullOrWhiteSpace(due.Text) && !DateTimeOffset.TryParse(due.Text, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var parsed))
@@ -372,29 +461,62 @@ internal sealed class ReminderApplication : NUIApplication
             else if (!string.IsNullOrWhiteSpace(due.Text)) dueAt = DateTimeOffset.Parse(due.Text, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind);
             try
             {
-                var item = ReminderItem.Create(original?.Id ?? $"reminder-{Guid.NewGuid():N}", title.Text, dueAt, note.Text, original?.CreatedAt) with { Completed = original?.Completed ?? false };
+                var item = ReminderItem.Create(original?.Id ?? $"reminder-{Guid.NewGuid():N}", title.Text, dueAt, note.Text, original?.CreatedAt) with { Completed = original?.Completed ?? false, ActiveState = original?.ActiveState ?? "To-do" };
                 var result = _newItem ? _service!.CreateReminder(item) : _service!.UpdateReminder(item);
                 if (!result.Success) { validation.Text = result.Reason; return; }
                 _selectedId = item.Id; _editing = false; _newItem = false; Render();
             }
             catch (ArgumentException exception) { validation.Text = exception.Message; }
-        }));
+        });
+        save.Name = "ReminderEditorSave";
+        panel.Add(save);
     }
 
-    private void AddReservationDetail(View panel, float scale)
+    private void AddDeleteConfirmation(View canvas)
+    {
+        // Block underlying pointer controls and limit published context to the dialog.
+        for (uint i = 0; i < canvas.ChildCount; i++)
+        {
+            var child = canvas.GetChildAt(i);
+            child.IsEnabled = false;
+            child.Sensitive = false;
+            child.FocusableChildren = false;
+        }
+        var dialog = Surface(540, 330, 840, 420, "#FFFFFF", 28);
+        dialog.Name = "ReminderDeleteDialog";
+        dialog.BorderlineWidth = 2;
+        dialog.BorderlineColor = new Color("#6B42B8");
+        dialog.Add(Label("Delete reminder?", "#272330", 44, 48, 32, 744, 76));
+        dialog.Add(Label("This reminder will be removed.", "#746F7E", 28, 48, 126, 744, 80));
+        var cancel = Button("Cancel", 328, 292, 204, 72, () => { _confirmDelete = false; Render(); FocusByName("ReminderDetailDelete"); });
+        cancel.Name = "ReminderDeleteCancel";
+        var confirm = Button("Delete", 556, 292, 204, 72, () =>
+        {
+            if (_selectedId is null) return;
+            var result = _service!.DeleteReminder(_selectedId);
+            if (!result.Success) return;
+            _confirmDelete = false; _selectedId = null; Render();
+        });
+        confirm.Name = "ReminderDeleteConfirm";
+        dialog.Add(cancel); dialog.Add(confirm); canvas.Add(dialog);
+    }
+
+    private void AddReservationDetail(View panel)
     {
         var item = _service!.Snapshot.Reservations.FirstOrDefault(x => x.Id == _selectedId);
-        panel.Add(Label("RESERVATION · COMMON SIMULATOR", "#6B42B8", 2.8f * scale, 42, 28, 650, 38, scale));
+        panel.Add(Label("RESERVATION · COMMON SIMULATOR", "#6B42B8", 22.4f, 42, 28, 650, 38));
         if (item is null)
         {
-            panel.Add(Label("Select a reservation", "#40394E", 5.5f * scale, 52, 235, 668, 75, scale, HorizontalAlignment.Center));
-            panel.Add(Label("No tuner or recording backend is changed on Common Emulator.", "#777181", 3.2f * scale, 80, 330, 612, 100, scale, HorizontalAlignment.Center));
+            panel.Add(Label("Select a reservation", "#40394E", 44f, 52, 235, 668, 75, HorizontalAlignment.Center));
+            panel.Add(Label("No tuner or recording backend is changed on Common Emulator.", "#777181", 25.6f, 80, 330, 612, 100, HorizontalAlignment.Center));
             return;
         }
-        panel.Add(Label(item.Program, "#272330", 6.6f * scale, 44, 105, 680, 100, scale));
-        panel.Add(Label($"{item.Kind} · {item.Channel}", "#6B42B8", 3.6f * scale, 44, 224, 680, 52, scale));
-        panel.Add(Label($"{item.StartAt.ToLocalTime():ddd, MMM d · HH:mm}\n{item.EndAt.ToLocalTime():ddd, MMM d · HH:mm}\nRepeat: {item.Repeat}", "#40394E", 3.8f * scale, 44, 310, 680, 180, scale));
-        var cancel = Button("Cancel reservation", 440, 620, 290, 72, scale, () => { _service.CancelReservation(item.Id, item.Kind); _selectedId = null; });
+        var program = Label(item.Program, "#272330", 52.8f, 44, 105, 680, 100);
+        program.Name = $"ReminderDetailEntity-{item.Id}";
+        panel.Add(program);
+        panel.Add(Label($"{item.Kind} · {item.Channel}", "#6B42B8", 28.8f, 44, 224, 680, 52));
+        panel.Add(Label($"{item.StartAt.ToLocalTime():ddd, MMM d · HH:mm}\n{item.EndAt.ToLocalTime():ddd, MMM d · HH:mm}\nRepeat: {item.Repeat}", "#40394E", 30.4f, 44, 310, 680, 180));
+        var cancel = Button("Cancel reservation", 440, 620, 290, 72, () => { _service.CancelReservation(item.Id, item.Kind); _selectedId = null; });
         cancel.Name = "ReminderDetailCancelReservation";
         panel.Add(cancel);
     }
@@ -425,10 +547,10 @@ internal sealed class ReminderApplication : NUIApplication
     private IReadOnlyList<ListItem> GetCurrentItems()
     {
         if (_section == "Reservations") return _service!.GetReservations()
-            .Where(x => string.IsNullOrWhiteSpace(_keyword) || x.Program.Contains(_keyword, StringComparison.OrdinalIgnoreCase) || x.Channel.Contains(_keyword, StringComparison.OrdinalIgnoreCase))
+            .Where(x => string.IsNullOrWhiteSpace(_search.AppliedKeyword) || x.Program.Contains(_search.AppliedKeyword, StringComparison.OrdinalIgnoreCase) || x.Channel.Contains(_search.AppliedKeyword, StringComparison.OrdinalIgnoreCase))
             .Select(x => new ListItem(x.Id, $"{(x.Kind == ReservationKind.Recording ? "● REC" : "▷ VIEW")}  {x.Program}", $"{x.Channel} · {x.StartAt.ToLocalTime():MMM d HH:mm} · Simulated")).ToArray();
         var category = _section switch { "Today" => ReminderCategory.Today, "Upcoming" => ReminderCategory.Upcoming, "Overdue" => ReminderCategory.Overdue, "Completed" => ReminderCategory.Completed, _ => ReminderCategory.All };
-        return _service!.SearchReminders(new ReminderQuery(_keyword, category, 50))
+        return _service!.SearchReminders(new ReminderQuery(_search.AppliedKeyword, category, 50))
             .Where(MatchesTimeFilter)
             .Select(x => new ListItem(x.Id, $"{(x.Completed ? "✓" : "○")}  {x.Title}", x.DueAt is null ? "No alert" : $"{x.DueAt.Value.ToLocalTime():MMM d · HH:mm}{(x.DueAt < DateTimeOffset.Now && !x.Completed ? " · Overdue" : string.Empty)}")).ToArray();
     }
@@ -448,90 +570,78 @@ internal sealed class ReminderApplication : NUIApplication
         };
     }
 
+    private void QueueAnnotationRefresh()
+    {
+        _annotationTimer?.Stop();
+        if (_paused || _activeRoot is null) return;
+        // Update live focus/text immediately; the next layout replaces the same
+        // snapshot atomically. Render/OnPause clear removed or hidden trees.
+        PublishAnnotations();
+        _annotationTimer?.Start();
+    }
+
     private void PublishAnnotations()
     {
-        if (_activeRoot is null || _service is null) return;
-        var snapshots = new List<ReminderViewSnapshot>();
+        if (_paused || _activeRoot is null || _service is null) return;
+        var context = ReminderAnnotationPage.Create(_section, _editing, _newItem, _selectedId, _search.AppliedKeyword, _timeFilter, _confirmDelete);
+        var pageId = context.Id;
+        var page = context.State;
+        var snapshots = new List<CurrentViewSnapshot>();
+        var annotated = new HashSet<View>();
         var state = _service.Snapshot;
-        View? focusedView = null;
-        try { focusedView = FocusManager.Instance.GetCurrentFocusView(); } catch { }
-        var detailId = _selectedId;
-        if (detailId is not null && !_editing)
+        var focused = NuiViewAnnotations.Focused(_activeRoot);
+        void Capture(View? view, CurrentViewSnapshot snapshot)
         {
-            var detailView = _activeRoot.FindChildByName($"ReminderDetailEntity-{detailId}");
-            AddSnapshot(detailView, state.Reminders.FirstOrDefault(x => x.Id == detailId), state.Reservations.FirstOrDefault(x => x.Id == detailId), snapshots, focusedView, includeNote: true);
+            if (view is null) return;
+            var measured = NuiViewAnnotations.Measure(view, _activeRoot, focused, snapshot);
+            if (measured is null) return;
+            snapshots.Add(measured);
+            annotated.Add(view);
         }
-        foreach (var item in GetCurrentItems())
+        void CaptureEntity(View? view, string id, string surface, bool includeNote)
         {
-            var view = _activeRoot.FindChildByName($"ReminderEntity-{item.Id}");
-            AddSnapshot(view, state.Reminders.FirstOrDefault(x => x.Id == item.Id), state.Reservations.FirstOrDefault(x => x.Id == item.Id), snapshots, focusedView, includeNote: false);
+            var reminder = state.Reminders.FirstOrDefault(x => x.Id == id);
+            var reservation = state.Reservations.FirstOrDefault(x => x.Id == id);
+            if (reminder is not null)
+                Capture(view, ReminderViewSnapshots.Reminder($"{pageId}:{surface}:{id}", reminder, includeNote));
+            else if (reservation is not null)
+                Capture(view, ReminderViewSnapshots.Reservation($"{pageId}:reservation-{surface}:{id}", reservation));
         }
-        _published = snapshots;
-        ReminderViewActionProviderHost.Publish(_published);
-    }
-
-    private static void AddSnapshot(View? view, ReminderItem? reminder, ReservationItem? reservation, List<ReminderViewSnapshot> target, View? focusedView, bool includeNote)
-    {
-        if (view is null || (reminder is null && reservation is null)) return;
-        try
+        Capture(_activeRoot, ReminderViewSnapshots.Context(pageId, "Reminder.Page", context.Title, new { schemaVersion = 1, page }));
+        if (_selectedId is { } detailId && !_editing)
+            CaptureEntity(_activeRoot.FindChildByName($"ReminderDetailEntity-{detailId}"), detailId, "detail", includeNote: true);
+        foreach (var id in _renderedItemIds)
+            CaptureEntity(_activeRoot.FindChildByName($"ReminderEntity-{id}"), id, "item", includeNote: false);
+        foreach (var (view, key) in NuiViewAnnotations.Controls(_activeRoot))
         {
-            var bounds = view.CalculateScreenPositionSize();
-            var width = bounds.Z > 0 ? bounds.Z : view.Size.Width;
-            var height = bounds.W > 0 ? bounds.W : view.Size.Height;
-            if (width <= 0 || height <= 0) return;
-            double? windowX = null, windowY = null;
-            try { using var position = Window.Default.WindowPosition; windowX = bounds.X - position.X; windowY = bounds.Y - position.Y; } catch { }
-            var surface = view.Name.StartsWith("ReminderDetailEntity-", StringComparison.Ordinal) ? "detail" : "item";
-            var entityId = reminder?.Id ?? reservation!.Id;
-            var viewId = reminder is not null ? $"reminder:{surface}:{entityId}" : $"reminder:reservation-{surface}:{entityId}";
-            target.Add(new ReminderViewSnapshot(reminder, reservation, bounds.X, bounds.Y, windowX, windowY, width, height,
-                viewId, ReferenceEquals(view, focusedView), includeNote));
+            if (annotated.Contains(view)) continue;
+            Capture(view, ReminderViewSnapshots.Context($"{pageId}:control:{key}", "Reminder.Control",
+                NuiViewAnnotations.Description(view, key), new { schemaVersion = 1, page, draft = NuiViewAnnotations.ControlState(view, key) }));
         }
-        catch { }
+        ReminderViewActionProviderHost.Publish(snapshots);
     }
 
-    private View CanvasSurface(float x, float y, float w, float h, float scale, string color, float radius)
+    private static View Surface(float x, float y, float w, float h, string color, float radius) => new()
+    { Position = P(x, y), Size = S(w, h), BackgroundColor = new Color(color), CornerRadius = radius, FocusableChildren = true };
+
+    private static NuiButton Button(string text, float x, float y, float w, float h, Action action)
     {
-        var surface = Surface(x, y, w, h, scale, color, radius);
-        surface.Position = CanvasPosition(x, y, scale);
-        return surface;
-    }
-
-    private NuiButton CanvasButton(string text, float x, float y, float w, float h, float scale, Action action)
-    {
-        var button = Button(text, x, y, w, h, scale, action);
-        button.Position = CanvasPosition(x, y, scale);
-        return button;
-    }
-
-    private TextLabel CanvasLabel(string text, string color, float pointSize, float x, float y, float w, float h, float scale)
-    {
-        var label = Label(text, color, pointSize, x, y, w, h, scale);
-        label.Position = CanvasPosition(x, y, scale);
-        return label;
-    }
-
-    private Position CanvasPosition(float x, float y, float scale) =>
-        new(_viewport.OffsetX + (x * scale), _viewport.OffsetY + (y * scale));
-
-    private static View Surface(float x, float y, float w, float h, float scale, string color, float radius) => new()
-    { Position = P(x, y, scale), Size = S(w, h, scale), BackgroundColor = new Color(color), CornerRadius = radius * scale, FocusableChildren = true };
-
-    private static NuiButton Button(string text, float x, float y, float w, float h, float scale, Action action)
-    {
-        var button = new NuiButton { Text = text, Position = P(x, y, scale), Size = S(w, h, scale), Focusable = true };
+        var button = new NuiButton { Text = text, Position = P(x, y), Size = S(w, h), Focusable = true, BackgroundColor = Color.White, TextColor = new Color("#292531"), CornerRadius = 12 };
+        button.TextLabel.PixelSize = 28;
+        button.FocusGained += (_, _) => { button.BorderlineWidth = 4; button.BorderlineColor = new Color("#6B42B8"); button.Scale = new Vector3(1.02f, 1.02f, 1); };
+        button.FocusLost += (_, _) => { button.BorderlineWidth = 0; button.Scale = Vector3.One; };
         button.Clicked += (_, _) => action();
         return button;
     }
 
-    private static TextField Field(string text, string placeholder, float x, float y, float w, float h, float scale) => new()
-    { Text = text, PlaceholderText = placeholder, EnableEditing = true, Focusable = true, Position = P(x, y, scale), Size = S(w, h, scale), BackgroundColor = new Color("#FFFFFF") };
+    private static TextField Field(string text, string placeholder, float x, float y, float w, float h) => new()
+    { Text = text, PlaceholderText = placeholder, EnableEditing = true, Focusable = true, PixelSize = 28, Position = P(x, y), Size = S(w, h), BackgroundColor = new Color("#FFFFFF") };
 
-    private static TextLabel Label(string text, string color, float pointSize, float x, float y, float w, float h, float scale, HorizontalAlignment alignment = HorizontalAlignment.Begin) => new()
-    { Text = text, TextColor = new Color(color), PointSize = pointSize, Position = P(x, y, scale), Size = S(w, h, scale), HorizontalAlignment = alignment, VerticalAlignment = VerticalAlignment.Center, MultiLine = true };
+    private static TextLabel Label(string text, string color, float pixelSize, float x, float y, float w, float h, HorizontalAlignment alignment = HorizontalAlignment.Begin) => new()
+    { Text = text, TextColor = new Color(color), PixelSize = pixelSize, Position = P(x, y), Size = S(w, h), HorizontalAlignment = alignment, VerticalAlignment = VerticalAlignment.Center, MultiLine = true };
 
-    private static Position P(float x, float y, float scale) => new(x * scale, y * scale);
-    private static Size S(float w, float h, float scale) => new(w * scale, h * scale);
+    private static Position P(float x, float y) => new(x, y);
+    private static Size S(float w, float h) => new(w, h);
     private sealed record ListItem(string Id, string Primary, string Secondary);
 
     private static void Main(string[] args) => new ReminderApplication().Run(args);

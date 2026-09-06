@@ -8,7 +8,7 @@ namespace Calendar.ScheduleActionProvider;
 
 public static class ScheduleReminderActionProviderHost
 {
-    private static TizenActionSchedule? _stub;
+    private static TizenActionReminder? _stub;
 
     public static void Start(CalendarReminderRepository reminders, CalendarCommandService commands)
     {
@@ -16,7 +16,7 @@ public static class ScheduleReminderActionProviderHost
         ArgumentNullException.ThrowIfNull(commands);
         ScheduleProviderState.Configure(reminders, commands);
 
-        _stub ??= new TizenActionSchedule();
+        _stub ??= new TizenActionReminder();
         if (!_stub.GetListenStatus())
         {
             _stub.Listen(typeof(ScheduleReminderService));

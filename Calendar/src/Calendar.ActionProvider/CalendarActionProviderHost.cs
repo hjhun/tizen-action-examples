@@ -9,12 +9,16 @@ namespace Calendar.ActionProvider;
 public static class CalendarActionProviderHost
 {
     private static TizenActionCalendar? _stub;
+    private static RPCPort.CalendarCustomActionProvider.Stub.TizenActionCalendarCustom? _customStub;
 
     public static void Start(CalendarEventRepository repository, CalendarCommandService commands)
     {
         ArgumentNullException.ThrowIfNull(repository);
         ArgumentNullException.ThrowIfNull(commands);
         CalendarProviderState.Configure(repository, commands);
+
+        _customStub ??= new RPCPort.CalendarCustomActionProvider.Stub.TizenActionCalendarCustom();
+        if (!_customStub.GetListenStatus()) _customStub.Listen(typeof(CalendarCustomService));
 
         _stub ??= new TizenActionCalendar();
         if (!_stub.GetListenStatus())

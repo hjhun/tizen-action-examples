@@ -4,9 +4,15 @@ Tizen Action Framework 2.0의 Calendar domain을 실제 NUI 앱, typed Action pr
 
 Calendar는 단순 UI sample이 아닙니다. Month/Week/Day/Agenda 화면과 고급 검색을 같은 app-owned repository 위에 구현하고, 화면에 실제로 렌더된 일정의 stable Entity identity·bounds·focus를 Agent가 조회할 수 있도록 제공합니다.
 
-![Calendar Month view](docs/images/calendar-month.png)
+![Calendar API 14 Month](docs/images/calendar-api14-month.png)
 
-> 위 이미지는 Public Tizen Common Emulator에서 실행 중인 최신 TPK를 Aurum gRPC `takeScreenshot`으로 직접 캡처한 1920×1080 화면입니다. 화면의 일정은 E2E fixture data입니다.
+2026-09-06: API 14와 최신 전체 Calendar/Reminder/View category 및 별도 Custom category로 갱신하고 native 구현을 제거했습니다. 단일 ancestor scaling과 현재 View snapshot을 실제 Common Emulator에서 검증했습니다.
+
+[1단계 검증 결과](docs/STAGE1_VALIDATION.md) · [현재 UI/preview 대조](docs/UI_PARITY.md) · [실행 가능한 preview](refs/one-ui-sample.html) · [ViewAnnotation 계약](docs/VIEW_ANNOTATION.md)
+
+| UHD 3840×2160 | DCI 4K 4096×2160 |
+|---|---|
+| ![Calendar UHD](docs/images/calendar-api14-uhd.png) | ![Calendar DCI 4K](docs/images/calendar-api14-dci.png) |
 
 ## 주요 기능
 
@@ -17,14 +23,14 @@ Calendar는 단순 UI sample이 아닙니다. Month/Week/Day/Agenda 화면과 �
 - Title/Location/Notes를 독립 선택하는 advanced search
 - UI/domain/typed Action 전체에서 `[StartInclusive, EndExclusive)` 기간 semantics
 - local timezone과 DST 경계를 고려한 날짜-only boundary 변환
-- 기존 `Calendar_Search(Tizen.Entity.Query)` ABI 유지
-- typed `CalendarSearchQuery`와 `Calendar_SearchInPeriod` 제공
+- 표준 `Calendar_Search(Tizen.Entity.CalendarQuery)`: Id/Keyword/Limit 및 기간 검색
+- Custom `Calendar.Entity.SearchQuery`와 `CalendarCustom_SearchInPeriod`, 순서·중복을 유지하는 `CalendarCustom_GetEventByIds`
 - actual NUI view의 bounds와 focus를 포함하는 ViewAnnotation
-- generated `TizenEntityCalendar.ToJson()` 기반 Entity context
-- A2UI `surfaceUpdate` Template과 `dataModelUpdate` Document
+- generated `TizenEntityCalendarEvent.ToJson()` 기반 Entity context
+- legacy v0.8 A2UI `surfaceUpdate` Template과 `dataModelUpdate` Document
 - Calendar CRUD, persistence, reminder/alarm reconciliation
 
-## 화면 둘러보기
+## 화면 둘러보기 (2026-08-08 이전 버전의 참고 캡처)
 
 ### Month
 
@@ -84,6 +90,8 @@ pointer activation도 D-pad/Enter와 동일한 reducer command를 dispatch합니
 
 ## 비례 viewport scaling
 
+Calendar는 `Tizen.System.Information.TryGetValue()`로 `http://tizen.org/feature/screen.width`와 `screen.height`를 읽고 실제 window 크기와 함께 기록합니다. Screen은 물리 디스플레이 정보이며, 8K screen 위의 FHD window는 scale 1을 사용합니다. 화면 정보가 없더라도 유효한 window로 계산하며, 잘못된 window를 screen 크기로 대체하지 않습니다.
+
 Calendar는 플랫폼이 제공하는 `Window.Default.WindowSize`와 `Window.Default.GetInsets()`에서 현재 drawable area를 얻습니다. 1920×1080 design canvas 기준으로 available area의 `min(width / 1920, height / 1080)` uniform scale을 계산하고, 남는 영역은 X/Y offset으로 중앙 정렬합니다.
 
 - physical root는 실제 window와 pillarbox/letterbox 배경을 채웁니다.
@@ -95,14 +103,15 @@ Calendar는 플랫폼이 제공하는 `Window.Default.WindowSize`와 `Window.Def
 - 2560×1080에서는 scale 1.0, X offset 320으로 가로 중앙 정렬합니다.
 - Calendar safe inset과 command bar/month/agenda content bounds는 `Window.Default.GetInsets()`로 얻은 platform-available area 및 centered canvas 내부에서 계산합니다.
 - Calendar는 상단 44px, 하단 100px의 비대칭 design safe inset을 사용해 Common Emulator navigation overlay 아래에 action이 배치되지 않도록 합니다.
-- `Window.Default.Resized` 또는 `InsetsChanged` event가 발생하면 현재 UI state를 유지한 채 새 geometry로 다시 render합니다.
-- View Action은 scaled design coordinate를 추정하지 않고 실제 transformed NUI descendant에서 `ScreenBounds`와 `WindowBounds`를 다시 측정합니다. 최신 installed TPK에서 `GetAnnotatedViews`, `FindById`, `ToPresentation`과 missing-ID error path를 wire E2E로 재검증했습니다.
+- `Resized`/`InsetsChanged`에서는 기존 canvas의 위치와 scale을 갱신해 편집 중인 텍스트·포커스를 유지합니다. 유효하지 않은 크기는 기존 화면을 보존합니다.
+- 폰트는 reference canvas의 `PixelSize`로 지정해 DPI와 ancestor scale의 중복 확대를 피합니다. FHD/4K UHD/8K UHD full window의 scale은 각각 1/2/4입니다.
+- View Action은 scaled design coordinate를 추정하지 않고 실제 transformed NUI descendant에서 `ScreenBounds`와 `WindowBounds`를 다시 측정합니다. 이번 변경의 target wire·native bounds 검증은 아직 수행하지 않았습니다.
 
-`Calendar.App.Tests`는 위 네 viewport, invalid-size rejection, inset이 drawable area를 소진하는 transient frame skip을 Tizen-free 계산으로 검증합니다. README의 실제 native screenshot은 1920×1080 Common Emulator에서 캡처한 것이며, 1280×720과 non-16:9 값은 deterministic geometry test 범위입니다.
+`Calendar.App.Tests`는 HD/FHD/QHD/4K/8K, screen/window 불일치, 위 non-16:9 viewport, invalid-size rejection, inset이 drawable area를 소진하는 transient frame skip을 Tizen-free 계산으로 검증합니다. README의 실제 native screenshot은 1920×1080 Common Emulator에서 캡처한 것이며, 1280×720과 non-16:9 값은 deterministic geometry test 범위입니다.
 
 ## Advanced Search semantics
 
-`CalendarSearchCriteria`와 typed `CalendarSearchQuery`는 다음 계약을 공유합니다.
+`CalendarSearchCriteria`와 Custom `Calendar.Entity.SearchQuery`는 다음 계약을 공유합니다.
 
 ```text
 [event.Start, event.End) overlaps [StartInclusive, EndExclusive)
@@ -125,20 +134,20 @@ Calendar는 플랫폼이 제공하는 `Window.Default.WindowSize`와 `Window.Def
 
 | Action | 설명 |
 |---|---|
-| `Tv_Tizen.Action.Calendar_GetEventByIds` | stable ID로 일정 조회 |
+| `App_Tizen.Action.CalendarCustom_GetEventByIds` | stable ID로 일정 조회 |
 | `Tv_Tizen.Action.Calendar_AddEvent` | 일정 생성 |
 | `Tv_Tizen.Action.Calendar_UpdateEvent` | 일정 수정 |
-| `Tv_Tizen.Action.Calendar_RemoveEvent` | 일정 삭제 |
-| `Tv_Tizen.Action.Calendar_Search` | 기존 Query ABI의 keyword 검색 |
-| `Tv_Tizen.Action.Calendar_SearchInPeriod` | typed selector/기간 검색 |
-| `Tv_Tizen.Action.Calendar_ToPresentation` | Calendar Entity presentation 생성 |
+| `Tv_Tizen.Action.Calendar_DeleteEvent` | 일정 삭제 |
+| `Tv_Tizen.Action.Calendar_Search` | CalendarQuery의 Id/Keyword/기간 검색 |
+| `App_Tizen.Action.CalendarCustom_SearchInPeriod` | typed selector/기간 검색 |
+| `Tv_Tizen.Action.Calendar_ToPresentation` | CalendarEvent 배열(0–100개) presentation 생성 |
 
 ### View Actions
 
 | Action | 설명 |
 |---|---|
 | `Common_Tizen.Action.View_FindById` | stable View ID 조회 |
-| `Common_Tizen.Action.View_GetAnnotatedViews` | 현재 visible annotated event views 조회 |
+| `Common_Tizen.Action.View_GetAnnotatedViews` | 현재 페이지·항목·컨트롤 조회 |
 | `Common_Tizen.Action.View_GetFocusedView` | actual NUI focus를 가진 annotated view 조회 |
 | `Common_Tizen.Action.View_ToPresentation` | annotation Entity를 A2UI로 변환 |
 
@@ -151,7 +160,7 @@ Calendar는 플랫폼이 제공하는 `Window.Default.WindowSize`와 `Window.Def
 
 ```json
 {
-  "Id": "calendar:event:event-001",
+  "Id": "calendar:Day:event:event-001:root/CalendarDesignCanvas/CalendarEvent-event-001",
   "ScreenBounds": {
     "X": 384.0,
     "Y": 144.0,
@@ -165,9 +174,9 @@ Calendar는 플랫폼이 제공하는 `Window.Default.WindowSize`와 `Window.Def
     "Height": 64.0
   },
   "Annotation": {
-    "EntityType": "Tizen.Entity.Calendar",
+    "EntityType": "Tizen.Entity.CalendarEvent",
     "EntityId": "event-001",
-    "EntityInfo": "{...generated TizenEntityCalendar JSON...}"
+    "EntityInfo": "{...generated TizenEntityCalendarEvent JSON...}"
   }
 }
 ```
@@ -178,7 +187,7 @@ Calendar는 플랫폼이 제공하는 `Window.Default.WindowSize`와 `Window.Def
 - Width/Height가 양수인 snapshot만 게시
 - synthetic zero bounds를 만들지 않음
 - `FocusManager.Instance.GetCurrentFocusView()`에서 actual focus 확인
-- active surface subtree의 `CalendarEvent-<id>` view만 focused Entity로 인정
+- 현재 active surface의 일정·리마인더·페이지·컨트롤을 게시하고 실제 NUI focus 또는 텍스트 입력 key focus를 반영
 - pause/terminate에서 stale snapshot clear
 - resume/render에서 fresh bounds republish
 
@@ -193,7 +202,7 @@ Calendar/
 │   ├── Calendar.Persistence/             JSON persistence, alarm state
 │   ├── Calendar.UseCases/                mutation command와 compensation
 │   ├── Calendar.ActionProvider/          Calendar Action generated binding/service
-│   ├── Calendar.ScheduleActionProvider/  Schedule reminder provider
+│   ├── Calendar.ScheduleActionProvider/  표준 Reminder provider (project 이름 유지)
 │   ├── Calendar.ViewActionProvider/      ViewAnnotation/A2UI provider
 │   └── Calendar.App/                     NUI UI와 provider composition root
 ├── tests/
@@ -210,7 +219,7 @@ Calendar/
 
 UI가 자기 자신의 Action RPC를 호출하지 않습니다. `CalendarApplication`이 repository와 use-case를 한 번 구성하고 UI와 provider host가 동일 instance를 공유합니다.
 
-Generated binding은 직접 수정하지 않습니다. authoritative catalog와 `action.seq`를 수정한 뒤 `actionc -a <category>`로 category 전체를 재생성합니다. 기존 positional method ID를 보호하기 위해 새 Action은 append-only로 추가합니다.
+Generated binding은 직접 수정하지 않습니다. platform catalog를 읽기 전용으로 사용하고 `actionc -a <category>`로 category 전체를 재생성합니다. 앱 확장은 별도 `CalendarCustom` category에서 생성합니다. `./build.sh all`은 표준 category 3개와 Custom을 생성 후 API 14로 빌드합니다.
 
 ## Host test와 build
 
@@ -239,7 +248,7 @@ Host test는 Tizen-independent domain/adapter/use-case seam을 실행합니다. 
 
 ```bash
 : "${SERIAL:?Set SERIAL to the target device serial}"
-PACKAGE=dist/org.tizen.actionexamples.calendar-0.1.0-latest.tpk
+PACKAGE=dist/org.tizen.actionexamples.calendar-0.1.0-api14.tpk
 APPID=org.tizen.actionexamples.calendar
 
 sdb devices
@@ -248,7 +257,7 @@ sdb -s "$SERIAL" shell "app_launcher -s $APPID"
 sdb -s "$SERIAL" shell "app_launcher --is-running $APPID"
 ```
 
-raw DLL이 아니라 signed ZIP-based TPK를 설치합니다. Public Common Emulator의 default signature는 Emulator test 전용이며 production distribution signature가 아닙니다.
+raw DLL이 아니라 signed ZIP-based TPK를 설치합니다. `./package.sh`는 Common Emulator 시험용 서명으로 로컬 TPK를 생성하고 manifest·서명·Custom resource를 검사합니다. target 설치는 별도 승인된 검증 단계입니다.
 
 자세한 schema, code generation, packaging, provider discovery, Action/View E2E 절차는 [Tizen Action Framework 2.0 개발 가이드](docs/TIZEN_ACTION_FRAMEWORK_2_0_DEVELOPMENT_GUIDE.md)를 참고하십시오.
 
@@ -274,4 +283,3 @@ Aurum의 NUI accessibility tree dump는 이 Emulator에서 root element를 반�
 - [Tizen Action Framework 2.0 개발 가이드](docs/TIZEN_ACTION_FRAMEWORK_2_0_DEVELOPMENT_GUIDE.md)
 - [ViewAnnotation 및 좌표 계약](docs/VIEW_ANNOTATION.md)
 - [Repository-level domain 개발 가이드](../docs/TIZEN_ACTION_DOMAIN_DEVELOPMENT_GUIDE.md)
-- [Calendar navigation/search/View 설계](../docs/specs/2026-08-08-calendar-navigation-search-view-design.md)

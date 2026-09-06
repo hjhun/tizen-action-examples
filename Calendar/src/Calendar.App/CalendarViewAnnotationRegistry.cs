@@ -9,7 +9,7 @@ public sealed record CalendarViewAnnotation(
 
 public static class CalendarViewAnnotationRegistry
 {
-    public const string CalendarEntityType = "Tizen.Entity.Calendar";
+    public const string CalendarEntityType = "Tizen.Entity.CalendarEvent";
 
     public static IReadOnlyList<CalendarViewAnnotation> Create(
         IEnumerable<CalendarEvent> visibleEvents,

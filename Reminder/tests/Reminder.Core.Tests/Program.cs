@@ -9,9 +9,13 @@ static void Assert(bool condition, string message)
 }
 
 var now = new DateTimeOffset(2026, 8, 9, 10, 0, 0, TimeSpan.Zero);
+SearchStateTests.Run();
+CatalogMigrationTests.Run();
 var store = new MemoryScheduleStore();
 var resources = new DeterministicReservationSimulator();
 var service = new ScheduleService(store, resources, () => now);
+
+DisplayMetricsTests.Run();
 
 var fullHdViewport = ProportionalViewport.Create(1920, 1080);
 Assert(fullHdViewport == new ProportionalViewport(1.0f, 0.0f, 0.0f, 1920.0f, 1080.0f), "Full HD must preserve the reference canvas exactly.");

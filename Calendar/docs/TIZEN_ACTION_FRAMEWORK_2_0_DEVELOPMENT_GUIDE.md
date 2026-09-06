@@ -44,249 +44,84 @@ flowchart LR
 - `ScheduleReminderActionProviderHost`
 - `CalendarViewActionProviderHost`
 
-## 3. Entity와 Action 계약
+## 3. 현재 Entity와 Action 계약
 
-### 3.1 Calendar Entity
+2026-09-06 기준 source는 `~/samba/workspace/appfw/tizen-action/default-actions`입니다.
+이전 Calendar/Query ABI를 유지하지 않습니다. consumer도 현재 catalog로 재생성해야 합니다.
+자세한 이전/이후 대응은 [변경 기록](2026-09-06-dotnet-update.md)에 있습니다.
 
-Calendar event의 stable identity는 `CalendarEvent.Id`이며 wire Entity type은 다음과 같습니다.
+| Category | Methods | Entity / 입력 |
+|---|---|---|
+| `Tizen.Action.Calendar` | AddEvent, DeleteEvent, UpdateEvent, Search, ToPresentation | `CalendarEvent`, `CalendarQuery`, ToPresentation은 event 배열 |
+| `Tizen.Action.Reminder` | Add, Delete, Update, Search, ToPresentation | `Reminder`, `Query`, `ReminderState` |
+| `Tizen.Action.CalendarCustom` | GetEventByIds, SearchInPeriod | IDs 배열, `Calendar.Entity.SearchQuery` |
+| `Tizen.Action.View` | FindById, GetAnnotatedViews, GetFocusedView, ToPresentation | `View`, `Annotation` |
 
-```text
-Tizen.Entity.Calendar
-```
+표준 category는 `action.seq` 전체 순서로 생성합니다. 위 표의 나열 순서를 method ID로 사용하지 마십시오.
+`Calendar.ScheduleActionProvider`는 project 이름만 유지하며 표준 Reminder category를 구현합니다.
 
-주요 wire 필드:
+- CalendarQuery는 `Id`, `Category`, `Keyword`, `Limit`, `StartDate`, `EndDate`를 지원합니다.
+- Id 조건을 limit보다 먼저 적용합니다. Limit 기본값 20, 최댓값 100입니다.
+- 날짜는 explicit offset을 가진 ISO 8601, 범위는 `[StartInclusive, EndExclusive)`입니다.
+- overlap: `event.End > StartInclusive && event.Start < EndExclusive`.
+- Custom SearchQuery는 CalendarQuery를 상속하고 `SearchTitle`, `SearchLocation`, `SearchNote`를 추가합니다. 모두 false이면 전체 필드를 검색합니다.
+- 표준 Id 검색은 단일 항목을 찾을 수 있습니다. Custom batch resolver는 요청 순서·중복·명시적인 unresolved IDs를 보존합니다(최대 100개, 각 ID 256자).
+- Reminder는 `State.State`의 `To-do`, `In-progress`, `Blocked`, `Done`을 보존합니다. 이전 bool completion JSON도 계속 읽습니다.
+- Calendar event presentation은 배열 0–100개를 지원합니다. 한 항목은 View 경로와 같은 event presentation builder를 사용합니다.
 
-```text
-Id
-Title
-StartDate
-EndDate
-Note
-Location
-```
+## 4. schema와 generated binding
 
-provider는 domain model을 generated `TizenEntityCalendar`로 변환합니다. ViewAnnotation의 `EntityInfo`도 같은 generated DTO의 `ToJson()`을 사용합니다. Entity JSON을 별도로 손으로 조립하지 마십시오.
+.NET reference는 `Tizen.NET 14.0.0.19326`, app manifest의 dotnet API는 14입니다.
+로컬 TizenFX source는 `~/tizen/platform/core/csapi/tizenfx`입니다.
+API 14의 `HasPrivilegeLocal`을 사용하는 최신 생성물을 그대로 빌드하며,
+RPCPort 구현이나 generated C#의 privilege 경로를 직접 수정하지 않습니다.
 
-### 3.2 제공하는 Calendar Actions
-
-manifest에 등록된 Calendar Actions:
-
-```text
-Tv_Tizen.Action.Calendar_GetEventByIds
-Tv_Tizen.Action.Calendar_AddEvent
-Tv_Tizen.Action.Calendar_UpdateEvent
-Tv_Tizen.Action.Calendar_RemoveEvent
-Tv_Tizen.Action.Calendar_Search
-Tv_Tizen.Action.Calendar_SearchInPeriod
-Tv_Tizen.Action.Calendar_ToPresentation
-```
-
-`Calendar_Search(Tizen.Entity.Query)`는 기존 ABI를 유지하는 broad keyword 검색입니다. 고급 검색은 별도 typed query를 사용하는 `Calendar_SearchInPeriod`로 추가되었습니다.
-
-### 3.3 typed 고급 검색
-
-`Tizen.Entity.CalendarSearchQuery`는 다음 의미를 사용합니다.
-
-- `Keyword`: 검색어
-- `StartDate`: optional ISO 8601 timestamp, explicit offset 필수
-- `EndDate`: optional ISO 8601 timestamp, explicit offset 필수
-- `SearchTitle`: 제목 검색
-- `SearchLocation`: 장소 검색
-- `SearchNote`: 메모 검색
-- `Number`: bounded result limit
-
-기간 overlap은 모든 계층에서 다음과 같습니다.
-
-```text
-[StartInclusive, EndExclusive)
-
-event.End > StartInclusive
-AND
-event.Start < EndExclusive
-```
-
-현재 generated optional boolean은 omitted와 explicit `false`를 구분하지 못합니다. 따라서 selector가 모두 `false`이면 호환성 기본값으로 Title/Location/Note 전체를 검색합니다. 하나 이상 `true`이면 선택된 필드만 검색합니다.
-
-날짜-only UI 값은 UTC 자정으로 강제하지 않습니다. `CalendarDateBoundary`가 app의 local timezone을 사용해 날짜 경계를 `DateTimeOffset`으로 변환하며 DST invalid/ambiguous local time을 처리합니다.
-
-## 4. schema와 generated binding 관리
-
-### 4.1 절대 수정하지 않을 것
-
-다음 source는 generated output이므로 수동 수정하지 않습니다.
-
-```text
-src/Calendar.ActionProvider/Generated/CalendarActionProvider.cs
-src/Calendar.ScheduleActionProvider/Generated/ScheduleReminderActionProvider.cs
-src/Calendar.ViewActionProvider/Generated/CalendarViewActionProvider.cs
-```
-
-API 변경이 필요하면 authoritative Entity/Action schema와 generator 입력을 수정하고 다시 생성합니다.
-
-### 4.2 append-only ABI
-
-TIDL method ID는 category 내 `action.seq` 위치에 의존합니다.
-
-- 기존 Action을 reorder하지 않습니다.
-- 새 Action은 기존 category section 끝에 append합니다.
-- provider가 일부 Action만 구현하더라도 binding은 category 전체를 생성합니다.
-- live/baseline 생성물의 기존 `MethodId`를 비교해 ABI를 확인합니다.
-
-### 4.3 binding 생성
-
-환경 예:
+Calendar 디렉터리에서:
 
 ```bash
-export ACTIONC_ACTION2TIDL="$(command -v action2tidl)"
-export ACTIONC_TIDLC="$(command -v tidlc)"
-: "${TIZEN_ACTION_ROOT:?Set TIZEN_ACTION_ROOT to the tizen-action repository}"
-export DEFAULT_ACTIONS="$TIZEN_ACTION_ROOT/default-actions"
+./build.sh generate
+./build.sh build
+# 또는 생성과 빌드
+./build.sh all
+python3 tests/check_action_contracts.py
 ```
 
-Calendar category:
+`generate-bindings.py`는 표준 Calendar/Reminder/View 전체 category와 앱 소유 CalendarCustom을 생성합니다.
+`ACTIONC_BIN`, `ACTIONC_DATA_DIR`, `CONFIGURATION`으로 도구·catalog·구성을 지정할 수 있습니다.
+표준 schema와 `action.seq`는 수정하지 않습니다. Custom의 기존 두 method 순서는 고정하고 이후 확장은 뒤에 추가합니다.
+`--output-root`로 임시 디렉터리에 생성하여 repository 출력과 byte-compare할 수 있습니다.
 
-```bash
-actionc \
-  -a Tizen.Action.Calendar \
-  -d "$DEFAULT_ACTIONS" \
-  -l 'C#' \
-  -o src/Calendar.ActionProvider/Generated/CalendarActionProvider
-```
+## 5. provider와 manifest
 
-Schedule category:
+UI와 provider는 같은 repository/command instance를 사용합니다.
+Service는 입력 검증, generated DTO 변환, use-case 실행, `Status.Success/Reason` 반환을 담당합니다.
+`FindById` 등 현재 화면 조회는 공유 snapshot store를 사용하며 UI thread로 RPC를 재진입하지 않습니다.
 
-```bash
-actionc \
-  -a Tizen.Action.Schedule \
-  -d "$DEFAULT_ACTIONS" \
-  -l 'C#' \
-  -o src/Calendar.ScheduleActionProvider/Generated/ScheduleReminderActionProvider
-```
-
-View category:
-
-```bash
-actionc \
-  -a Tizen.Action.View \
-  -d "$DEFAULT_ACTIONS" \
-  -l 'C#' \
-  -o src/Calendar.ViewActionProvider/Generated/CalendarViewActionProvider
-```
-
-`-o`는 extensionless basename입니다. `.cs`를 붙이면 `*.cs.cs`가 생성될 수 있습니다. 생성 후 임시 출력과 repository 파일을 byte-compare하고 provider project를 compile하십시오.
-
-## 5. provider 구현
-
-### 5.1 service와 host 분리
-
-각 provider는 두 역할로 분리합니다.
-
-- `*Service`: generated `ServiceBase` method 구현
-- `*ProviderHost`: stub 생성, `Listen(...)`, app-owned dependency 연결
-
-Calendar 예:
+표준 provider metadata 14개와 Custom provider 2개를 등록합니다.
+Custom 정의에는 `http://tizen.org/metadata/action`, Entity 정의에는 `/action/entity` metadata도 필요합니다.
+패키지의 `res/`에는 아래 source와 동일한 정의가 들어갑니다.
 
 ```text
-CalendarActionProviderHost.Start(repository, commands)
-  -> CalendarProviderState.Configure(...)
-  -> TizenActionCalendar.Listen(typeof(CalendarService))
+actions/App_Tizen.Action.CalendarCustom_GetEventByIds.action
+actions/App_Tizen.Action.CalendarCustom_SearchInPeriod.action
+entities/Calendar.Entity.SearchQuery.entity
 ```
 
-generated DTO는 provider boundary에서만 사용합니다. Domain/Persistence/UseCases는 Tizen-free 상태를 유지합니다.
+## 6. ViewAnnotation
 
-### 5.2 manifest registration
+현재 페이지, 렌더된 일정·리마인더, 검색/편집/명령 컨트롤을 공개합니다.
+빈 페이지도 페이지 context를 가지며 overlay에서는 가려진 Calendar 배경을 공개하지 않습니다.
+`GetFocusedView`는 실제 NUI focus 및 TextField/TextEditor의 key input focus를 확인합니다.
+`FindById`는 현재 게시 목록만 조회합니다. 전환·pause·제거 시 이전 목록은 폐기합니다.
 
-구현한 각 exact Action name을 `tizen-manifest.xml`에 등록합니다.
+- 일정: generated `TizenEntityCalendarEvent.ToJson()`.
+- 리마인더: generated `TizenEntityReminder.ToJson()`.
+- 페이지·컨트롤: generated `TizenEntity.ToJson()`, `Extra`에 version 1 페이지/입력 상태.
+- 좌표: `CalculateScreenPositionSize()`의 finite positive bounds만 사용합니다. reference `View.Size` fallback은 없습니다.
+- WindowBounds는 screen 좌표에서 `Window.Default.WindowPosition`을 뺀 값입니다.
+- `View_ToPresentation`은 EntityId 일치와 JSON 크기/형식을 검증합니다. 기존 legacy v0.8 `surfaceUpdate`/`dataModelUpdate` profile이며 canonical v0.9.1 지원 주장이 아닙니다.
 
-```xml
-<metadata
-  key="http://tizen.org/metadata/action/provider"
-  value="Tv_Tizen.Action.Calendar_SearchInPeriod" />
-```
-
-category 전체 binding을 생성하더라도 앱이 실제로 제공하지 않는 Action까지 manifest에 광고하면 안 됩니다. manifest registration, provider `Listen`, actual method implementation이 모두 있어야 합니다.
-
-Calendar 앱은 provider 연결과 launch에 필요한 다음 privilege도 선언합니다.
-
-```text
-http://tizen.org/privilege/datasharing
-http://tizen.org/privilege/appmanager.launch
-```
-
-alarm/reminder 기능은 별도 alarm/notification privilege를 사용합니다.
-
-## 6. ViewAnnotation 통합
-
-Calendar는 현재 화면에 실제로 렌더된 event card만 annotation으로 게시합니다.
-
-```text
-View ID:     calendar:event:<CalendarEvent.Id>
-View Type:   Calendar.EventCard
-EntityType:  Tizen.Entity.Calendar
-EntityId:    CalendarEvent.Id
-EntityInfo:  generated TizenEntityCalendar.ToJson()
-```
-
-헤더, Command Bar, view tab, search input은 Calendar Entity annotation 대상이 아닙니다.
-
-### 6.1 좌표 포함 여부
-
-좌표는 포함됩니다. 다만 `Annotation` 객체 내부가 아니라 그것을 감싸는
-`Tizen.Entity.View.ScreenBounds`와 `WindowBounds`에 있습니다.
-
-```json
-{
-  "Id": "calendar:event:event-001",
-  "ScreenBounds": {
-    "X": 384.0,
-    "Y": 144.0,
-    "Width": 700.0,
-    "Height": 64.0
-  },
-  "WindowBounds": {
-    "X": 384.0,
-    "Y": 144.0,
-    "Width": 700.0,
-    "Height": 64.0
-  },
-  "Annotation": {
-    "EntityType": "Tizen.Entity.Calendar",
-    "EntityId": "event-001",
-    "EntityInfo": "{...generated entity JSON...}"
-  }
-}
-```
-
-`CalendarApplication`은 event NUI view에서 `CalculateScreenPositionSize()`를 호출해 screen-space X/Y/Width/Height를 수집합니다. `Window.Default.WindowPosition`을 빼 window-relative X/Y도 계산합니다. width/height fallback은 실제 `View.Size`를 사용합니다. finite screen bounds이고 Width/Height가 양수인 snapshot만 게시되며 synthetic zero bounds는 게시하지 않습니다. window 위치를 읽을 수 없는 frame에서는 `WindowBounds`를 생략하되 유효한 `ScreenBounds`는 계속 게시합니다.
-
-좌표·focus·lifecycle의 상세 계약은 [ViewAnnotation 및 좌표 계약](VIEW_ANNOTATION.md)을 참조하십시오.
-
-### 6.2 actual focus
-
-focused annotation은 logical index로 추정하지 않습니다.
-
-1. `FocusManager.Instance.GetCurrentFocusView()`로 실제 NUI focus를 읽습니다.
-2. focused view가 active surface subtree에 속하는지 검사합니다.
-3. view name이 `CalendarEvent-<id>`일 때만 focused Entity ID를 게시합니다.
-4. `FocusChanged` 이벤트에서 기존 visible snapshot의 focus 상태를 다시 게시합니다.
-
-pause/terminate 시 published view snapshot을 비우며 resume/render 후 다시 수집합니다.
-
-### 6.3 View Actions와 A2UI
-
-manifest에 등록된 View Actions:
-
-```text
-Common_Tizen.Action.View_FindById
-Common_Tizen.Action.View_GetAnnotatedViews
-Common_Tizen.Action.View_GetFocusedView
-Common_Tizen.Action.View_ToPresentation
-```
-
-`ToPresentation`은 Annotation의 generated Calendar Entity JSON에서 presentation을 만들며 다음 A2UI message를 반환합니다.
-
-- `Template`: `surfaceUpdate`
-- `Document`: matching `dataModelUpdate`
+[페이지별 계약 및 target 검증 절차](VIEW_ANNOTATION.md)를 참고하십시오.
 
 ## 7. UI와 semantic command
 
@@ -325,47 +160,15 @@ git diff --check
 
 ## 9. TPK packaging
 
-Public Common Emulator용 generic package는 custom signing profile을 지정하지 않습니다.
-
 ```bash
-set -euo pipefail
-
-dotnet build src/Calendar.App/Calendar.App.csproj --configuration Debug --no-restore
-
-OUT="$PWD/src/Calendar.App/bin/Debug/net8.0"
-STAGE="$(mktemp -d /tmp/calendar-stage.XXXXXX)"
-PACKAGE_OUTPUT="$(mktemp -d /tmp/calendar-package.XXXXXX)"
-
-python3 - "$OUT" "$STAGE" <<'PY'
-import os
-import shutil
-import sys
-
-source, destination = sys.argv[1:]
-for name in os.listdir(source):
-    path = os.path.join(source, name)
-    if os.path.isfile(path):
-        shutil.copy2(path, os.path.join(destination, name))
-PY
-
-cp src/Calendar.App/tizen-manifest.xml "$STAGE/tizen-manifest.xml"
-tizen package -t tpk -o "$PACKAGE_OUTPUT" -- "$STAGE"
+./package.sh
+unzip -t dist/org.tizen.actionexamples.calendar-0.1.0-api14.tpk
 ```
 
-`bin/Debug/net8.0`의 stale nested `packaging/` 디렉터리를 재귀 복사하지 않고 top-level regular file만 staging합니다.
-
-packager가 `Calendar.App.dll`처럼 executable 이름으로 출력하더라도 ZIP-based signed TPK일 수 있습니다. archive를 확인한 뒤 `.tpk` 이름으로 복사합니다.
-
-```bash
-unzip -t "$PACKAGE_OUTPUT/Calendar.App.dll"
-unzip -Z1 "$PACKAGE_OUTPUT/Calendar.App.dll"
-mkdir -p dist
-cp "$PACKAGE_OUTPUT/Calendar.App.dll" \
-  dist/org.tizen.actionexamples.calendar-0.1.0.tpk
-sha256sum dist/org.tizen.actionexamples.calendar-0.1.0.tpk
-```
-
-필수 payload에는 manifest, signature, app DLL, project-reference DLL이 모두 있어야 합니다. default signer warning은 Emulator test 전용 signature라는 뜻이며 production distribution 증거가 아닙니다.
+`package.sh`는 `tizen build-cs`로 build.info를 생성하고, 앱과 의존 DLL·manifest·res를 임시 stage에 배치합니다.
+Tizen CLI가 stage의 resource를 찾도록 stage의 build.info project-path도 맞춥니다.
+Common Emulator 시험용 서명 후 ZIP 구조, manifest, 두 signature, Custom 정의의 원문 일치를 검사합니다.
+이 작업은 target에 설치하지 않습니다. TV/product 서명 및 실행은 별도 검증입니다.
 
 ## 10. Common Emulator E2E
 
@@ -373,7 +176,7 @@ sha256sum dist/org.tizen.actionexamples.calendar-0.1.0.tpk
 
 ```bash
 : "${SERIAL:?Set SERIAL to the target device serial}"
-PACKAGE=dist/org.tizen.actionexamples.calendar-0.1.0.tpk
+PACKAGE=dist/org.tizen.actionexamples.calendar-0.1.0-api14.tpk
 APPID=org.tizen.actionexamples.calendar
 
 sdb devices
@@ -391,24 +194,17 @@ sdb -s "$SERIAL" shell \
   'action-tool find-appids Tizen.Action.Calendar --json'
 
 sdb -s "$SERIAL" shell \
-  'action-tool get-action Tv_Tizen.Action.Calendar_SearchInPeriod --json'
+  'action-tool get-action App_Tizen.Action.CalendarCustom_SearchInPeriod --json'
 ```
 
 TPK install 성공만으로 provider routing 성공을 결론 내리지 않습니다. 실제 app ID discovery와 explicit `appid` invocation을 확인합니다.
-
-platform/default-actions RPM을 갱신한 경우 payload install 후 Action DB manifest preload가 별도로 필요할 수 있습니다.
-
-```bash
-sdb -s "$SERIAL" shell \
-  'unified-backend --preload -y org.tizen.action-framework.default-actions'
-```
 
 ### 10.3 runtime acceptance
 
 Calendar Actions:
 
 ```text
-Add → GetEventByIds → Search/SearchInPeriod → Update → ToPresentation → Remove
+AddEvent → Custom_GetEventByIds → Search/Custom_SearchInPeriod → UpdateEvent → ToPresentation → DeleteEvent → Search(Id)
 ```
 
 각 Action마다 다음을 남깁니다.
@@ -444,8 +240,8 @@ launch visible event
 ### Entity/Action
 
 - [ ] stable ID와 data ownership을 정의했다.
-- [ ] 기존 Action ABI를 수정하지 않았다.
-- [ ] 새 method를 category 끝에 append했다.
+- [ ] consumer도 현재 catalog ABI로 생성했다.
+- [ ] 표준 catalog를 수정하지 않고 필요한 앱 확장을 Custom으로 생성했다.
 - [ ] whole-category generated binding을 재생성했다.
 - [ ] generated source를 수동 수정하지 않았다.
 - [ ] manifest에 실제 구현 Action만 등록했다.
@@ -459,7 +255,7 @@ launch visible event
 
 ### ViewAnnotation
 
-- [ ] 실제 렌더된 Entity view만 게시한다.
+- [ ] 현재 페이지·컨트롤·렌더된 Entity view만 게시한다.
 - [ ] `EntityInfo`는 generated Entity `ToJson()`이다.
 - [ ] `ScreenBounds`와 `WindowBounds`는 finite이고 Width/Height가 양수다.
 - [ ] focused state는 actual NUI focus에서 계산한다.
@@ -473,3 +269,5 @@ launch visible event
 - [ ] TPK install, launch, running을 각각 확인했다.
 - [ ] provider discovery와 explicit invocation을 확인했다.
 - [ ] UI D-pad/pointer/focus와 View Action lifecycle을 실제 화면에서 확인했다.
+
+2026-09-06 검증: Calendar 5개 host suite와 Reminder 2개 suite, 두 앱 Release build를 통과했습니다. 이번 패키지의 target 설치·Action 호출·Aurum 검증은 미수행입니다. 기존 screenshot/E2E 기록을 이번 변경의 증거로 사용하지 않습니다.

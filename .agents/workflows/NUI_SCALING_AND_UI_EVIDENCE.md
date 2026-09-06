@@ -5,11 +5,11 @@
 적용 대상:
 
 - Calendar처럼 top-left ancestor transform을 사용하는 NUI Action 앱
-- Reminder처럼 manual exactly-once scaling을 유지하는 기존 NUI 앱의 migration/검증
+- Reminder처럼 단일 ancestor transform으로 전환하는 NUI 앱의 검증
 - D-pad, pointer, ViewAnnotation을 함께 제공하는 앱
 - Public Common Emulator에서 초기 검증한 뒤 TV/product profile로 확장할 앱
 
-Calendar는 현재 ancestor-transform 구조를 사용한다. Reminder는 현재 position, size, point size, radius를 helper에서 manual scaling하는 compatibility 구조다. 새 앱은 ancestor transform을 우선하고, 이 문서가 Reminder가 이미 ancestor transform으로 migration됐다는 의미는 아니다.
+Calendar와 Reminder는 API 14에서 단일 ancestor-transform 구조를 사용한다. 초기화 시 SystemInfo screen capability를 읽고, 실제 drawable area는 WindowSize/GetInsets로 결정한다. Emulator의 screen capability가 실제 window와 다를 수 있으므로 함께 기록한다.
 
 ## 1. Reference canvas와 runtime viewport
 
@@ -68,7 +68,7 @@ physical root (window size, full-window background)
 - X/Y는 screen space인데 width/height는 design space인 혼합 geometry
 - page는 proportional transform을 쓰지만 overlay는 raw window ratio를 별도 계산
 
-pane별 manual scaling을 선택해야 하는 기존 앱은 position, size, typography, border, radius, focus geometry가 정확히 한 번 scaling되는지 helper contract와 tests로 고정한다. 현재 Reminder가 이 경로이며 `CanvasPosition`, `S`, point-size/radius scaling을 함께 사용한다. top-level offset과 pane-local scaling을 중복 적용하지 않는다.
+pane별 manual scaling을 선택해야 하는 기존 앱은 position, size, typography, border, radius, focus geometry가 정확히 한 번 scaling되는지 helper contract와 tests로 고정한다. top-level offset과 pane-local scaling을 중복 적용하지 않는다.
 
 ### 1.3 platform inset과 product safe area를 구분한다
 
@@ -94,7 +94,8 @@ resize/inset transition 중 width, height 또는 available area가 잠시 0 이�
 read WindowSize/GetInsets
   → TryCreate viewport
   → invalid: keep current root and skip this frame
-  → valid: create new root
+  → valid: update the existing canvas transform (preserve editor/focus),
+           or create a new root when the page content changes
   → attach new root
   → dispose/replace old root according to app lifecycle policy
 ```
@@ -107,7 +108,7 @@ invalid frame에서 기존 root를 먼저 제거하거나 throwing viewport fact
 - ancestor-transform 앱에서는 `CalculateScreenPositionSize()` 결과의 X/Y/width/height가 finite이고 width/height가 양수일 때만 snapshot을 publish한다.
 - ancestor-transform 아래의 `View.Size`는 design-space size이므로 world geometry가 준비되지 않았을 때 screen-space width/height fallback으로 사용하지 않는다.
 - manual exactly-once scaling을 유지하는 기존 앱에서 `View.Size`가 이미 physical scaled size인 경우에만 compatibility fallback을 둘 수 있다. 이 경우에도 X/Y의 validity, scaled-size contract, non-1.0 native bounds를 별도로 검증하고 새 앱에는 일반화하지 않는다.
-- 현재 Calendar는 strict fail-closed path이고, Reminder는 manually scaled `View.Size` compatibility fallback을 유지한다.
+- 현재 Calendar와 Reminder는 실제 측정값만 게시하며 `View.Size` fallback을 사용하지 않는다.
 - annotation은 visible active surface에 있는 stable Entity ID만 포함한다.
 - focus 변경, render, overlay open/close, pause/terminate에서 snapshot lifecycle을 갱신한다.
 - `GetFocusedView` 검증 전 앱을 foreground로 만들고 실제 annotated actor에 focus를 이동한다. command bar처럼 annotation이 없는 control의 empty result를 provider defect로 오판하지 않는다.
@@ -131,6 +132,9 @@ Tizen-free viewport helper와 design metrics는 최소 다음을 검증한다.
 | Window | Zero-inset expected result | 목적 |
 |---|---|---|
 | 1920×1080 | scale 1.0, offset 0/0 | reference |
+| 3840×2160 | scale 2.0, offset 0/0 | UHD |
+| 4096×2160 | scale 2.0, offset 128/0 | DCI 4K |
+| 7680×4320 | scale 4.0, offset 0/0 | 8K |
 | 1280×720 | scale 2/3, offset 0/0 | smaller 16:9 |
 | 1440×1080 | scale 0.75, offset 0/135 | 4:3 letterbox |
 | 2560×1080 | scale 1.0, offset 320/0 | ultrawide pillarbox |
@@ -163,6 +167,8 @@ SERIAL=<target-serial>
 "$AURUM" health
 "$AURUM" tree --max-depth 4
 ```
+
+DCI 4K/8K raw frame은 기본 32 MiB 수신 한도를 초과한다. 고해상도 캡처에는 `TIZEN_AURUM_MAX_MESSAGE_MIB=160`을 설정한다(허용 범위 32..256 MiB).
 
 health에서 native target resolution을 먼저 확인한다. host Emulator window 좌표를 Aurum coordinate로 사용하지 않는다.
 

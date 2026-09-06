@@ -71,9 +71,9 @@ internal static class CalendarPeriodView
                 BorderlineColor = new Color(theme.FocusOutline),
             };
             column.Add(CalendarDateCellView.CreateLabel(
-                day.Date.ToString("dddd\nMMM d"),
+                day.Date.ToString("ddd, MMM d"),
                 day.IsToday ? theme.SundayAccent : theme.TextPrimary,
-                3.8f,
+                30.4f,
                 new Position(12.0f, 12.0f),
                 new Size(columnWidth - 24.0f, 78.0f),
                 HorizontalAlignment.Center));
@@ -98,7 +98,7 @@ internal static class CalendarPeriodView
             }
             if (day.Events.Count > maxEvents)
             {
-                column.Add(CalendarDateCellView.CreateLabel($"+{day.Events.Count - maxEvents} more", theme.TextSecondary, 3.0f,
+                column.Add(CalendarDateCellView.CreateLabel($"+{day.Events.Count - maxEvents} more", theme.TextSecondary, 24f,
                     new Position(14.0f, 100.0f + (maxEvents * 100.0f)), new Size(columnWidth - 28.0f, 42.0f), HorizontalAlignment.Begin));
             }
         }
@@ -132,7 +132,7 @@ internal static class CalendarPeriodView
             preferredFocus = daySurface;
         }
 
-        daySurface.Add(CalendarDateCellView.CreateLabel(day.Date.ToString("dddd, MMMM d"), theme.TextPrimary, 6.5f,
+        daySurface.Add(CalendarDateCellView.CreateLabel(day.Date.ToString("dddd, MMMM d"), theme.TextPrimary, 52f,
             new Position(36.0f, 22.0f), new Size(size.Width - 72.0f, 72.0f), HorizontalAlignment.Begin));
         if (day.Events.Count == 0)
         {
@@ -173,7 +173,7 @@ internal static class CalendarPeriodView
         foreach (var day in presentation.Days.Take(
                      CalendarPeriodRenderPolicy.GetAgendaDayCount(presentation.Days.Count, size.Height)))
         {
-            root.Add(CalendarDateCellView.CreateLabel(day.Date.ToString("dddd, MMMM d"), theme.TextPrimary, 4.2f,
+            root.Add(CalendarDateCellView.CreateLabel(day.Date.ToString("dddd, MMMM d"), theme.TextPrimary, 33.6f,
                 new Position(12.0f, top), new Size(290.0f, 56.0f), HorizontalAlignment.Begin));
             var eventLeft = 320.0f;
             foreach (var calendarEvent in day.Events.Take(CalendarPeriodRenderPolicy.AgendaEventsPerDay))
@@ -211,7 +211,7 @@ internal static class CalendarPeriodView
         card.Add(CalendarDateCellView.CreateLabel(
             $"{calendarEvent.TimeText}  {calendarEvent.Title}{(string.IsNullOrWhiteSpace(calendarEvent.Location) ? string.Empty : $"  ·  {calendarEvent.Location}")}",
             theme.TextPrimary,
-            3.0f,
+            24f,
             new Position(12.0f, 4.0f),
             new Size(size.Width - 24.0f, size.Height - 8.0f),
             HorizontalAlignment.Begin));
@@ -228,7 +228,7 @@ internal static class CalendarPeriodView
             BackgroundColor = new Color(theme.CellSurface),
             CornerRadius = 18.0f,
         };
-        empty.Add(CalendarDateCellView.CreateLabel(text, theme.TextSecondary, 5.0f,
+        empty.Add(CalendarDateCellView.CreateLabel(text, theme.TextSecondary, 40f,
             new Position(20.0f, 20.0f), new Size(size.Width - 40.0f, size.Height - 40.0f), HorizontalAlignment.Center));
         return empty;
     }

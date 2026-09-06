@@ -1,0 +1,25 @@
+{
+  "version": "v2",
+  "name": "App_Tizen.Action.ReminderCustom_CancelViewing",
+  "type": "tidl",
+  "category": "Tizen.Action.ReminderCustom",
+  "description": "CancelViewing for app-owned Common Emulator reservation simulator. Does not operate a TV tuner or recording backend.",
+  "allowedBackground": "true",
+  "autoDispose": "false",
+  "requiredPrivileges": [],
+  "inputSchema": {
+    "type": "Tizen.Entity.Reservation"
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "return": {
+        "type": "Tizen.Entity.Status",
+        "description": "Success or bounded invalid/missing/internal status."
+      }
+    }
+  },
+  "details": {
+    "appid": "org.tizen.actionexamples.reminder"
+  }
+}

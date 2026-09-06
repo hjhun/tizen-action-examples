@@ -154,6 +154,7 @@ public sealed class CalendarEventRepository
         lock (_gate)
         {
             var events = _eventsById.Values
+                .Where(calendarEvent => criteria.Id is null || calendarEvent.Id == criteria.Id)
                 .Where(calendarEvent => criteria.Keyword.Length == 0 || Matches(calendarEvent, criteria))
                 .Where(calendarEvent => criteria.StartInclusive is null || calendarEvent.End > criteria.StartInclusive)
                 .Where(calendarEvent => criteria.EndExclusive is null || calendarEvent.Start < criteria.EndExclusive)

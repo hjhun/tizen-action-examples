@@ -1,5 +1,7 @@
 using Calendar.Domain;
 
+CatalogMigrationTests.Run();
+
 var standup = CalendarEvent.Create(
     id: "event-standup",
     title: "Daily stand-up",

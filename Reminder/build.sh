@@ -2,12 +2,20 @@
 set -euo pipefail
 
 APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-BUILD_TARGET="${APP_DIR}/src/Reminder.App/Reminder.App.csproj"
-ACTION_BINDINGS=(
-    "Tizen.Action.Schedule|ReminderScheduleActionProvider|src/Reminder.ScheduleActionProvider/Generated/ReminderScheduleActionProvider.cs"
-    "Tizen.Action.View|ReminderViewActionProvider|src/Reminder.ViewActionProvider/Generated/ReminderViewActionProvider.cs"
-)
-
-# shellcheck source=../scripts/app-build-common.sh
-source "${APP_DIR}/../scripts/app-build-common.sh"
-run_app_build "$@"
+[[ $# -le 1 ]] || { echo 'Usage: ./build.sh [build|generate|all]' >&2; exit 2; }
+case "${1:-build}" in
+    generate|all)
+        python3 "${APP_DIR}/generate-bindings.py"
+        ;;
+    build) ;;
+    -h|--help)
+        echo 'Usage: ./build.sh [build|generate|all]'
+        echo 'Environment: ACTIONC_BIN, ACTIONC_DATA_DIR, CONFIGURATION (default: Release)'
+        exit 0
+        ;;
+    *) echo 'Usage: ./build.sh [build|generate|all]' >&2; exit 2 ;;
+esac
+if [[ "${1:-build}" != generate ]]; then
+    dotnet build "${APP_DIR}/src/Reminder.App/Reminder.App.csproj" \
+        -c "${CONFIGURATION:-Release}" --nologo
+fi

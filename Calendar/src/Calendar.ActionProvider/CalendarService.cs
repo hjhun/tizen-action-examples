@@ -2,7 +2,6 @@
 
 using Calendar.Domain;
 using Calendar.UseCases;
-using System.Text.Json;
 using RPCPort.CalendarActionProvider;
 using RPCPort.CalendarActionProvider.Stub;
 
@@ -37,25 +36,7 @@ public sealed class CalendarService : TizenActionCalendar.ServiceBase
     {
     }
 
-    public override TizenEntityStatus GetEventByIds(
-        List<string> ids,
-        out List<TizenEntityCalendar> result,
-        out List<string> unresolvedIds)
-    {
-        if (ids is null || ids.Count > 100 || ids.Any(id => string.IsNullOrWhiteSpace(id) || id.Length > 256))
-        {
-            result = [];
-            unresolvedIds = [];
-            return Failure("ids must contain at most 100 non-empty stable IDs, each no longer than 256 characters.");
-        }
-
-        var resolution = _repository.ResolveByIds(ids);
-        result = resolution.Events.Select(ToEntity).ToList();
-        unresolvedIds = resolution.UnresolvedIds.ToList();
-        return Success();
-    }
-
-    public override TizenEntityStatus AddEvent(TizenEntityCalendar calendar)
+    public override TizenEntityStatus AddEvent(TizenEntityCalendarEvent calendar)
     {
         if (_commands is null)
         {
@@ -67,84 +48,47 @@ public sealed class CalendarService : TizenActionCalendar.ServiceBase
             : Failure(failure);
     }
 
-    public override TizenEntityStatus RemoveEvent(TizenEntityCalendar calendar)
+    public override TizenEntityStatus DeleteEvent(TizenEntityCalendarEvent calendar)
     {
         if (_commands is null)
         {
             return Failure("Calendar mutation service is unavailable.");
         }
 
-        return calendar is null || string.IsNullOrWhiteSpace(calendar.Id)
+        return calendar is null || string.IsNullOrWhiteSpace(calendar.Id) || calendar.Id.Length > 256
             ? Failure("A stable event ID is required.")
             : ToStatus(_commands.DeleteEvent(calendar.Id));
     }
 
-    public override TizenEntityStatus Search(TizenEntityQuery query, out List<TizenEntityCalendar> result)
-    {
-        if (query is null)
-        {
-            result = [];
-            return Failure("A query is required.");
-        }
-
-        var limit = query.Number <= 0 ? 20 : Math.Min(query.Number, 100);
-        result = _repository.Search(query.Keyword).Take(limit).Select(ToEntity).ToList();
-        return Success();
-    }
-
-    public override TizenEntityStatus SearchInPeriod(
-        TizenEntityCalendarSearchQuery calendarSearchQuery,
-        out List<TizenEntityCalendar> result)
+    public override TizenEntityStatus Search(TizenEntityCalendarQuery query, out List<TizenEntityCalendarEvent> result)
     {
         result = [];
-        if (calendarSearchQuery is null)
-        {
-            return Failure("A calendar search query is required.");
-        }
-
-        if (!CalendarSearchQueryAdapter.TryCreate(
-                calendarSearchQuery.Keyword,
-                calendarSearchQuery.StartDate,
-                calendarSearchQuery.EndDate,
-                calendarSearchQuery.Number,
-                calendarSearchQuery.SearchTitle,
-                calendarSearchQuery.SearchLocation,
-                calendarSearchQuery.SearchNote,
-                out var criteria,
-                out var error))
-        {
-            return Failure(error);
-        }
-
+        if (query is null) return Failure("A calendar query is required.");
+        if (!CalendarSearchQueryAdapter.TryCreate(query.Keyword, query.StartDate, query.EndDate,
+                query.Limit, true, true, true, out var criteria, out var error, query.Id, query.Category)) return Failure(error);
         result = _repository.Search(criteria!).Select(ToEntity).ToList();
         return Success();
     }
 
-    public override TizenEntityStatus ToPresentation(TizenEntityCalendar calendar, out TizenEntityPresentation result)
+    public override TizenEntityStatus ToPresentation(List<TizenEntityCalendarEvent> calendarEvents, out TizenEntityPresentation result)
     {
-        if (!TryToDomain(calendar, out var calendarEvent, out var failure))
+        result = new() { Template = string.Empty, Document = string.Empty };
+        if (calendarEvents is null || calendarEvents.Count > 100)
+            return Failure("At most 100 calendar events are allowed.");
+        var events = new List<CalendarEvent>();
+        foreach (var entity in calendarEvents)
         {
-            result = new TizenEntityPresentation();
-            return Failure(failure);
+            if (!TryToDomain(entity, out var calendarEvent, out var failure)) return Failure(failure);
+            events.Add(calendarEvent!);
         }
-
-        result = new TizenEntityPresentation
-        {
-            Template = "calendar-event-card-v1",
-            Document = JsonSerializer.Serialize(new
-            {
-                id = calendarEvent!.Id,
-                title = calendarEvent.Title,
-                start = calendarEvent.Start,
-                end = calendarEvent.End,
-                note = calendarEvent.Note,
-                location = calendarEvent.Location,
-            }),
-        };
+        var presentation = CalendarA2UiPresentations.Create(events);
+        if (!presentation.FitsTransport) return Failure("Presentation Template and Document must each fit within 64 Ki characters.");
+        result.Template = presentation.Template;
+        result.Document = presentation.Document;
         return Success();
     }
 
-    public override TizenEntityStatus UpdateEvent(TizenEntityCalendar calendar)
+    public override TizenEntityStatus UpdateEvent(TizenEntityCalendarEvent calendar)
     {
         if (_commands is null)
         {
@@ -157,7 +101,7 @@ public sealed class CalendarService : TizenActionCalendar.ServiceBase
     }
 
     private static bool TryToDomain(
-        TizenEntityCalendar? entity,
+        TizenEntityCalendarEvent? entity,
         out CalendarEvent? calendarEvent,
         out string failure)
     {
@@ -166,11 +110,13 @@ public sealed class CalendarService : TizenActionCalendar.ServiceBase
             string.IsNullOrWhiteSpace(entity.Id) ||
             entity.Id.Length > 256 ||
             string.IsNullOrWhiteSpace(entity.Title) ||
+            entity.Title.Length > 512 || entity.Note?.Length > 4096 || entity.Location?.Length > 512 ||
+            entity.StartDate?.Length > 64 || entity.EndDate?.Length > 64 ||
             !DateTimeOffset.TryParse(entity.StartDate, out var start) ||
             !DateTimeOffset.TryParse(entity.EndDate, out var end) ||
             end <= start)
         {
-            failure = "Calendar requires a stable ID, title, and a valid positive start/end range.";
+            failure = "Calendar requires a stable ID (256 max), title (512 max), notes (4096 max), location (512 max), and a valid positive start/end range.";
             return false;
         }
 
@@ -181,8 +127,8 @@ public sealed class CalendarService : TizenActionCalendar.ServiceBase
                 entity.Title,
                 start,
                 end,
-                entity.Note,
-                entity.Location);
+                entity.Note ?? string.Empty,
+                entity.Location ?? string.Empty);
             failure = string.Empty;
             return true;
         }
@@ -196,7 +142,7 @@ public sealed class CalendarService : TizenActionCalendar.ServiceBase
     private static TizenEntityStatus ToStatus(CalendarCommandResult result) =>
         result.Success ? Success() : Failure(result.Reason);
 
-    private static TizenEntityCalendar ToEntity(CalendarEvent calendarEvent) => new()
+    private static TizenEntityCalendarEvent ToEntity(CalendarEvent calendarEvent) => new()
     {
         Id = calendarEvent.Id,
         Extra = string.Empty,

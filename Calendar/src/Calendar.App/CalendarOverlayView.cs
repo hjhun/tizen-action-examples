@@ -9,6 +9,7 @@ namespace Calendar.App;
 internal static class CalendarOverlayView
 {
     public static View Create(
+        CalendarDisplayMetrics display,
         CalendarInteractionState interaction,
         CalendarEventRepository repository,
         CalendarReminderRepository reminderRepository,
@@ -27,16 +28,8 @@ internal static class CalendarOverlayView
         Action<CalendarSearchState> applySearch,
         Action<string> openSearchResult)
     {
-        var windowSize = Window.Default.WindowSize;
-        var insets = Window.Default.GetInsets();
         var theme = CalendarTheme.Light;
-        var viewport = ProportionalViewport.Create(
-            windowSize.Width,
-            windowSize.Height,
-            insets.Start,
-            insets.Top,
-            insets.End,
-            insets.Bottom);
+        var viewport = display.Viewport;
         const float scale = 1.0f;
         const float paneWidth = 760.0f;
         var paneTop = (float)theme.SafeInsetVertical;
@@ -44,7 +37,7 @@ internal static class CalendarOverlayView
         var root = new View
         {
             Name = "CalendarOverlay",
-            Size = new Size(windowSize.Width, windowSize.Height),
+            Size = new Size(display.WindowWidth, display.WindowHeight),
             BackgroundColor = new Color("#66000000"),
             Focusable = true,
             FocusableChildren = true,
@@ -107,7 +100,7 @@ internal static class CalendarOverlayView
                 pane.Add(CalendarDateCellView.CreateLabel(
                     interaction.Surface.ToString(),
                     theme.TextPrimary,
-                    7.0f * scale,
+                    56f * scale,
                     new Position(48.0f * scale, 125.0f * scale),
                     new Size(paneWidth - (96.0f * scale), 80.0f * scale),
                     HorizontalAlignment.Begin));
@@ -130,7 +123,7 @@ internal static class CalendarOverlayView
         pane.Add(CalendarDateCellView.CreateLabel(
             editor.IsEditing ? "Edit event" : "Add event",
             theme.TextPrimary,
-            8.0f * scale,
+            64f * scale,
             new Position(48.0f * scale, 105.0f * scale),
             new Size(620.0f * scale, 72.0f * scale),
             HorizontalAlignment.Begin));
@@ -142,6 +135,7 @@ internal static class CalendarOverlayView
         var location = CreateTextField(editor.Location, "Location (optional)", 48, 365, 650, 62, scale);
         var note = new TextEditor
         {
+            PixelSize = 28f,
             Name = "EventNoteEditor",
             Text = editor.Note,
             PlaceholderText = "Note (optional)",
@@ -165,7 +159,7 @@ internal static class CalendarOverlayView
         pane.Add(CalendarDateCellView.CreateLabel(
             "Reminder",
             theme.TextSecondary,
-            3.2f * scale,
+            25.6f * scale,
             new Position(48.0f * scale, 590.0f * scale),
             new Size(200.0f * scale, 40.0f * scale),
             HorizontalAlignment.Begin));
@@ -187,7 +181,7 @@ internal static class CalendarOverlayView
         var validation = CalendarDateCellView.CreateLabel(
             string.Empty,
             "#C62828",
-            3.0f * scale,
+            24f * scale,
             new Position(48.0f * scale, 722.0f * scale),
             new Size(650.0f * scale, 42.0f * scale),
             HorizontalAlignment.Begin);
@@ -238,13 +232,15 @@ internal static class CalendarOverlayView
         Action requestDelete)
     {
         var calendarEvent = ResolveEvent(interaction, repository);
-        pane.Add(CalendarDateCellView.CreateLabel(
+        var eventTitle = CalendarDateCellView.CreateLabel(
             calendarEvent?.Title ?? "Event not found",
             theme.TextPrimary,
-            8.0f * scale,
+            64f * scale,
             new Position(48.0f * scale, 135.0f * scale),
             new Size(650.0f * scale, 95.0f * scale),
-            HorizontalAlignment.Begin));
+            HorizontalAlignment.Begin);
+        if (calendarEvent is not null) eventTitle.Name = $"CalendarEvent-{calendarEvent.Id}";
+        pane.Add(eventTitle);
         if (calendarEvent is null)
         {
             return;
@@ -270,17 +266,19 @@ internal static class CalendarOverlayView
         pane.Add(CalendarDateCellView.CreateLabel(
             "Delete event?",
             theme.TextPrimary,
-            8.0f * scale,
+            64f * scale,
             new Position(48.0f * scale, 220.0f * scale),
             new Size(650.0f * scale, 80.0f * scale),
             HorizontalAlignment.Begin));
-        pane.Add(CalendarDateCellView.CreateLabel(
+        var confirmation = CalendarDateCellView.CreateLabel(
             calendarEvent is null ? "Event not found" : $"{calendarEvent.Title}\n{calendarEvent.Start:ddd, MMM d, yyyy  HH:mm}",
             theme.TextSecondary,
-            4.0f * scale,
+            32f * scale,
             new Position(48.0f * scale, 325.0f * scale),
             new Size(650.0f * scale, 150.0f * scale),
-            HorizontalAlignment.Begin));
+            HorizontalAlignment.Begin);
+        if (calendarEvent is not null) confirmation.Name = $"CalendarEvent-{calendarEvent.Id}";
+        pane.Add(confirmation);
         pane.Add(CreateButton("Cancel", new Position(342.0f * scale, 565.0f * scale), new Size(168.0f * scale, 66.0f * scale), cancelDelete));
         pane.Add(CreateButton("Delete", new Position(530.0f * scale, 565.0f * scale), new Size(168.0f * scale, 66.0f * scale), confirmDelete));
     }
@@ -297,7 +295,7 @@ internal static class CalendarOverlayView
         pane.Add(CalendarDateCellView.CreateLabel(
             "Reminders",
             theme.TextPrimary,
-            8.0f * scale,
+            64f * scale,
             new Position(48.0f * scale, 110.0f * scale),
             new Size(440.0f * scale, 72.0f * scale),
             HorizontalAlignment.Begin));
@@ -314,7 +312,7 @@ internal static class CalendarOverlayView
             pane.Add(CalendarDateCellView.CreateLabel(
                 "No reminders\nAdd one for a task that is not tied to an event.",
                 theme.TextSecondary,
-                4.2f * scale,
+                33.6f * scale,
                 new Position(48.0f * scale, 275.0f * scale),
                 new Size(650.0f * scale, 150.0f * scale),
                 HorizontalAlignment.Center));
@@ -330,6 +328,7 @@ internal static class CalendarOverlayView
                 new Position(48.0f * scale, top),
                 new Size(545.0f * scale, 82.0f * scale),
                 () => edit(reminder.Id));
+            card.Name = $"CalendarReminder-{reminder.Id}";
             pane.Add(card);
             pane.Add(CreateButton(
                 reminder.IsCompleted ? "Reopen" : "Done",
@@ -352,7 +351,7 @@ internal static class CalendarOverlayView
         pane.Add(CalendarDateCellView.CreateLabel(
             editor.IsEditing ? "Edit reminder" : "Add reminder",
             theme.TextPrimary,
-            8.0f * scale,
+            64f * scale,
             new Position(48.0f * scale, 110.0f * scale),
             new Size(620.0f * scale, 72.0f * scale),
             HorizontalAlignment.Begin));
@@ -361,6 +360,7 @@ internal static class CalendarOverlayView
         var time = CreateTextField(editor.DueAt.ToString("HH:mm", CultureInfo.InvariantCulture), "HH:mm", 430, 300, 268, 62, scale);
         var note = new TextEditor
         {
+            PixelSize = 28f,
             Text = editor.Note,
             PlaceholderText = "Note (optional)",
             PlaceholderTextColor = new Color(0.58f, 0.58f, 0.62f, 1.0f),
@@ -377,7 +377,7 @@ internal static class CalendarOverlayView
         pane.Add(time);
         pane.Add(note);
 
-        var validation = CalendarDateCellView.CreateLabel(string.Empty, "#C62828", 3.0f * scale, new Position(48.0f * scale, 570.0f * scale), new Size(650.0f * scale, 42.0f * scale), HorizontalAlignment.Begin);
+        var validation = CalendarDateCellView.CreateLabel(string.Empty, "#C62828", 24f * scale, new Position(48.0f * scale, 570.0f * scale), new Size(650.0f * scale, 42.0f * scale), HorizontalAlignment.Begin);
         pane.Add(validation);
         if (editor.IsEditing)
         {
@@ -422,14 +422,16 @@ internal static class CalendarOverlayView
         Action cancel)
     {
         var reminder = interaction.SelectedReminderId is null ? null : repository.Find(interaction.SelectedReminderId);
-        pane.Add(CalendarDateCellView.CreateLabel("Delete reminder?", theme.TextPrimary, 8.0f * scale, new Position(48.0f * scale, 220.0f * scale), new Size(650.0f * scale, 80.0f * scale), HorizontalAlignment.Begin));
-        pane.Add(CalendarDateCellView.CreateLabel(
+        pane.Add(CalendarDateCellView.CreateLabel("Delete reminder?", theme.TextPrimary, 64f * scale, new Position(48.0f * scale, 220.0f * scale), new Size(650.0f * scale, 80.0f * scale), HorizontalAlignment.Begin));
+        var confirmation = CalendarDateCellView.CreateLabel(
             reminder is null ? "Reminder not found" : $"{reminder.Title}\n{reminder.DueAt:ddd, MMM d, yyyy  HH:mm}",
             theme.TextSecondary,
-            4.0f * scale,
+            32f * scale,
             new Position(48.0f * scale, 325.0f * scale),
             new Size(650.0f * scale, 150.0f * scale),
-            HorizontalAlignment.Begin));
+            HorizontalAlignment.Begin);
+        confirmation.Name = "CalendarReminderConfirmation";
+        pane.Add(confirmation);
         pane.Add(CreateButton("Cancel", new Position(342.0f * scale, 565.0f * scale), new Size(168.0f * scale, 66.0f * scale), cancel));
         pane.Add(CreateButton("Delete", new Position(530.0f * scale, 565.0f * scale), new Size(168.0f * scale, 66.0f * scale), confirm));
     }
@@ -447,14 +449,14 @@ internal static class CalendarOverlayView
         pane.Add(CalendarDateCellView.CreateLabel(
             "Advanced search",
             theme.TextPrimary,
-            8.0f * scale,
+            64f * scale,
             new Position(48.0f * scale, 105.0f * scale),
             new Size(620.0f * scale, 72.0f * scale),
             HorizontalAlignment.Begin));
         pane.Add(CalendarDateCellView.CreateLabel(
             "Title, location, or note",
             theme.TextSecondary,
-            3.0f * scale,
+            24f * scale,
             new Position(48.0f * scale, 174.0f * scale),
             new Size(620.0f * scale, 34.0f * scale),
             HorizontalAlignment.Begin));
@@ -465,14 +467,14 @@ internal static class CalendarOverlayView
         pane.Add(CalendarDateCellView.CreateLabel(
             "Start date (inclusive)",
             theme.TextSecondary,
-            2.7f * scale,
+            21.6f * scale,
             new Position(48.0f * scale, 280.0f * scale),
             new Size(305.0f * scale, 24.0f * scale),
             HorizontalAlignment.Begin));
         pane.Add(CalendarDateCellView.CreateLabel(
             "End date (exclusive)",
             theme.TextSecondary,
-            2.7f * scale,
+            21.6f * scale,
             new Position(393.0f * scale, 280.0f * scale),
             new Size(305.0f * scale, 24.0f * scale),
             HorizontalAlignment.Begin));
@@ -530,7 +532,7 @@ internal static class CalendarOverlayView
         var validation = CalendarDateCellView.CreateLabel(
             search.ValidationMessage ?? string.Empty,
             "#C62828",
-            3.0f * scale,
+            24f * scale,
             new Position(48.0f * scale, 445.0f * scale),
             new Size(650.0f * scale, 38.0f * scale),
             HorizontalAlignment.Begin);
@@ -561,17 +563,17 @@ internal static class CalendarOverlayView
         var results = repository.ResolveByIds(search.ResultEventIds).Events;
         if (search.ResultEventIds.Count > 0 && results.Count == 0)
         {
-            pane.Add(CalendarDateCellView.CreateLabel("Results changed. Search again.", theme.TextSecondary, 3.5f * scale,
+            pane.Add(CalendarDateCellView.CreateLabel("Results changed. Search again.", theme.TextSecondary, 28f * scale,
                 new Position(48.0f * scale, 560.0f * scale), new Size(650.0f * scale, 50.0f * scale), HorizontalAlignment.Center));
         }
         else if (!search.HasApplied)
         {
-            pane.Add(CalendarDateCellView.CreateLabel("Enter filters and choose Search.", theme.TextSecondary, 3.5f * scale,
+            pane.Add(CalendarDateCellView.CreateLabel("Enter filters and choose Search.", theme.TextSecondary, 28f * scale,
                 new Position(48.0f * scale, 560.0f * scale), new Size(650.0f * scale, 50.0f * scale), HorizontalAlignment.Center));
         }
         else if (search.ResultEventIds.Count == 0)
         {
-            pane.Add(CalendarDateCellView.CreateLabel("No events match these filters. Change the dates or keyword and try again.", theme.TextSecondary, 3.5f * scale,
+            pane.Add(CalendarDateCellView.CreateLabel("No matches. Try another date or keyword.", theme.TextSecondary, 28f * scale,
                 new Position(48.0f * scale, 560.0f * scale), new Size(650.0f * scale, 100.0f * scale), HorizontalAlignment.Center));
         }
         else
@@ -601,6 +603,7 @@ internal static class CalendarOverlayView
         {
             Text = text,
             PlaceholderText = placeholder,
+            PixelSize = 28f,
             PlaceholderTextColor = new Vector4(0.58f, 0.58f, 0.62f, 1.0f),
             EnableEditing = true,
             Focusable = true,
@@ -611,7 +614,7 @@ internal static class CalendarOverlayView
 
     private static void AddField(View pane, string label, string value, float top, CalendarTheme theme, float scale)
     {
-        pane.Add(CalendarDateCellView.CreateLabel(label, theme.TextSecondary, 3.2f * scale, new Position(50.0f * scale, top * scale), new Size(180.0f * scale, 34.0f * scale), HorizontalAlignment.Begin));
+        pane.Add(CalendarDateCellView.CreateLabel(label, theme.TextSecondary, 25.6f * scale, new Position(50.0f * scale, top * scale), new Size(180.0f * scale, 34.0f * scale), HorizontalAlignment.Begin));
         var surface = new View
         {
             Position = new Position(48.0f * scale, (top + 38.0f) * scale),
@@ -619,7 +622,7 @@ internal static class CalendarOverlayView
             BackgroundColor = new Color(theme.CellSurface),
             CornerRadius = 16.0f * scale,
         };
-        surface.Add(CalendarDateCellView.CreateLabel(value, theme.TextPrimary, 3.8f * scale, new Position(18.0f * scale, 0), new Size(614.0f * scale, 66.0f * scale), HorizontalAlignment.Begin));
+        surface.Add(CalendarDateCellView.CreateLabel(value, theme.TextPrimary, 30.4f * scale, new Position(18.0f * scale, 0), new Size(614.0f * scale, 66.0f * scale), HorizontalAlignment.Begin));
         pane.Add(surface);
     }
 
@@ -640,6 +643,7 @@ internal static class CalendarOverlayView
             IsSelected = selected,
             Focusable = true,
         };
+        button.TextLabel.PixelSize = 28f;
         button.Clicked += (_, _) => action();
         return button;
     }

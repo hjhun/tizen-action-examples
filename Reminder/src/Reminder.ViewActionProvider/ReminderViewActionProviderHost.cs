@@ -1,21 +1,8 @@
 #nullable enable
-using Reminder.Domain;
+using ActionExamples.ViewAnnotations;
 using RPCPort.ReminderViewActionProvider.Stub;
 
 namespace Reminder.ViewActionProvider;
-
-public sealed record ReminderViewSnapshot(
-    ReminderItem? Reminder,
-    ReservationItem? Reservation,
-    double ScreenX,
-    double ScreenY,
-    double? WindowX,
-    double? WindowY,
-    double Width,
-    double Height,
-    string ViewId,
-    bool IsFocused,
-    bool IncludeNote = false);
 
 public static class ReminderViewActionProviderHost
 {
@@ -25,6 +12,6 @@ public static class ReminderViewActionProviderHost
         _stub ??= new TizenActionView();
         if (!_stub.GetListenStatus()) _stub.Listen(typeof(ReminderViewService));
     }
-    public static void Publish(IEnumerable<ReminderViewSnapshot> snapshots) => ReminderViewState.Publish(snapshots);
-    public static void Clear() => ReminderViewState.Publish([]);
+    public static void Publish(IEnumerable<CurrentViewSnapshot> views) => ReminderViewProviderState.Store.Publish(views);
+    public static void ClearPublishedViews() => ReminderViewProviderState.Store.Clear();
 }

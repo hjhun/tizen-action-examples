@@ -40,7 +40,7 @@ public sealed class ScheduleService
             string? newHandle = null;
             try
             {
-                if (reminder.DueAt is not null) newHandle = _resources.CreateReminder(reminder);
+                if (!reminder.Completed && reminder.DueAt is not null) newHandle = _resources.CreateReminder(reminder);
                 var desired = reminder with { ResourceHandle = newHandle };
                 Publish(new ScheduleDocument(ScheduleDocument.CurrentSchemaVersion, [.. _snapshot.Reminders, desired], _snapshot.Reservations));
                 return CommandResult.Ok();
@@ -133,6 +133,7 @@ public sealed class ScheduleService
         lock (_gate)
         {
             return _snapshot.Reminders
+                .Where(x => string.IsNullOrWhiteSpace(query.Id) || x.Id == query.Id)
                 .Where(x => keyword.Length == 0 || x.Title.Contains(keyword, StringComparison.OrdinalIgnoreCase) || x.Note.Contains(keyword, StringComparison.OrdinalIgnoreCase))
                 .Where(x => MatchesCategory(x, query.Category, now))
                 .OrderBy(x => x.Completed)
@@ -142,6 +143,24 @@ public sealed class ScheduleService
                 .ThenBy(x => x.Id, StringComparer.Ordinal)
                 .Take(query.Limit)
                 .ToArray();
+        }
+    }
+
+    public (IReadOnlyList<ReminderItem> Items, IReadOnlyList<string> UnresolvedIds) ResolveReminderIds(IReadOnlyList<string> ids)
+    {
+        if (ids is null || ids.Count is < 1 or > 100 || ids.Any(id => !ValidId(id)))
+            throw new ArgumentException("Provide 1 to 100 stable reminder IDs of at most 128 characters.", nameof(ids));
+        lock (_gate)
+        {
+            var byId = _snapshot.Reminders.ToDictionary(x => x.Id, StringComparer.Ordinal);
+            var items = new List<ReminderItem>();
+            var unresolved = new List<string>();
+            foreach (var id in ids)
+            {
+                if (byId.TryGetValue(id, out var item)) items.Add(item);
+                else unresolved.Add(id);
+            }
+            return (items, unresolved);
         }
     }
 
@@ -252,13 +271,14 @@ public sealed class ScheduleService
         left.Reservations.Select(x => (x.Id, x.ResourceHandle)).SequenceEqual(right.Reservations.Select(x => (x.Id, x.ResourceHandle)));
 
     private static ScheduleDocument Copy(ScheduleDocument source) => new(source.SchemaVersion, source.Reminders.ToArray(), source.Reservations.ToArray());
-    private static bool SameReminderPayload(ReminderItem a, ReminderItem b) => a.Id == b.Id && a.Title == b.Title.Trim() && a.DueAt == b.DueAt && a.Note == b.Note.Trim() && a.Completed == b.Completed;
+    private static bool SameReminderPayload(ReminderItem a, ReminderItem b) => a.Id == b.Id && a.Title == b.Title.Trim() && a.DueAt == b.DueAt && a.Note == b.Note.Trim() && a.State == b.State;
     private static bool SameReservationPayload(ReservationItem a, ReservationItem b) => a.Id == b.Id && a.Kind == b.Kind && a.Channel == b.Channel.Trim() && a.Program == b.Program.Trim() && a.StartAt == b.StartAt && a.EndAt == b.EndAt && a.Repeat == b.Repeat;
     private static bool ValidId(string? id) => !string.IsNullOrWhiteSpace(id) && id.Length <= 128;
 
     private bool ValidateReminder(ReminderItem? item, bool requireFuture, out CommandResult result)
     {
-        if (item is null || !ValidId(item.Id) || string.IsNullOrWhiteSpace(item.Title) || item.Title.Trim().Length > 200 || item.Note.Length > 2000)
+        if (item is null || !ValidId(item.Id) || string.IsNullOrWhiteSpace(item.Title) || item.Title.Trim().Length > 200 || item.Note.Length > 2000 ||
+            item.ActiveState is not ("To-do" or "In-progress" or "Blocked"))
         { result = Invalid("invalid: reminder requires a stable ID and title within bounds"); return false; }
         if (requireFuture && item.DueAt is not null && item.DueAt <= _clock())
         { result = Invalid("invalid: due time must be in the future"); return false; }

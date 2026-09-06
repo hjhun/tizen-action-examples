@@ -1,0 +1,47 @@
+{
+  "version": "v2",
+  "name": "App_Tizen.Action.CalendarCustom_GetEventByIds",
+  "type": "tidl",
+  "category": "Tizen.Action.CalendarCustom",
+  "description": "Resolve Calendar events by stable ID, preserving request order and duplicates and returning unresolved IDs. Use after mutations to verify their postconditions.",
+  "allowedBackground": "true",
+  "autoDispose": "false",
+  "requiredPrivileges": [],
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "ids": {
+        "type": "array",
+        "description": "At most 100 stable event IDs; order and duplicates are preserved.",
+        "items": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "return": {
+        "type": "Tizen.Entity.Status"
+      },
+      "result": {
+        "type": "array",
+        "description": "Resolved events in request order, preserving duplicate IDs.",
+        "items": {
+          "type": "Tizen.Entity.CalendarEvent"
+        }
+      },
+      "unresolvedIds": {
+        "type": "array",
+        "description": "Event IDs that could not be resolved, in request order.",
+        "items": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "details": {
+    "appid": "org.tizen.actionexamples.calendar"
+  }
+}

@@ -4,6 +4,8 @@
 
 ## 문서 목록
 
+- [2026-09-06 .NET/API 14/페이지별 annotation 변경](2026-09-06-dotnet-update.md) · [English](2026-09-06-dotnet-update_Eng.md)
+
 - [Tizen Action Framework 2.0 개발 가이드](TIZEN_ACTION_FRAMEWORK_2_0_DEVELOPMENT_GUIDE.md)
   - typed Entity/Action 설계
   - generated binding 관리
@@ -20,7 +22,6 @@
 
 - [Tizen Action domain 개발 가이드](../../docs/TIZEN_ACTION_DOMAIN_DEVELOPMENT_GUIDE.md)
 - [Tizen Action 2.0 domain app catalog](../../docs/TIZEN_ACTION_2_0_DOMAIN_APP_CATALOG.md)
-- [Calendar navigation/search/View 설계](../../docs/specs/2026-08-08-calendar-navigation-search-view-design.md)
 
 ## 구현 기준 경로
 
@@ -29,7 +30,7 @@ src/Calendar.Domain/                  Tizen-free Entity·검색·presentation �
 src/Calendar.Persistence/             JSON persistence 및 alarm state
 src/Calendar.UseCases/                mutation command와 보상 처리
 src/Calendar.ActionProvider/          Calendar Action provider
-src/Calendar.ScheduleActionProvider/  Schedule reminder provider
+src/Calendar.ScheduleActionProvider/  표준 Reminder provider (project 이름 유지)
 src/Calendar.ViewActionProvider/      ViewAnnotation 및 A2UI provider
 src/Calendar.App/                     NUI UI와 provider composition root
 tests/                                host-compatible test projects

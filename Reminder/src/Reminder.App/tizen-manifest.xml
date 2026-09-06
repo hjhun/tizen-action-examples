@@ -8,19 +8,26 @@
     <privilege>http://tizen.org/privilege/datasharing</privilege>
     <privilege>http://tizen.org/privilege/appmanager.launch</privilege>
   </privileges>
-  <ui-application appid="org.tizen.actionexamples.reminder" exec="Reminder.App.dll" type="dotnet" multiple="false" taskmanage="true" nodisplay="false" launch_mode="single" api-version="13">
+  <ui-application appid="org.tizen.actionexamples.reminder" exec="Reminder.App.dll" type="dotnet" multiple="false" taskmanage="true" nodisplay="false" launch_mode="single" api-version="14">
     <label>Reminder</label>
     <metadata key="http://tizen.org/metadata/prefer_dotnet_aot" value="true" />
-    <metadata key="http://tizen.org/metadata/action/provider" value="Tv_Tizen.Action.Schedule_AddRecording" />
-    <metadata key="http://tizen.org/metadata/action/provider" value="Tv_Tizen.Action.Schedule_AddViewing" />
-    <metadata key="http://tizen.org/metadata/action/provider" value="Tv_Tizen.Action.Schedule_CancelRecording" />
-    <metadata key="http://tizen.org/metadata/action/provider" value="Tv_Tizen.Action.Schedule_CancelViewing" />
-    <metadata key="http://tizen.org/metadata/action/provider" value="Tv_Tizen.Action.Schedule_CompleteReminder" />
-    <metadata key="http://tizen.org/metadata/action/provider" value="Tv_Tizen.Action.Schedule_CreateReminder" />
-    <metadata key="http://tizen.org/metadata/action/provider" value="Tv_Tizen.Action.Schedule_DeleteReminder" />
-    <metadata key="http://tizen.org/metadata/action/provider" value="Tv_Tizen.Action.Schedule_GetReservations" />
-    <metadata key="http://tizen.org/metadata/action/provider" value="Tv_Tizen.Action.Schedule_SearchReminder" />
-    <metadata key="http://tizen.org/metadata/action/provider" value="Tv_Tizen.Action.Schedule_UpdateReminder" />
+    <metadata key="http://tizen.org/metadata/action/provider" value="Tv_Tizen.Action.Reminder_Add" />
+    <metadata key="http://tizen.org/metadata/action/provider" value="Tv_Tizen.Action.Reminder_Delete" />
+    <metadata key="http://tizen.org/metadata/action/provider" value="Tv_Tizen.Action.Reminder_Search" />
+    <metadata key="http://tizen.org/metadata/action/provider" value="Tv_Tizen.Action.Reminder_ToPresentation" />
+    <metadata key="http://tizen.org/metadata/action/provider" value="Tv_Tizen.Action.Reminder_Update" />
+    <metadata key="http://tizen.org/metadata/action/provider" value="App_Tizen.Action.ReminderCustom_AddRecording" />
+    <metadata key="http://tizen.org/metadata/action" value="App_Tizen.Action.ReminderCustom_AddRecording.action" />
+    <metadata key="http://tizen.org/metadata/action/provider" value="App_Tizen.Action.ReminderCustom_AddViewing" />
+    <metadata key="http://tizen.org/metadata/action" value="App_Tizen.Action.ReminderCustom_AddViewing.action" />
+    <metadata key="http://tizen.org/metadata/action/provider" value="App_Tizen.Action.ReminderCustom_CancelRecording" />
+    <metadata key="http://tizen.org/metadata/action" value="App_Tizen.Action.ReminderCustom_CancelRecording.action" />
+    <metadata key="http://tizen.org/metadata/action/provider" value="App_Tizen.Action.ReminderCustom_CancelViewing" />
+    <metadata key="http://tizen.org/metadata/action" value="App_Tizen.Action.ReminderCustom_CancelViewing.action" />
+    <metadata key="http://tizen.org/metadata/action/provider" value="App_Tizen.Action.ReminderCustom_GetReservations" />
+    <metadata key="http://tizen.org/metadata/action" value="App_Tizen.Action.ReminderCustom_GetReservations.action" />
+    <metadata key="http://tizen.org/metadata/action/provider" value="App_Tizen.Action.ReminderCustom_GetReminderByIds" />
+    <metadata key="http://tizen.org/metadata/action" value="App_Tizen.Action.ReminderCustom_GetReminderByIds.action" />
     <metadata key="http://tizen.org/metadata/action/provider" value="Common_Tizen.Action.View_FindById" />
     <metadata key="http://tizen.org/metadata/action/provider" value="Common_Tizen.Action.View_GetAnnotatedViews" />
     <metadata key="http://tizen.org/metadata/action/provider" value="Common_Tizen.Action.View_GetFocusedView" />

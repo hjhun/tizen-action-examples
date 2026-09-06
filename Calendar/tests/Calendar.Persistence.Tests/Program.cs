@@ -90,6 +90,27 @@ try
     Assert(backups.Length == 1, "Corrupt-store recovery must create exactly one backup.");
     Assert(File.ReadAllText(backups[0]) == corruptJson, "The corrupt backup must preserve the original bytes.");
 
+    foreach (var state in new[] { "To-do", "In-progress", "Blocked", "Done" })
+    {
+        var stateful = CalendarReminder.Create("stateful", "Call", calendarEvent.Start, "notes").WithState(state);
+        var stateStore = new CalendarJsonStore(Path.Combine(root, "state.json"));
+        stateStore.Save(new CalendarStoreDocument(1, [], [stateful]));
+        if (stateStore.Load().Reminders.Single().State != state)
+            throw new InvalidOperationException($"Reminder state {state} did not persist.");
+    }
+    var oldRecord = CalendarReminder.Create("old", "Existing reminder", calendarEvent.Start, "notes");
+    var oldPath = Path.Combine(root, "old-state.json");
+    foreach (var completed in new[] { false, true })
+    {
+        var json = System.Text.Json.Nodes.JsonNode.Parse(System.Text.Json.JsonSerializer.Serialize(
+            new CalendarStoreDocument(1, [], [oldRecord with { IsCompleted = completed }]),
+            new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web)))!;
+        json["reminders"]![0]!.AsObject().Remove("incompleteState");
+        File.WriteAllText(oldPath, json.ToJsonString());
+        if (new CalendarJsonStore(oldPath).Load().Reminders.Single().State != (completed ? "Done" : "To-do"))
+            throw new InvalidOperationException("Legacy completion flag was lost.");
+    }
+
     Console.WriteLine("PASS: Calendar persistence tests");
 }
 finally

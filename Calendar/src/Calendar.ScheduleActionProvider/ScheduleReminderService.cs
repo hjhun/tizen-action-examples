@@ -7,7 +7,7 @@ using RPCPort.ScheduleReminderActionProvider.Stub;
 
 namespace Calendar.ScheduleActionProvider;
 
-public sealed class ScheduleReminderService : TizenActionSchedule.ServiceBase
+public sealed class ScheduleReminderService : TizenActionReminder.ServiceBase
 {
     private readonly CalendarReminderRepository _reminders;
     private readonly CalendarCommandService? _commands;
@@ -31,11 +31,11 @@ public sealed class ScheduleReminderService : TizenActionSchedule.ServiceBase
     {
     }
 
-    public override TizenEntityStatus CreateReminder(TizenEntityReminder reminder)
+    public override TizenEntityStatus Add(TizenEntityReminder reminder)
     {
         if (_commands is null)
         {
-            return Failure("Schedule reminder mutation service is unavailable.");
+            return Failure("Reminder mutation service is unavailable.");
         }
 
         return TryToDomain(reminder, out var domainReminder, out var reason)
@@ -43,11 +43,11 @@ public sealed class ScheduleReminderService : TizenActionSchedule.ServiceBase
             : Failure(reason);
     }
 
-    public override TizenEntityStatus UpdateReminder(TizenEntityReminder reminder)
+    public override TizenEntityStatus Update(TizenEntityReminder reminder)
     {
         if (_commands is null)
         {
-            return Failure("Schedule reminder mutation service is unavailable.");
+            return Failure("Reminder mutation service is unavailable.");
         }
 
         return TryToDomain(reminder, out var domainReminder, out var reason)
@@ -55,59 +55,55 @@ public sealed class ScheduleReminderService : TizenActionSchedule.ServiceBase
             : Failure(reason);
     }
 
-    public override TizenEntityStatus DeleteReminder(TizenEntityReminder reminder)
+    public override TizenEntityStatus Delete(TizenEntityReminder reminder)
     {
         if (_commands is null)
         {
-            return Failure("Schedule reminder mutation service is unavailable.");
+            return Failure("Reminder mutation service is unavailable.");
         }
 
-        return reminder is null || string.IsNullOrWhiteSpace(reminder.Id)
+        return reminder is null || string.IsNullOrWhiteSpace(reminder.Id) || reminder.Id.Length > 256
             ? Failure("A stable reminder ID is required.")
             : ToStatus(_commands.DeleteReminder(reminder.Id));
     }
 
-    public override TizenEntityStatus CompleteReminder(TizenEntityReminder reminder)
+    public override TizenEntityStatus Search(TizenEntityQuery query, out List<TizenEntityReminder> result)
     {
-        if (_commands is null)
-        {
-            return Failure("Schedule reminder mutation service is unavailable.");
-        }
-
-        return reminder is null || string.IsNullOrWhiteSpace(reminder.Id)
-            ? Failure("A stable reminder ID is required.")
-            : ToStatus(_commands.SetReminderCompleted(reminder.Id, isCompleted: true));
-    }
-
-    public override TizenEntityStatus SearchReminder(TizenEntityQuery query, out List<TizenEntityReminder> result)
-    {
-        if (query is null)
+        if (query is null || query.Keyword?.Length > 512)
         {
             result = [];
-            return Failure("A query is required.");
+            return Failure("A query with at most 512 keyword characters is required.");
         }
 
-        var limit = query.Number <= 0 ? 20 : Math.Min(query.Number, 100);
+        if (query.Id?.Length > 256 || query.Category?.Length > 256)
+        {
+            result = [];
+            return Failure("Query Id and Category must not exceed 256 characters.");
+        }
+        if (!string.IsNullOrWhiteSpace(query.Category) &&
+            query.Category is not ("Reminder" or "Tizen.Action.Reminder" or "org.tizen.actionexamples.calendar"))
+        {
+            result = [];
+            return Failure("Category must name Reminder, Tizen.Action.Reminder, or this app.");
+        }
+        var limit = query.Limit <= 0 ? 20 : Math.Min(query.Limit, 100);
         result = _reminders.Search(query.Keyword)
             .Where(reminder => reminder.CalendarEventId is null)
+            .Where(reminder => string.IsNullOrWhiteSpace(query.Id) || reminder.Id == query.Id)
             .Take(limit)
             .Select(ToEntity)
             .ToList();
         return Success();
     }
 
-    public override TizenEntityStatus AddRecording(TizenEntityReservation reservation) => Unsupported();
-
-    public override TizenEntityStatus AddViewing(TizenEntityReservation reservation) => Unsupported();
-
-    public override TizenEntityStatus CancelRecording(TizenEntityReservation reservation) => Unsupported();
-
-    public override TizenEntityStatus CancelViewing(TizenEntityReservation reservation) => Unsupported();
-
-    public override TizenEntityStatus GetReservations(out List<TizenEntityReservation> result)
+    public override TizenEntityStatus ToPresentation(TizenEntityReminder entity, out TizenEntityPresentation result)
     {
-        result = [];
-        return Unsupported();
+        result = new() { Template = string.Empty, Document = string.Empty };
+        if (!TryToDomain(entity, out var reminder, out var reason)) return Failure(reason);
+        var presentation = CalendarA2UiPresentations.CreateReminder(reminder!);
+        result.Template = presentation.Template;
+        result.Document = presentation.Document;
+        return Success();
     }
 
     private static bool TryToDomain(
@@ -120,18 +116,16 @@ public sealed class ScheduleReminderService : TizenActionSchedule.ServiceBase
             string.IsNullOrWhiteSpace(entity.Id) ||
             entity.Id.Length > 256 ||
             string.IsNullOrWhiteSpace(entity.Title) ||
+            entity.Title.Length > 512 || entity.Note?.Length > 4096 || entity.DueDate?.Length > 64 ||
             !DateTimeOffset.TryParse(entity.DueDate, out var dueAt))
         {
-            reason = "Reminder requires a stable ID, title, and valid due date.";
+            reason = "Reminder requires a stable ID (256 max), title (512 max), notes (4096 max), and valid due date.";
             return false;
         }
 
         try
         {
-            reminder = CalendarReminder.Create(entity.Id, entity.Title, dueAt, entity.Note) with
-            {
-                IsCompleted = entity.Completed,
-            };
+            reminder = CalendarReminder.Create(entity.Id, entity.Title, dueAt, entity.Note).WithState(entity.State?.State);
             reason = string.Empty;
             return true;
         }
@@ -149,14 +143,11 @@ public sealed class ScheduleReminderService : TizenActionSchedule.ServiceBase
         Title = reminder.Title,
         DueDate = reminder.DueAt.ToString("O"),
         Note = reminder.Note,
-        Completed = reminder.IsCompleted,
+        State = new TizenEntityReminderState { Id = string.Empty, Extra = string.Empty, State = reminder.State },
     };
 
     private static TizenEntityStatus ToStatus(CalendarCommandResult result) =>
         result.Success ? Success() : Failure(result.Reason);
-
-    private static TizenEntityStatus Unsupported() =>
-        Failure("Recording and viewing reservations are not supported by the Calendar reminder provider.");
 
     private static TizenEntityStatus Success() => new() { Success = true, Reason = string.Empty };
 

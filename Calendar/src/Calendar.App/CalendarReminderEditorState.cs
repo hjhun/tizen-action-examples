@@ -9,6 +9,8 @@ public sealed record CalendarReminderEditorState(
     string Note,
     bool IsCompleted)
 {
+    public string IncompleteState { get; init; } = "To-do";
+
     public bool IsEditing => ReminderId is not null;
 
     public string? ValidationMessage => string.IsNullOrWhiteSpace(Title)
@@ -34,7 +36,7 @@ public sealed record CalendarReminderEditorState(
             reminder.Title,
             reminder.DueAt,
             reminder.Note,
-            reminder.IsCompleted);
+            reminder.IsCompleted) { IncompleteState = reminder.IncompleteState };
     }
 
     public CalendarReminderEditorState WithTitle(string title) => this with { Title = title ?? string.Empty };
@@ -43,5 +45,5 @@ public sealed record CalendarReminderEditorState(
         ReminderId ?? stableId,
         Title,
         DueAt,
-        Note) with { IsCompleted = IsCompleted };
+        Note) with { IsCompleted = IsCompleted, IncompleteState = IncompleteState };
 }

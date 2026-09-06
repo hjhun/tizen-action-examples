@@ -1,9 +1,9 @@
 #nullable enable
 
 using Calendar.Domain;
+using ActionExamples.ViewAnnotations;
 using RPCPort.CalendarViewActionProvider;
 using RPCPort.CalendarViewActionProvider.Stub;
-using CalendarEntity = RPCPort.CalendarActionProvider.TizenEntityCalendar;
 
 namespace Calendar.ViewActionProvider;
 
@@ -19,9 +19,9 @@ public sealed class CalendarViewService : TizenActionView.ServiceBase
 
     public override TizenEntityStatus FindById(string id, out TizenEntityView view)
     {
-        if (string.IsNullOrWhiteSpace(id))
+        if (string.IsNullOrWhiteSpace(id) || id.Length > 1024)
         {
-            view = new TizenEntityView();
+            view = CalendarViewProviderState.EmptyView();
             return Failure("A view ID is required.");
         }
 
@@ -45,19 +45,21 @@ public sealed class CalendarViewService : TizenActionView.ServiceBase
 
     public override TizenEntityStatus ToPresentation(TizenEntityView view, out TizenEntityPresentation result)
     {
-        if (view?.Annotation is null ||
-            view.Annotation.EntityType != CalendarViewProviderState.CalendarEntityType ||
-            !CalendarA2UiPresentations.TryCreateFromGeneratedEntityJson(view.Annotation.EntityInfo, out var presentation))
+        result = new TizenEntityPresentation { Template = string.Empty, Document = string.Empty };
+        if (view?.Annotation is not { } annotation || string.IsNullOrWhiteSpace(annotation.EntityId)) return Failure("A current annotated view is required.");
+        var current = CalendarViewProviderState.Store.Resolve(view.Id, annotation.EntityType, annotation.EntityId);
+        if (current is null) return Failure("The annotated view is no longer visible or its identity does not match.");
+        if (current.EntityType == "Tizen.Entity.CalendarEvent" &&
+            CalendarA2UiPresentations.TryCreateFromGeneratedEntityJson(current.EntityInfo, out var eventPresentation, current.EntityId))
         {
-            result = new TizenEntityPresentation();
-            return Failure("A valid Calendar ViewAnnotation with generated EntityInfo is required.");
+            result.Template = eventPresentation.Template;
+            result.Document = eventPresentation.Document;
+            return Success();
         }
-
-        result = new TizenEntityPresentation
-        {
-            Template = presentation.Template,
-            Document = presentation.Document,
-        };
+        if (!ViewSnapshotPresentation.TryCreate(current.EntityType, current.EntityId, current.EntityInfo, out var template, out var document))
+            return Failure("Unsupported or invalid ViewAnnotation entity snapshot.");
+        result.Template = template;
+        result.Document = document;
         return Success();
     }
 
@@ -68,106 +70,33 @@ public sealed class CalendarViewService : TizenActionView.ServiceBase
 
 internal static class CalendarViewProviderState
 {
-    internal const string CalendarEntityType = "Tizen.Entity.Calendar";
-    private static readonly object Gate = new();
-    private static IReadOnlyList<TizenEntityView> _visibleViews = [];
-
-    internal static void PublishVisibleEventViews(IEnumerable<CalendarEventViewSnapshot> visibleViews, string? focusedEventId)
-    {
-        ArgumentNullException.ThrowIfNull(visibleViews);
-
-        var published = visibleViews
-            .Where(snapshot =>
-                double.IsFinite(snapshot.ScreenX) &&
-                double.IsFinite(snapshot.ScreenY) &&
-                double.IsFinite(snapshot.Width) &&
-                double.IsFinite(snapshot.Height) &&
-                snapshot.Width > 0 &&
-                snapshot.Height > 0)
-            .GroupBy(snapshot => snapshot.Event.Id, StringComparer.Ordinal)
-            .Select(group => group.First())
-            .Select(snapshot => ToAnnotatedView(snapshot, snapshot.Event.Id == focusedEventId))
-            .ToArray();
-
-        lock (Gate)
-        {
-            _visibleViews = published;
-        }
-    }
-
+    internal static readonly CurrentViewStore Store = new();
+    internal static List<TizenEntityView> GetAnnotatedViews() => Store.All().Select(ToView).ToList();
     internal static bool TryFind(string id, out TizenEntityView view)
     {
-        lock (Gate)
-        {
-            view = _visibleViews.FirstOrDefault(candidate => candidate.Id == id) ?? new TizenEntityView();
-            return view.Id is not null;
-        }
+        var snapshot = Store.Find(id);
+        view = snapshot is null ? CalendarViewProviderState.EmptyView() : ToView(snapshot);
+        return snapshot is not null;
     }
-
-    internal static List<TizenEntityView> GetAnnotatedViews()
-    {
-        lock (Gate)
-        {
-            return _visibleViews.ToList();
-        }
-    }
-
     internal static bool TryGetFocused(out TizenEntityView view)
     {
-        lock (Gate)
-        {
-            view = _visibleViews.FirstOrDefault(candidate => candidate.IsFocused) ?? new TizenEntityView();
-            return view.Id is not null;
-        }
+        var snapshot = Store.Focused();
+        view = snapshot is null ? CalendarViewProviderState.EmptyView() : ToView(snapshot);
+        return snapshot is not null;
     }
-
-    private static TizenEntityView ToAnnotatedView(CalendarEventViewSnapshot snapshot, bool isFocused)
+    internal static TizenEntityView EmptyView() => new()
     {
-        var calendarEvent = snapshot.Event;
-        var entity = new CalendarEntity
-        {
-            Id = calendarEvent.Id,
-            Extra = string.Empty,
-            Title = calendarEvent.Title,
-            StartDate = calendarEvent.Start.ToString("O"),
-            EndDate = calendarEvent.End.ToString("O"),
-            Note = calendarEvent.Note,
-            Location = calendarEvent.Location,
-        };
-
-        return new TizenEntityView
-        {
-            Id = $"calendar:event:{calendarEvent.Id}",
-            Extra = string.Empty,
-            Type = "Calendar.EventCard",
-            Description = calendarEvent.Title,
-            ScreenBounds = new ScreenBounds
-            {
-                X = snapshot.ScreenX,
-                Y = snapshot.ScreenY,
-                Width = snapshot.Width,
-                Height = snapshot.Height,
-            },
-            WindowBounds = snapshot.WindowX is { } windowX &&
-                snapshot.WindowY is { } windowY &&
-                double.IsFinite(windowX) &&
-                double.IsFinite(windowY)
-                    ? new WindowBounds
-                    {
-                        X = windowX,
-                        Y = windowY,
-                        Width = snapshot.Width,
-                        Height = snapshot.Height,
-                    }
-                    : null,
-            IsFocused = isFocused,
-            IsEnabled = true,
-            Annotation = new Annotation
-            {
-                EntityType = CalendarEntityType,
-                EntityId = calendarEvent.Id,
-                EntityInfo = entity.ToJson(),
-            },
-        };
-    }
+        Id = string.Empty, Extra = string.Empty, Type = string.Empty, Description = string.Empty,
+        ScreenBounds = new ScreenBounds(), WindowBounds = new WindowBounds(),
+        Annotation = new Annotation { EntityId = string.Empty, EntityType = string.Empty, EntityInfo = string.Empty },
+    };
+    private static TizenEntityView ToView(CurrentViewSnapshot snapshot) => new()
+    {
+        Id = snapshot.Id, Extra = string.Empty, Type = snapshot.Type, Description = snapshot.Description,
+        ScreenBounds = new ScreenBounds { X = snapshot.ScreenX, Y = snapshot.ScreenY, Width = snapshot.Width, Height = snapshot.Height },
+        WindowBounds = snapshot.WindowX is { } x && snapshot.WindowY is { } y && double.IsFinite(x) && double.IsFinite(y)
+            ? new WindowBounds { X = x, Y = y, Width = snapshot.Width, Height = snapshot.Height } : new WindowBounds(),
+        IsFocused = snapshot.IsFocused, IsEnabled = snapshot.IsEnabled,
+        Annotation = new Annotation { EntityType = snapshot.EntityType, EntityId = snapshot.EntityId, EntityInfo = snapshot.EntityInfo },
+    };
 }

@@ -1,0 +1,51 @@
+{
+  "version": "v2",
+  "name": "App_Tizen.Action.ReminderCustom_GetReminderByIds",
+  "type": "tidl",
+  "category": "Tizen.Action.ReminderCustom",
+  "description": "Resolve app-owned reminders by stable IDs. Up to 100 IDs, preserve duplicates and report missing IDs.",
+  "allowedBackground": "true",
+  "autoDispose": "false",
+  "requiredPrivileges": [],
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "ids": {
+        "type": "array",
+        "description": "One to 100 stable reminder identifiers; request order and duplicates are preserved.",
+        "items": {
+          "type": "string"
+        }
+      }
+    },
+    "required": [
+      "ids"
+    ]
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "return": {
+        "type": "Tizen.Entity.Status",
+        "description": "Success or bounded invalid/missing/internal status."
+      },
+      "result": {
+        "type": "array",
+        "description": "Current app-owned entities in deterministic order.",
+        "items": {
+          "type": "Tizen.Entity.Reminder"
+        }
+      },
+      "unresolvedIds": {
+        "type": "array",
+        "description": "Unresolved IDs in request order, including duplicates.",
+        "items": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "details": {
+    "appid": "org.tizen.actionexamples.reminder"
+  }
+}

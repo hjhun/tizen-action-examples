@@ -50,7 +50,7 @@ internal static class CalendarDateCellView
             pill.Add(CreateLabel(
                 cell.Date.Day.ToString(),
                 theme.TodayPillText,
-                pointSize: 4.8f,
+                pixelSize: 38.4f,
                 new Position(0.0f, 0.0f),
                 new Size(44.0f, 38.0f),
                 HorizontalAlignment.Center));
@@ -61,7 +61,7 @@ internal static class CalendarDateCellView
             surface.Add(CreateLabel(
                 cell.Date.Day.ToString(),
                 dateTextColor,
-                pointSize: 4.8f,
+                pixelSize: 38.4f,
                 new Position(10.0f, 6.0f),
                 new Size(size.Width - 20.0f, 40.0f),
                 HorizontalAlignment.Begin));
@@ -88,7 +88,7 @@ internal static class CalendarDateCellView
             chipView.Add(CreateLabel(
                 chip.Title,
                 theme.TextPrimary,
-                pointSize: 3.0f,
+                pixelSize: 24f,
                 new Position(7.0f, 0.0f),
                 new Size(size.Width - 28.0f, 27.0f),
                 HorizontalAlignment.Begin));
@@ -104,7 +104,7 @@ internal static class CalendarDateCellView
             surface.Add(CreateLabel(
                 $"+{cell.OverflowCount}",
                 theme.TextSecondary,
-                pointSize: 3.0f,
+                pixelSize: 24f,
                 new Position(10.0f, Math.Min(size.Height - 27.0f, chipTop + (cell.EventChips.Count * 32.0f))),
                 new Size(size.Width - 20.0f, 24.0f),
                 HorizontalAlignment.Begin));
@@ -121,7 +121,7 @@ internal static class CalendarDateCellView
     internal static TextLabel CreateLabel(
         string text,
         string color,
-        float pointSize,
+        float pixelSize,
         Position position,
         Size size,
         HorizontalAlignment alignment) => new(text)
@@ -129,10 +129,10 @@ internal static class CalendarDateCellView
         Position = position,
         Size = size,
         TextColor = new Color(color),
-        PointSize = pointSize,
+        PixelSize = pixelSize,
         HorizontalAlignment = alignment,
         VerticalAlignment = VerticalAlignment.Center,
         Ellipsis = true,
-        MultiLine = false,
+        MultiLine = text.Contains('\n'),
     };
 }

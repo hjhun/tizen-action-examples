@@ -15,21 +15,24 @@
                   taskmanage="true"
                   nodisplay="false"
                   launch_mode="single"
-                  api-version="13">
+                  api-version="14">
     <label>Calendar</label>
+    <metadata key="http://tizen.org/metadata/action" value="App_Tizen.Action.CalendarCustom_GetEventByIds.action" />
+    <metadata key="http://tizen.org/metadata/action" value="App_Tizen.Action.CalendarCustom_SearchInPeriod.action" />
+    <metadata key="http://tizen.org/metadata/action/entity" value="Calendar.Entity.SearchQuery.entity" />
     <metadata key="http://tizen.org/metadata/prefer_dotnet_aot" value="true" />
-    <metadata key="http://tizen.org/metadata/action/provider" value="Tv_Tizen.Action.Calendar_GetEventByIds" />
+    <metadata key="http://tizen.org/metadata/action/provider" value="App_Tizen.Action.CalendarCustom_GetEventByIds" />
     <metadata key="http://tizen.org/metadata/action/provider" value="Tv_Tizen.Action.Calendar_AddEvent" />
     <metadata key="http://tizen.org/metadata/action/provider" value="Tv_Tizen.Action.Calendar_UpdateEvent" />
-    <metadata key="http://tizen.org/metadata/action/provider" value="Tv_Tizen.Action.Calendar_RemoveEvent" />
+    <metadata key="http://tizen.org/metadata/action/provider" value="Tv_Tizen.Action.Calendar_DeleteEvent" />
     <metadata key="http://tizen.org/metadata/action/provider" value="Tv_Tizen.Action.Calendar_Search" />
-    <metadata key="http://tizen.org/metadata/action/provider" value="Tv_Tizen.Action.Calendar_SearchInPeriod" />
+    <metadata key="http://tizen.org/metadata/action/provider" value="App_Tizen.Action.CalendarCustom_SearchInPeriod" />
     <metadata key="http://tizen.org/metadata/action/provider" value="Tv_Tizen.Action.Calendar_ToPresentation" />
-    <metadata key="http://tizen.org/metadata/action/provider" value="Tv_Tizen.Action.Schedule_CreateReminder" />
-    <metadata key="http://tizen.org/metadata/action/provider" value="Tv_Tizen.Action.Schedule_UpdateReminder" />
-    <metadata key="http://tizen.org/metadata/action/provider" value="Tv_Tizen.Action.Schedule_DeleteReminder" />
-    <metadata key="http://tizen.org/metadata/action/provider" value="Tv_Tizen.Action.Schedule_SearchReminder" />
-    <metadata key="http://tizen.org/metadata/action/provider" value="Tv_Tizen.Action.Schedule_CompleteReminder" />
+    <metadata key="http://tizen.org/metadata/action/provider" value="Tv_Tizen.Action.Reminder_Add" />
+    <metadata key="http://tizen.org/metadata/action/provider" value="Tv_Tizen.Action.Reminder_Update" />
+    <metadata key="http://tizen.org/metadata/action/provider" value="Tv_Tizen.Action.Reminder_Delete" />
+    <metadata key="http://tizen.org/metadata/action/provider" value="Tv_Tizen.Action.Reminder_Search" />
+    <metadata key="http://tizen.org/metadata/action/provider" value="Tv_Tizen.Action.Reminder_ToPresentation" />
     <metadata key="http://tizen.org/metadata/action/provider" value="Common_Tizen.Action.View_FindById" />
     <metadata key="http://tizen.org/metadata/action/provider" value="Common_Tizen.Action.View_GetAnnotatedViews" />
     <metadata key="http://tizen.org/metadata/action/provider" value="Common_Tizen.Action.View_GetFocusedView" />

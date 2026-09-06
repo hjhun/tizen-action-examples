@@ -9,6 +9,8 @@ public sealed record CalendarSearchCriteria(
     bool SearchLocation,
     bool SearchNote)
 {
+    public string? Id { get; init; }
+
     public static CalendarSearchCriteria Create(
         string? keyword,
         DateTimeOffset? startInclusive,

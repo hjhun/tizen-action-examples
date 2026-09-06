@@ -1,0 +1,22 @@
+{
+  "typeName": "Calendar.Entity.SearchQuery",
+  "description": "Calendar custom contract v1: bounded per-field search, inheriting the standard Id, Category, Keyword, Limit and date range. All-false selectors mean all fields.",
+  "base": "Tizen.Entity.CalendarQuery",
+  "dataSchema": {
+    "type": "object",
+    "properties": {
+      "SearchTitle": {
+        "type": "boolean",
+        "description": "Match event title"
+      },
+      "SearchLocation": {
+        "type": "boolean",
+        "description": "Match event location"
+      },
+      "SearchNote": {
+        "type": "boolean",
+        "description": "Match event notes"
+      }
+    }
+  }
+}

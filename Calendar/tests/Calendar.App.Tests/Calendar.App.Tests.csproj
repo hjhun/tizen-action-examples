@@ -19,6 +19,11 @@
     <Compile Include="../../src/Calendar.App/CalendarTheme.cs" Link="CalendarTheme.cs" />
     <Compile Include="../../src/Calendar.App/CalendarLayoutMetrics.cs" Link="CalendarLayoutMetrics.cs" />
     <Compile Include="../../src/Calendar.App/ProportionalViewport.cs" Link="ProportionalViewport.cs" />
+    <Compile Include="../../src/Calendar.App/CalendarDisplayMetrics.cs" Link="CalendarDisplayMetrics.cs" />
     <Compile Include="../../src/Calendar.App/CalendarViewAnnotationRegistry.cs" Link="CalendarViewAnnotationRegistry.cs" />
+    <Compile Include="../../src/Calendar.App/CalendarAnnotationPage.cs" Link="CalendarAnnotationPage.cs" />
+    <Compile Include="../../../Reminder/src/Reminder.App/ReminderAnnotationPage.cs" Link="ReminderAnnotationPage.cs" />
+    <Compile Include="../../../Shared/ViewAnnotations/CurrentViewSnapshot.cs" Link="CurrentViewSnapshot.cs" />
+    <Compile Include="../../../Shared/ViewAnnotations/ViewSnapshotPresentation.cs" Link="ViewSnapshotPresentation.cs" />
   </ItemGroup>
 </Project>

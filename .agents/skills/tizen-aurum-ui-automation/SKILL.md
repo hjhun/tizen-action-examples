@@ -1,6 +1,6 @@
 ---
 name: tizen-aurum-ui-automation
-description: Use when automating or capturing Tizen NUI apps through Aurum. Operate native UI with remote keys, coordinates, accessibility-tree queries, and 1920x1080 PNG/JPEG screenshots over SDB-forwarded Aurum gRPC; use the bundled client when tizen-aurum-cli is unavailable.
+description: Use when automating or capturing Tizen NUI apps through Aurum. Operate native UI with remote keys, coordinates, accessibility-tree queries, and native-resolution PNG/JPEG screenshots over SDB-forwarded Aurum gRPC; use the bundled client when tizen-aurum-cli is unavailable.
 ---
 
 # Tizen Aurum UI Automation
@@ -90,6 +90,8 @@ ${TIZEN_AURUM_CACHE:-~/.cache/tizen-aurum-ui-automation}
 It installs `grpcio`, `grpcio-tools`, `protobuf`, and `Pillow`, then generates Python stubs from the bundled protocol. Keep generated dependencies out of the skill and repository.
 
 Completion criterion: `scripts/aurum-ui --help` exits successfully.
+
+For DCI 4K/8K raw screenshots, set `TIZEN_AURUM_MAX_MESSAGE_MIB=160` (32 MiB default, bounded to 32..256). Always verify native dimensions before capture; raising the receive limit does not establish target resolution support.
 
 ### 3. Start a scoped Aurum session
 

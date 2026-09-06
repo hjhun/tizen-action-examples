@@ -1,6 +1,10 @@
 using Calendar.App;
 using Calendar.Domain;
+
 using System.Text.Json;
+
+DisplayMetricsTests.Run();
+PageAnnotationTests.Run();
 
 static void Assert(bool condition, string message)
 {
@@ -205,7 +209,7 @@ var annotations = CalendarViewAnnotationRegistry.Create(
 ], calendarEvent => $"generated:{calendarEvent.Id}");
 Assert(
     annotations.Count == 1 &&
-    annotations[0].EntityType == "Tizen.Entity.Calendar" &&
+    annotations[0].EntityType == "Tizen.Entity.CalendarEvent" &&
     annotations[0].EntityId == "event-annotated" &&
     annotations[0].EntityInfo == "generated:event-annotated",
     "Each published calendar view annotation must retain stable EntityType/EntityId hints and generated EntityInfo.");

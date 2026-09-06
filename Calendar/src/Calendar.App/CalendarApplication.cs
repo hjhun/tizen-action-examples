@@ -1,4 +1,5 @@
 using Calendar.ActionProvider;
+using ActionExamples.ViewAnnotations;
 using Calendar.Domain;
 using Calendar.Persistence;
 using Calendar.ScheduleActionProvider;
@@ -17,14 +18,20 @@ internal sealed class CalendarApplication : NUIApplication
     private CalendarCommandService? _commands;
     private CalendarInteractionState? _interaction;
     private View? _root;
+    private CalendarDisplayMetrics? _display;
+    private Tizen.NUI.Timer? _annotationTimer;
+    private bool _paused;
+    private bool _renderPending;
     private View? _activeSurfaceRoot;
-    private IReadOnlyList<CalendarEventViewSnapshot> _renderedEventViews = Array.Empty<CalendarEventViewSnapshot>();
 
     protected override void OnCreate()
     {
         base.OnCreate();
+        _annotationTimer = new Tizen.NUI.Timer(50);
+        _annotationTimer.Tick += OnAnnotationTimer;
         Window.Default.KeyEvent += OnKeyEvent;
         Window.Default.Resized += OnWindowResized;
+        Window.Default.Moved += OnWindowMoved;
         Window.Default.InsetsChanged += OnWindowResized;
         FocusManager.Instance.FocusChanged += OnFocusChanged;
 
@@ -49,7 +56,8 @@ internal sealed class CalendarApplication : NUIApplication
 
     protected override void OnPause()
     {
-        _renderedEventViews = Array.Empty<CalendarEventViewSnapshot>();
+        _paused = true;
+        _annotationTimer?.Stop();
         CalendarViewActionProviderHost.ClearPublishedViews();
         base.OnPause();
     }
@@ -57,6 +65,7 @@ internal sealed class CalendarApplication : NUIApplication
     protected override void OnResume()
     {
         base.OnResume();
+        _paused = false;
         Render();
     }
 
@@ -65,29 +74,41 @@ internal sealed class CalendarApplication : NUIApplication
         FocusManager.Instance.FocusChanged -= OnFocusChanged;
         Window.Default.InsetsChanged -= OnWindowResized;
         Window.Default.Resized -= OnWindowResized;
+        Window.Default.Moved -= OnWindowMoved;
         Window.Default.KeyEvent -= OnKeyEvent;
         _activeSurfaceRoot = null;
-        _renderedEventViews = Array.Empty<CalendarEventViewSnapshot>();
         CalendarViewActionProviderHost.ClearPublishedViews();
+        _annotationTimer?.Stop();
+        _annotationTimer?.Dispose();
+        _annotationTimer = null;
         base.OnTerminate();
     }
 
+    private void OnWindowMoved(object? sender, EventArgs args) => QueueAnnotationRefresh();
+
     private void OnWindowResized(object? sender, EventArgs eventArgs)
     {
-        Render();
-    }
-
-    private void OnFocusChanged(object? sender, FocusManager.FocusChangedEventArgs eventArgs)
-    {
-        if (_activeSurfaceRoot is null || _renderedEventViews.Count == 0)
+        if (!TryReadDisplay(out var display)) return;
+        if (_root is null || _renderPending)
         {
+            Render();
             return;
         }
 
-        CalendarViewActionProviderHost.PublishVisibleEventViews(
-            _renderedEventViews,
-            GetFocusedEventId(_activeSurfaceRoot));
+        // Keep editor contents, caret and actual focus alive across resize/insets.
+        foreach (var name in new[] { "CalendarDesignCanvas", "CalendarOverlayDesignCanvas" })
+        {
+            var canvas = _root.FindChildByName(name);
+            if (canvas is null) continue;
+            canvas.Position = new Position(display.Viewport.OffsetX, display.Viewport.OffsetY);
+            canvas.Scale = new Vector3(display.Viewport.Scale, display.Viewport.Scale, 1);
+        }
+        var overlay = _root.FindChildByName("CalendarOverlay");
+        if (overlay is not null) overlay.Size = new Size(display.WindowWidth, display.WindowHeight);
+        QueueAnnotationRefresh();
     }
+
+    private void OnFocusChanged(object? sender, FocusManager.FocusChangedEventArgs eventArgs) => QueueAnnotationRefresh();
 
     private void OnKeyEvent(object? sender, Window.KeyEventArgs eventArgs)
     {
@@ -681,33 +702,56 @@ internal sealed class CalendarApplication : NUIApplication
         }
     }
 
-    private static bool HasRenderableViewport()
+    private bool TryReadDisplay(out CalendarDisplayMetrics display)
     {
+        display = default;
+        int screenWidth = 0, screenHeight = 0;
+        try
+        {
+            var hasWidth = Tizen.System.Information.TryGetValue("http://tizen.org/feature/screen.width", out screenWidth);
+            var hasHeight = Tizen.System.Information.TryGetValue("http://tizen.org/feature/screen.height", out screenHeight);
+            if (!hasWidth || !hasHeight) screenWidth = screenHeight = 0;
+        }
+        catch (Exception exception)
+        {
+            Tizen.Log.Warn("Calendar", $"Screen size unavailable: {exception.Message}");
+        }
+
         try
         {
             var size = Window.Default.WindowSize;
             var insets = Window.Default.GetInsets();
-            return ProportionalViewport.TryCreate(
-                size.Width,
-                size.Height,
-                insets.Start,
-                insets.Top,
-                insets.End,
-                insets.Bottom,
-                out _);
+            if (!CalendarDisplayMetrics.TryCreate(size.Width, size.Height, screenWidth, screenHeight,
+                    insets.Start, insets.Top, insets.End, insets.Bottom, out display)) return false;
+            if (_display != display)
+            {
+                Tizen.Log.Info("Calendar", $"Screen={display.ScreenWidth}x{display.ScreenHeight}, " +
+                    $"Window={display.WindowWidth}x{display.WindowHeight}, Insets={insets.Start}/{insets.Top}/{insets.End}/{insets.Bottom}, " +
+                    $"CanvasScale={display.Viewport.Scale}");
+                _display = display;
+            }
+            return true;
         }
-        catch
+        catch (Exception exception)
         {
+            Tizen.Log.Warn("Calendar", $"Window geometry unavailable: {exception.Message}");
             return false;
         }
     }
 
     private void Render()
     {
-        if (_interaction is null || _repository is null || !HasRenderableViewport())
+        if (_paused) return;
+        if (_interaction is null || _repository is null)
         {
             return;
         }
+        if (!TryReadDisplay(out var display))
+        {
+            _renderPending = true;
+            return;
+        }
+        _renderPending = false;
 
         if (_interaction.Surface == CalendarSurface.Search &&
             _interaction.Search is { HasApplied: true } appliedSearch &&
@@ -724,6 +768,8 @@ internal sealed class CalendarApplication : NUIApplication
             };
         }
 
+        _activeSurfaceRoot = null;
+        CalendarViewActionProviderHost.ClearPublishedViews();
         if (_root is not null)
         {
             Window.Default.GetDefaultLayer().Remove(_root);
@@ -731,6 +777,7 @@ internal sealed class CalendarApplication : NUIApplication
         }
 
         _root = CalendarMonthView.Create(
+            display,
             _interaction.Calendar,
             _repository,
             _today,
@@ -751,7 +798,14 @@ internal sealed class CalendarApplication : NUIApplication
         View activeSurfaceRoot = _root;
         if (_interaction.Surface != CalendarSurface.Calendar)
         {
+            var backgroundCanvas = _root.FindChildByName("CalendarDesignCanvas");
+            if (backgroundCanvas is not null)
+            {
+                backgroundCanvas.Sensitive = false;
+                backgroundCanvas.FocusableChildren = false;
+            }
             var overlay = CalendarOverlayView.Create(
+                display,
                 _interaction,
                 _repository,
                 _reminderRepository!,
@@ -779,7 +833,7 @@ internal sealed class CalendarApplication : NUIApplication
 
         Window.Default.GetDefaultLayer().Add(_root);
         _activeSurfaceRoot = activeSurfaceRoot;
-        _renderedEventViews = Array.Empty<CalendarEventViewSnapshot>();
+        NuiViewAnnotations.Observe(activeSurfaceRoot, QueueAnnotationRefresh);
         if (_interaction.Surface == CalendarSurface.Calendar && _interaction.Calendar.FocusedEventId is { } focusedEventId)
         {
             preferredFocus = _root.FindChildByName($"CalendarEvent-{focusedEventId}") ?? preferredFocus;
@@ -799,60 +853,72 @@ internal sealed class CalendarApplication : NUIApplication
             FocusManager.Instance.SetCurrentFocusView(overlayFocus);
         }
 
-        double? windowOriginX = null;
-        double? windowOriginY = null;
-        try
+        QueueAnnotationRefresh();
+    }
+
+    private void QueueAnnotationRefresh()
+    {
+        _annotationTimer?.Stop();
+        if (_paused || _activeSurfaceRoot is not { } surface) return;
+        // Focus and text changes already describe a live tree. Replace its snapshot
+        // atomically now, then measure again after DALi commits the next layout.
+        // Only Render/OnPause invalidate a removed or hidden tree.
+        PublishMeasuredViews(surface);
+        _annotationTimer?.Start();
+    }
+
+    private bool OnAnnotationTimer(object? sender, Tizen.NUI.Timer.TickEventArgs args)
+    {
+        if (!_paused && _activeSurfaceRoot is { } surface) PublishMeasuredViews(surface);
+        return false;
+    }
+
+    private void PublishMeasuredViews(View activeSurfaceRoot)
+    {
+        if (_interaction is null) return;
+        var state = _interaction;
+        var context = CalendarAnnotationPage.Create(state);
+        var surface = context.Surface;
+        var pageId = context.Id;
+        var page = context.State;
+        var snapshots = new List<CurrentViewSnapshot>();
+        var annotated = new HashSet<View>();
+        var focused = NuiViewAnnotations.Focused(activeSurfaceRoot);
+        void Capture(View? view, CurrentViewSnapshot snapshot)
         {
-            using var windowPosition = Window.Default.WindowPosition;
-            windowOriginX = windowPosition.X;
-            windowOriginY = windowPosition.Y;
+            if (view is null) return;
+            var measured = NuiViewAnnotations.Measure(view, activeSurfaceRoot, focused, snapshot);
+            if (measured is null) return;
+            snapshots.Add(measured);
+            annotated.Add(view);
         }
-        catch
+        var pane = activeSurfaceRoot.FindChildByName("CalendarOverlayPane") ?? activeSurfaceRoot.FindChildByName("CalendarDesignCanvas") ?? activeSurfaceRoot;
+        Capture(pane, CalendarViewSnapshots.Context(pageId, "Calendar.Page", surface, new { schemaVersion = 1, page }));
+        var events = GetVisibleEvents().ToDictionary(x => x.Id, StringComparer.Ordinal);
+        var reminders = state.Surface == CalendarSurface.ReminderList
+            ? _reminderRepository!.Snapshot().Where(x => x.CalendarEventId is null).ToDictionary(x => x.Id, StringComparer.Ordinal)
+            : new Dictionary<string, CalendarReminder>();
+        foreach (var (view, key) in NuiViewAnnotations.Descendants(activeSurfaceRoot))
         {
-            // Screen-space annotations remain valid when window geometry is unavailable.
+            var name = view.Name ?? string.Empty;
+            const string eventPrefix = "CalendarEvent-";
+            const string reminderPrefix = "CalendarReminder-";
+            if (name.StartsWith(eventPrefix, StringComparison.Ordinal) && events.TryGetValue(name[eventPrefix.Length..], out var item))
+                Capture(view, CalendarViewSnapshots.Event($"calendar:{surface}:event:{item.Id}:{key}", item, state.Surface == CalendarSurface.EventDetail));
+            else if (name.StartsWith(reminderPrefix, StringComparison.Ordinal) && reminders.TryGetValue(name[reminderPrefix.Length..], out var reminderItem))
+                Capture(view, CalendarViewSnapshots.Reminder($"calendar:{surface}:reminder:{reminderItem.Id}", reminderItem, includeNote: false));
         }
-
-        var renderedEventViews = new List<CalendarEventViewSnapshot>();
-        foreach (var calendarEvent in GetVisibleEvents())
+        if (state.Surface == CalendarSurface.DeleteReminderConfirmation && state.SelectedReminderId is { } reminderId && _reminderRepository!.Find(reminderId) is { } reminder)
+            Capture(activeSurfaceRoot.FindChildByName("CalendarReminderConfirmation"),
+                CalendarViewSnapshots.Reminder($"calendar:{surface}:reminder:{reminder.Id}", reminder, includeNote: false));
+        // Controls describe the live draft, never a saved entity pretending to be unsaved input.
+        foreach (var (view, key) in NuiViewAnnotations.Controls(activeSurfaceRoot))
         {
-            try
-            {
-                var eventView = activeSurfaceRoot.FindChildByName($"CalendarEvent-{calendarEvent.Id}");
-                if (eventView is null)
-                {
-                    continue;
-                }
-
-                var bounds = eventView.CalculateScreenPositionSize();
-                var width = bounds.Z;
-                var height = bounds.W;
-                if (!float.IsFinite(bounds.X) || !float.IsFinite(bounds.Y) ||
-                    !float.IsFinite(width) || !float.IsFinite(height) ||
-                    width <= 0 || height <= 0)
-                {
-                    continue;
-                }
-
-                renderedEventViews.Add(new CalendarEventViewSnapshot(
-                    calendarEvent,
-                    bounds.X,
-                    bounds.Y,
-                    windowOriginX is { } originX ? bounds.X - originX : null,
-                    windowOriginY is { } originY ? bounds.Y - originY : null,
-                    width,
-                    height));
-            }
-            catch
-            {
-                // A frame can be replaced before NUI exposes a stable actor handle.
-                // In that case the event is not published as a visible annotation.
-            }
+            if (annotated.Contains(view)) continue;
+            Capture(view, CalendarViewSnapshots.Context($"{pageId}:control:{key}", "Calendar.Control",
+                NuiViewAnnotations.Description(view, key), new { schemaVersion = 1, page, draft = NuiViewAnnotations.ControlState(view, key) }));
         }
-
-        _renderedEventViews = renderedEventViews;
-        CalendarViewActionProviderHost.PublishVisibleEventViews(
-            _renderedEventViews,
-            GetFocusedEventId(activeSurfaceRoot));
+        CalendarViewActionProviderHost.Publish(snapshots);
     }
 
     private IReadOnlyList<CalendarEvent> GetVisibleEvents()
@@ -899,40 +965,6 @@ internal sealed class CalendarApplication : NUIApplication
         var start = CalendarDateBoundary.AtStartOfDay(rangeStart);
         var end = CalendarDateBoundary.AtStartOfDay(rangeEndExclusive);
         return _repository.GetEventsOverlapping(start, end);
-    }
-
-    private static string? GetFocusedEventId(View activeSurfaceRoot)
-    {
-        try
-        {
-            var focusedView = FocusManager.Instance.GetCurrentFocusView();
-            const string prefix = "CalendarEvent-";
-            return focusedView is not null &&
-                IsDescendantOrSelf(focusedView, activeSurfaceRoot) &&
-                focusedView.Name.StartsWith(prefix, StringComparison.Ordinal)
-                ? focusedView.Name[prefix.Length..]
-                : null;
-        }
-        catch
-        {
-            return null;
-        }
-    }
-
-    private static bool IsDescendantOrSelf(View view, View root)
-    {
-        View? current = view;
-        while (current is not null)
-        {
-            if (ReferenceEquals(current, root))
-            {
-                return true;
-            }
-
-            current = current.GetParent() as View;
-        }
-
-        return false;
     }
 
     private static void Main(string[] args)

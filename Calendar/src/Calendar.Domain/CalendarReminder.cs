@@ -14,6 +14,19 @@ public sealed record CalendarReminder(
     int? OffsetMinutes,
     int? AlarmId)
 {
+    // Old persisted records omit this member and retain their bool completion flag.
+    public string IncompleteState { get; init; } = "To-do";
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public string State => IsCompleted ? "Done" : IncompleteState;
+
+    public CalendarReminder WithState(string? state) => state switch
+    {
+        "To-do" or "In-progress" or "Blocked" => this with { IsCompleted = false, IncompleteState = state },
+        "Done" => this with { IsCompleted = true },
+        _ => throw new ArgumentException("Reminder state must be To-do, In-progress, Blocked, or Done.", nameof(state)),
+    };
+
     /// <summary>The reminder offsets an event editor may attach: 10 minutes, 30 minutes, 1 hour, and 1 day.</summary>
     public static IReadOnlyList<int> AllowedOffsetMinutes { get; } = [10, 30, 60, 1440];
 

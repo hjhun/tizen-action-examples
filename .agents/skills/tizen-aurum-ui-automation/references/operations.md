@@ -62,7 +62,7 @@ Observed Aurum services can return either:
 
 The bundled client queries `getScreenSize`, checks payload length, converts BGRA to RGB, and chooses PNG or JPEG from the output extension. A payload that matches neither shape is rejected instead of being mislabeled.
 
-The default gRPC receive limit is too small for a 1920x1080 raw frame. The bundled client raises the receive limit to 32 MiB.
+The default gRPC receive limit is too small for a 1920x1080 raw frame. The bundled client defaults to 32 MiB. For DCI 4096×2160 (33.75 MiB raw) or 7680×4320 (126.5625 MiB raw), use `TIZEN_AURUM_MAX_MESSAGE_MIB=160`. The override is bounded to 32..256 MiB; dimensions and payload length are still validated.
 
 ## Empty Tree Triage
 
@@ -112,6 +112,6 @@ Capture date: <date>
 - **Health timeout:** verify process, target port, and SDB forward; restart only the bootstrap if safe.
 - **Tree empty:** use the documented fallback.
 - **Click status OK but no transition:** inspect focus; try `Enter` or explicit `tap` based on UI behavior.
-- **Screenshot too large:** ensure the bundled client is used; it configures a 32 MiB receive limit.
+- **Screenshot too large:** ensure the bundled client is used; use `TIZEN_AURUM_MAX_MESSAGE_MIB=160` for DCI 4K/8K (32 MiB default).
 - **Unexpected screenshot bytes:** preserve the byte count in the error report; do not save corrupted output as PNG.
 - **Multiple devices:** pass `--serial`; never guess.

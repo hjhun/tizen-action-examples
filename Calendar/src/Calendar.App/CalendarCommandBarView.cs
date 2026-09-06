@@ -51,7 +51,7 @@ internal static class CalendarCommandBarView
         bar.Add(CalendarDateCellView.CreateLabel(
             title,
             theme.TextPrimary,
-            5.0f * scale,
+            (state.ViewMode == CalendarViewMode.Week ? 30f : 40f) * scale,
             new Position(x, 0.0f),
             new Size(330.0f * scale, size.Height),
             HorizontalAlignment.Begin));
@@ -114,7 +114,7 @@ internal static class CalendarCommandBarView
             BorderlineColor = new Color(focused ? theme.FocusOutline : theme.TextSecondary),
             Scale = focused ? new Vector3(theme.FocusScale, theme.FocusScale, 1.0f) : Vector3.One,
         };
-        control.Add(CalendarDateCellView.CreateLabel(label, theme.TextPrimary, 3.5f, new Position(8.0f, 0.0f), new Size(size.Width - 16.0f, size.Height), HorizontalAlignment.Center));
+        control.Add(CalendarDateCellView.CreateLabel(label, theme.TextPrimary, 28f, new Position(8.0f, 0.0f), new Size(size.Width - 16.0f, size.Height), HorizontalAlignment.Center));
         CalendarTouchBinder.Bind(control, activate);
         return control;
     }

@@ -3,7 +3,7 @@
 - 문서 상태: **Approved — B Focused Workspace, 2026-08-09**
 - 대상: Tizen Action Framework 2.0 `Tizen.Action.Schedule` 예제 provider 앱
 - UI reference: Samsung Galaxy Reminder의 정보구조와 상호작용 패턴
-- 기준 HTML: [`../refs/reminder-design-options.html`](../refs/reminder-design-options.html)
+- 실행 가능한 UI preview: [`../refs/one-ui-sample.html`](../refs/one-ui-sample.html). 요구사항은 이 Markdown에서 관리하며, 이전 디자인 선택지 HTML은 정리했습니다.
 - 승인 방향: B `Focused Workspace` + A의 smart filter
 
 ## 1. 최상위 결정

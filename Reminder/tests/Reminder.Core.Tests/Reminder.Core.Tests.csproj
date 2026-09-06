@@ -10,5 +10,7 @@
     <ProjectReference Include="../../src/Reminder.Persistence/Reminder.Persistence.csproj" />
     <ProjectReference Include="../../src/Reminder.UseCases/Reminder.UseCases.csproj" />
     <Compile Include="../../src/Reminder.App/ProportionalViewport.cs" Link="ProportionalViewport.cs" />
+    <Compile Include="../../src/Reminder.App/ReminderDisplayMetrics.cs" Link="ReminderDisplayMetrics.cs" />
+    <Compile Include="../../src/Reminder.App/ReminderSearchState.cs" Link="ReminderSearchState.cs" />
   </ItemGroup>
 </Project>

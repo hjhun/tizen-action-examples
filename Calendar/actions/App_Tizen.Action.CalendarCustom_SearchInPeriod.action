@@ -1,0 +1,31 @@
+{
+  "version": "v2",
+  "name": "App_Tizen.Action.CalendarCustom_SearchInPeriod",
+  "type": "tidl",
+  "category": "Tizen.Action.CalendarCustom",
+  "description": "Search Calendar events in a half-open date range with explicit title, location, and note selectors. Use standard Calendar_Search when per-field selection is unnecessary.",
+  "allowedBackground": "true",
+  "autoDispose": "false",
+  "requiredPrivileges": [],
+  "inputSchema": {
+    "type": "Calendar.Entity.SearchQuery"
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "return": {
+        "type": "Tizen.Entity.Status"
+      },
+      "result": {
+        "type": "array",
+        "description": "Events matching the requested period and selected search fields.",
+        "items": {
+          "type": "Tizen.Entity.CalendarEvent"
+        }
+      }
+    }
+  },
+  "details": {
+    "appid": "org.tizen.actionexamples.calendar"
+  }
+}

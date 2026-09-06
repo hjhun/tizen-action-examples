@@ -14,6 +14,17 @@ public sealed record ReminderItem(
     DateTimeOffset? CompletedAt,
     string? ResourceHandle)
 {
+    public string ActiveState { get; init; } = "To-do";
+    public string State => Completed ? "Done" : ActiveState;
+
+    public ReminderItem WithState(string? state)
+    {
+        var value = string.IsNullOrEmpty(state) ? "To-do" : state;
+        if (value is not ("To-do" or "In-progress" or "Blocked" or "Done"))
+            throw new ArgumentException("State must be To-do, In-progress, Blocked, or Done.", nameof(state));
+        return this with { Completed = value == "Done", ActiveState = value == "Done" ? ActiveState : value };
+    }
+
     public static ReminderItem Create(string id, string title, DateTimeOffset? dueAt, string? note, DateTimeOffset? createdAt = null)
     {
         ValidateId(id);
@@ -52,7 +63,10 @@ public sealed record ReservationItem(
     }
 }
 
-public sealed record ReminderQuery(string Keyword, ReminderCategory Category, int Limit);
+public sealed record ReminderQuery(string Keyword, ReminderCategory Category, int Limit)
+{
+    public string Id { get; init; } = string.Empty;
+}
 
 public sealed record ScheduleDocument(int SchemaVersion, IReadOnlyList<ReminderItem> Reminders, IReadOnlyList<ReservationItem> Reservations)
 {

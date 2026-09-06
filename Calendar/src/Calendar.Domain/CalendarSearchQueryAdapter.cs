@@ -19,9 +19,22 @@ public static class CalendarSearchQueryAdapter
         bool searchLocation,
         bool searchNote,
         out CalendarSearchCriteria? criteria,
-        out string error)
+        out string error,
+        string? id = null,
+        string? category = null)
     {
         criteria = null;
+        if (id?.Length > 256 || category?.Length > 256)
+        {
+            error = "Query Id and Category must not exceed 256 characters.";
+            return false;
+        }
+        if (!string.IsNullOrWhiteSpace(category) &&
+            category is not ("Calendar" or "Tizen.Action.Calendar" or "org.tizen.actionexamples.calendar"))
+        {
+            error = "Category must name Calendar, Tizen.Action.Calendar, or this app.";
+            return false;
+        }
         if (!TryParseOptionalDate(startDate, out var startInclusive) ||
             !TryParseOptionalDate(endDate, out var endExclusive))
         {
@@ -39,7 +52,10 @@ public static class CalendarSearchQueryAdapter
                 requestedLimit <= 0 ? 20 : Math.Min(requestedLimit, 100),
                 hasExplicitFieldSelection ? searchTitle : true,
                 hasExplicitFieldSelection ? searchLocation : true,
-                hasExplicitFieldSelection ? searchNote : true);
+                hasExplicitFieldSelection ? searchNote : true) with
+            {
+                Id = string.IsNullOrWhiteSpace(id) ? null : id,
+            };
             error = string.Empty;
             return true;
         }

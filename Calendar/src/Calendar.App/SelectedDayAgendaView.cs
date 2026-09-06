@@ -27,21 +27,21 @@ internal static class SelectedDayAgendaView
         pane.Add(CalendarDateCellView.CreateLabel(
             agenda.Date.Day.ToString(),
             theme.TextPrimary,
-            pointSize: 10.0f,
+            pixelSize: 80f,
             new Position(34.0f, 24.0f),
             new Size(110.0f, 74.0f),
             HorizontalAlignment.Begin));
         pane.Add(CalendarDateCellView.CreateLabel(
             agenda.Date.ToString("ddd").ToUpperInvariant(),
             theme.TextPrimary,
-            pointSize: 4.0f,
+            pixelSize: 32f,
             new Position(125.0f, 41.0f),
             new Size(110.0f, 42.0f),
             HorizontalAlignment.Begin));
         pane.Add(CalendarDateCellView.CreateLabel(
             agenda.Date.ToString("MMMM yyyy"),
             theme.TextSecondary,
-            pointSize: 3.5f,
+            pixelSize: 28f,
             new Position(35.0f, 97.0f),
             new Size(size.Width - 70.0f, 38.0f),
             HorizontalAlignment.Begin));
@@ -91,7 +91,7 @@ internal static class SelectedDayAgendaView
             pane.Add(CalendarDateCellView.CreateLabel(
                 $"{focusedIndex + 1} / {agenda.Events.Count}",
                 theme.TextSecondary,
-                pointSize: 3.0f,
+                pixelSize: 24f,
                 new Position(paneSize.Width - 125.0f, paneSize.Height - 94.0f),
                 new Size(90.0f, 30.0f),
                 HorizontalAlignment.End));
@@ -126,14 +126,14 @@ internal static class SelectedDayAgendaView
         card.Add(CalendarDateCellView.CreateLabel(
             agendaEvent.TimeText,
             theme.TextSecondary,
-            pointSize: 3.4f,
+            pixelSize: 27.2f,
             new Position(18.0f, 10.0f),
             new Size(110.0f, 30.0f),
             HorizontalAlignment.Begin));
         card.Add(CalendarDateCellView.CreateLabel(
             agendaEvent.Title,
             theme.TextPrimary,
-            pointSize: 4.6f,
+            pixelSize: 36.8f,
             new Position(18.0f, 40.0f),
             new Size(paneWidth - 100.0f, 43.0f),
             HorizontalAlignment.Begin));
@@ -142,7 +142,7 @@ internal static class SelectedDayAgendaView
             card.Add(CalendarDateCellView.CreateLabel(
                 agendaEvent.Location,
                 theme.TextSecondary,
-                pointSize: 3.1f,
+                pixelSize: 24.8f,
                 new Position(18.0f, 83.0f),
                 new Size(paneWidth - 100.0f, 30.0f),
                 HorizontalAlignment.Begin));
@@ -177,14 +177,14 @@ internal static class SelectedDayAgendaView
         card.Add(CalendarDateCellView.CreateLabel(
             "No events",
             theme.TextPrimary,
-            pointSize: 5.0f,
+            pixelSize: 40f,
             new Position(20.0f, 28.0f),
             new Size(paneSize.Width - 100.0f, 45.0f),
             HorizontalAlignment.Center));
         card.Add(CalendarDateCellView.CreateLabel(
             "Press Back to return to the month",
             theme.TextSecondary,
-            pointSize: 3.1f,
+            pixelSize: 24.8f,
             new Position(20.0f, 79.0f),
             new Size(paneSize.Width - 100.0f, 36.0f),
             HorizontalAlignment.Center));
@@ -220,7 +220,7 @@ internal static class SelectedDayAgendaView
         add.Add(CalendarDateCellView.CreateLabel(
             label,
             theme.TextPrimary,
-            pointSize: 3.5f,
+            pixelSize: 28f,
             new Position(18.0f, 0.0f),
             new Size(paneSize.Width - 96.0f, 52.0f),
             HorizontalAlignment.Center));

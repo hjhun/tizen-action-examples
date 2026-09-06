@@ -1,22 +1,40 @@
+using System.Text.RegularExpressions;
+using System.Xml.Linq;
+
 static void Assert(bool value, string message) { if (!value) throw new InvalidOperationException(message); }
 var root = Directory.GetCurrentDirectory();
-var service = File.ReadAllText(Path.Combine(root, "src/Reminder.ScheduleActionProvider/ReminderScheduleService.cs"));
-var generated = File.ReadAllText(Path.Combine(root, "src/Reminder.ScheduleActionProvider/Generated/ReminderScheduleActionProvider.cs"));
-var viewGenerated = File.ReadAllText(Path.Combine(root, "src/Reminder.ViewActionProvider/Generated/ReminderViewActionProvider.cs"));
-var viewService = File.ReadAllText(Path.Combine(root, "src/Reminder.ViewActionProvider/ReminderViewService.cs"));
-var manifest = File.ReadAllText(Path.Combine(root, "src/Reminder.App/tizen-manifest.xml"));
-string[] actions = ["AddRecording", "AddViewing", "CancelRecording", "CancelViewing", "CompleteReminder", "CreateReminder", "DeleteReminder", "GetReservations", "SearchReminder", "UpdateReminder"];
-for (var index = 0; index < actions.Length; index++)
+var catalog = Path.GetFullPath(Path.Combine(root, "../..", "appfw/tizen-action/default-actions"));
+var sections = new Dictionary<string, List<string>>();
+string? category = null;
+foreach (var raw in File.ReadLines(Path.Combine(catalog, "action.seq")))
 {
-    var action = actions[index];
-    Assert(generated.Contains($"{action} = {index + 2},", StringComparison.Ordinal), $"Generated MethodId for {action} is wrong.");
-    Assert(service.Contains($"override TizenEntityStatus {action}", StringComparison.Ordinal), $"Provider does not implement {action}.");
-    Assert(manifest.Contains($"Tv_Tizen.Action.Schedule_{action}", StringComparison.Ordinal), $"Manifest does not advertise {action}.");
+    var line = raw.Trim();
+    if (line.StartsWith('[')) { category = line[1..^1]; sections[category] = []; }
+    else if (category is not null && line.Length > 0 && !line.StartsWith('#')) sections[category].Add(line);
 }
-Assert(generated.Contains("#if TIZEN_RPCPORT_HAS_PRIVILEGE_LOCAL", StringComparison.Ordinal) && generated.Contains("has = false;", StringComparison.Ordinal), "Tizen.NET 13 deny guard is missing.");
-Assert(viewGenerated.Contains("public ScreenBounds ScreenBounds;", StringComparison.Ordinal), "Current View ScreenBounds contract is missing.");
-Assert(viewGenerated.Contains("public WindowBounds WindowBounds;", StringComparison.Ordinal), "Current View WindowBounds contract is missing.");
-Assert(viewGenerated.Contains("public string EntityInfo;", StringComparison.Ordinal), "Current Annotation.EntityInfo contract is missing.");
-Assert(viewService.Contains(".ToJson()", StringComparison.Ordinal), "ViewAnnotation must use generated Entity ToJson().");
-Assert(manifest.Contains("package=\"org.tizen.actionexamples.reminder\"", StringComparison.Ordinal) && manifest.Contains("api-version=\"13\"", StringComparison.Ordinal), "App identity or Tizen.NET 13 target is wrong.");
-Console.WriteLine("Reminder.ActionProvider.Tests: PASS (10 MethodIds/implementations/metadata + current View contract)");
+var manifest = XDocument.Load(Path.Combine(root, "src/Reminder.App/tizen-manifest.xml"));
+XNamespace ns = "http://tizen.org/ns/packages";
+var app = manifest.Root!.Element(ns + "ui-application")!;
+Assert((string?)app.Attribute("type") == "dotnet" && (string?)app.Attribute("api-version") == "14", "Require .NET API14.");
+var metadata = app.Elements(ns + "metadata").Where(e => (string?)e.Attribute("key") == "http://tizen.org/metadata/action/provider")
+    .Select(e => (string)e.Attribute("value")!).ToHashSet();
+var custom = Directory.GetFiles(Path.Combine(root, "actions"), "*.action").Select(Path.GetFileNameWithoutExtension).Order(StringComparer.Ordinal).Cast<string>().ToList();
+foreach (var (name, project, binding, names) in new[]
+{
+    ("Reminder", "Reminder.ScheduleActionProvider", "ReminderScheduleActionProvider", sections["Tizen.Action.Reminder"]),
+    ("ReminderCustom", "Reminder.ScheduleActionProvider", "ReminderCustomActionProvider", custom),
+    ("View", "Reminder.ViewActionProvider", "ReminderViewActionProvider", sections["Tizen.Action.View"]),
+})
+{
+    var generated = File.ReadAllText(Path.Combine(root, "src", project, "Generated", binding + ".cs"));
+    var methods = Regex.Match(generated, @"private enum MethodId\s*:\s*int\s*\{(.*?)\}", RegexOptions.Singleline).Groups[1].Value;
+    for (var index = 0; index < names.Count; index++)
+    {
+        var method = names[index][(names[index].LastIndexOf('_') + 1)..];
+        Assert(Regex.IsMatch(methods, $@"\b{method}\s*=\s*{index + 2},"), name + " method order differs from runtime contract.");
+        Assert(metadata.Remove(names[index]), "Missing/duplicate advertised Action " + names[index]);
+    }
+    Assert(!generated.Contains("TIZEN_RPCPORT_HAS_PRIVILEGE_LOCAL") && !generated.Contains("Disabled for compatibility"), "Generated output was patched.");
+}
+Assert(metadata.Count == 0, "Manifest advertises Actions outside generated categories.");
+Console.WriteLine("Reminder.ActionProvider.Tests: PASS (15 standard/custom/View method IDs and API14 metadata)");

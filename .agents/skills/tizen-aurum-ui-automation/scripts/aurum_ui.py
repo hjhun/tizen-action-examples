@@ -25,7 +25,12 @@ except ImportError as error:
 BOOTSTRAP_APP_ID = "org.tizen.aurum-bootstrap"
 DEFAULT_HOST = os.environ.get("TIZEN_AURUM_HOST", "127.0.0.1")
 DEFAULT_PORT = int(os.environ.get("TIZEN_AURUM_PORT", "50051"))
-MAX_MESSAGE_BYTES = 32 * 1024 * 1024
+# Raw 7680x4320 BGRA screenshots require about 127 MiB. Keep the default
+# bounded and let an explicitly selected high-resolution session opt in.
+MAX_MESSAGE_MIB = int(os.environ.get("TIZEN_AURUM_MAX_MESSAGE_MIB", "32"))
+if not 32 <= MAX_MESSAGE_MIB <= 256:
+    raise SystemExit("TIZEN_AURUM_MAX_MESSAGE_MIB must be between 32 and 256")
+MAX_MESSAGE_BYTES = MAX_MESSAGE_MIB * 1024 * 1024
 
 
 def run(command: list[str], *, capture: bool = False, check: bool = True) -> subprocess.CompletedProcess[str]:
