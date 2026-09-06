@@ -8,6 +8,13 @@ public sealed record PhotoRecord(
     string Path,
     string Note)
 {
+    public bool Favorite { get; init; }
+    public bool Owned { get; init; }
+    public string Album { get; init; } = string.Empty;
+    public string MimeType { get; init; } = "image/png";
+    public long FileSize { get; init; }
+    public string StorageType { get; init; } = "internal";
+
     public const int MaximumIdLength = 256;
 
     public static PhotoRecord Create(

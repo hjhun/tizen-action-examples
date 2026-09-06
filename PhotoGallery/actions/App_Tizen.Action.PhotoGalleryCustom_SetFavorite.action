@@ -1,0 +1,35 @@
+{
+  "version": "v2",
+  "name": "App_Tizen.Action.PhotoGalleryCustom_SetFavorite",
+  "type": "tidl",
+  "category": "Tizen.Action.PhotoGalleryCustom",
+  "description": "Set the app favorite state of an existing Photo; query the Photo again to observe its Extra.favorite state.",
+  "allowedBackground": "true",
+  "autoDispose": "false",
+  "requiredPrivileges": [],
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "string",
+        "description": "Stable Photo ID"
+      },
+      "favorite": {
+        "type": "boolean",
+        "description": "Desired favorite state"
+      }
+    }
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "return": {
+        "type": "Tizen.Entity.Status",
+        "description": "Status"
+      }
+    }
+  },
+  "details": {
+    "appid": "org.tizen.photogallery"
+  }
+}

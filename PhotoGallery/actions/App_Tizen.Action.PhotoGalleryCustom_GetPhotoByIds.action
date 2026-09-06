@@ -1,0 +1,51 @@
+{
+  "version": "v2",
+  "name": "App_Tizen.Action.PhotoGalleryCustom_GetPhotoByIds",
+  "type": "tidl",
+  "category": "Tizen.Action.PhotoGalleryCustom",
+  "description": "Resolve 1 to 100 stable Photo IDs, preserving request order and duplicates; unresolved IDs are returned separately.",
+  "allowedBackground": "true",
+  "autoDispose": "false",
+  "requiredPrivileges": [],
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "ids": {
+        "type": "array",
+        "description": "Ordered stable Photo IDs",
+        "items": {
+          "type": "string",
+          "description": "Stable Photo ID"
+        }
+      }
+    }
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "return": {
+        "type": "Tizen.Entity.Status",
+        "description": "Status"
+      },
+      "result": {
+        "type": "array",
+        "description": "Resolved Photos",
+        "items": {
+          "type": "Tizen.Entity.Photo",
+          "description": "Photo"
+        }
+      },
+      "unresolvedIds": {
+        "type": "array",
+        "description": "Unresolved IDs in request order",
+        "items": {
+          "type": "string",
+          "description": "Unresolved ID"
+        }
+      }
+    }
+  },
+  "details": {
+    "appid": "org.tizen.photogallery"
+  }
+}

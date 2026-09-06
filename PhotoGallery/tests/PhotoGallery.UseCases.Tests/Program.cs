@@ -101,6 +101,7 @@ catch (ObjectDisposedException)
 {
 }
 
+await LibraryTests.Run();
 Console.WriteLine("PhotoGallery.UseCases.Tests PASS");
 
 static async Task AssertCancelledAsync(Task task, string failureMessage)

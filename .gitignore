@@ -15,3 +15,9 @@ Reminder/*.tpk
 
 # Local design-server/prototype workspace
 .superpowers/
+
+# PhotoGallery local verification output
+PhotoGallery/dist/
+PhotoGallery/*.tpk
+PhotoGallery/graphify-out/
+PhotoGallery/tests/__pycache__/

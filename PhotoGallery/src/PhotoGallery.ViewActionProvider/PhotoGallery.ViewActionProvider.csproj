@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <NoWarn>CS0108</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../../Shared/ViewAnnotations/CurrentViewSnapshot.cs" Link="CurrentViewSnapshot.cs" />
+    <Compile Include="../../../Shared/ViewAnnotations/ViewSnapshotPresentation.cs" Link="ViewSnapshotPresentation.cs" />
+    <PackageReference Include="Tizen.NET" Version="14.0.0.19326" />
+    <ProjectReference Include="../PhotoGallery.UseCases/PhotoGallery.UseCases.csproj" />
+    <ProjectReference Include="../PhotoGallery.ActionProvider/PhotoGallery.ActionProvider.csproj" />
+  </ItemGroup>
+</Project>

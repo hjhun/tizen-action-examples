@@ -1,0 +1,15 @@
+csproj_file: PhotoGallery.App.csproj
+profile: common
+api_version: "10.0"
+build_type: Debug
+signing_profile: ""
+files:
+  - PhotoGallery.App.csproj
+  - PhotoGalleryApplication.cs
+  - tizen-manifest.xml
+deps:
+  - ../PhotoGallery.Domain/PhotoGallery.Domain.csproj
+  - ../PhotoGallery.Persistence/PhotoGallery.Persistence.csproj
+  - ../PhotoGallery.UseCases/PhotoGallery.UseCases.csproj
+  - ../PhotoGallery.ActionProvider/PhotoGallery.ActionProvider.csproj
+  - ../PhotoGallery.ViewActionProvider/PhotoGallery.ViewActionProvider.csproj

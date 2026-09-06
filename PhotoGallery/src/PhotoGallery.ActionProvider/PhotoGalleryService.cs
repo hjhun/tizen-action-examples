@@ -1,318 +1,74 @@
 #nullable enable
-
-using System.Diagnostics;
 using System.Text.Json;
 using PhotoGallery.Domain;
 using PhotoGallery.UseCases;
 using RPCPort.PhotoGalleryActionProvider;
 using RPCPort.PhotoGalleryActionProvider.Stub;
-
 namespace PhotoGallery.ActionProvider;
 
-/// <summary>
-/// Generated Action adapter. The synchronous TIDL surface is bounded to a
-/// background-capable Action call; UI code uses the same <see cref="PhotoQueryService"/>
-/// and never calls this provider through RPC.
-/// </summary>
 public sealed class PhotoGalleryService : TizenActionPhoto.ServiceBase
 {
-    private static readonly TimeSpan ProviderReadTimeout = TimeSpan.FromSeconds(5);
-    private readonly IPhotoLibrary _library;
-    private readonly PhotoQueryService _queries;
-
-    public PhotoGalleryService()
-        : this(PhotoGalleryProviderState.Library, PhotoGalleryProviderState.Queries)
+    private readonly GalleryLibraryService _service;
+    public PhotoGalleryService() : this(PhotoGalleryActionProviderHost.Service) { }
+    public PhotoGalleryService(GalleryLibraryService service) => _service = service;
+    public override void OnCreate() { }
+    public override void OnTerminate() { }
+    public override TizenEntityStatus AddPhoto(TizenEntityPhoto photo) => Invoke(() =>
     {
-    }
-
-    public PhotoGalleryService(IPhotoLibrary library, PhotoQueryService queries)
+        if (photo is null || photo.File is null || !string.IsNullOrEmpty(photo.Id))
+            throw new ArgumentException("invalid: provide File.Path and an empty Photo.Id; MediaContent assigns the stable ID");
+        var title = photo.Extra ?? "";
+        // Extra in an Add request is the optional display title; returned Extra is versioned metadata.
+        _service.ImportAsync(photo.File.Path, title, CancellationToken.None).GetAwaiter().GetResult();
+    });
+    public override TizenEntityStatus DeletePhoto(TizenEntityPhoto photo) => Invoke(() => _service.DeleteAsync(Id(photo), CancellationToken.None).GetAwaiter().GetResult());
+    public override TizenEntityStatus GetCurrent(out TizenEntityPhoto result)
     {
-        _library = library ?? throw new ArgumentNullException(nameof(library));
-        _queries = queries ?? throw new ArgumentNullException(nameof(queries));
+        var value = EmptyPhoto(); var status = Invoke(() => value = ToEntity(_service.Current())); result = value; return status;
     }
-
-    public override void OnCreate()
-    {
-    }
-
-    public override void OnTerminate()
-    {
-    }
-
-    public override TizenEntityStatus AddImage(TizenEntityPhoto photo)
-    {
-        var stopwatch = Stopwatch.StartNew();
-        var correlation = SafeCorrelate(photo?.Id);
-        var isValid = HasValidPhotoId(photo);
-        var status = isValid
-            ? Failure("Adding media is unavailable until the target MediaContent registration capability is verified.")
-            : Failure("A stable photo ID is required.");
-        LogInvocation(
-            "Tv_Tizen.Action.Photo_AddImage",
-            correlation,
-            isValid ? "valid" : "invalid",
-            isValid ? "capability-unavailable" : "validation",
-            status,
-            stopwatch);
-        return status;
-    }
-
-    public override TizenEntityStatus DeleteImage(TizenEntityPhoto photo)
-    {
-        var stopwatch = Stopwatch.StartNew();
-        var correlation = SafeCorrelate(photo?.Id);
-        var isValid = HasValidPhotoId(photo);
-        var status = isValid
-            ? Failure("Deleting media is unavailable until the target MediaContent mutation capability is verified.")
-            : Failure("A stable photo ID is required.");
-        LogInvocation(
-            "Tv_Tizen.Action.Photo_DeleteImage",
-            correlation,
-            isValid ? "valid" : "invalid",
-            isValid ? "capability-unavailable" : "validation",
-            status,
-            stopwatch);
-        return status;
-    }
-
     public override TizenEntityStatus Search(TizenEntityQuery query, out List<TizenEntityPhoto> result)
     {
-        var stopwatch = Stopwatch.StartNew();
-        result = [];
-        if (query is null || query.Keyword?.Length > PhotoSearchCriteria.MaximumKeywordLength ||
-            query.Number > PhotoSearchCriteria.MaximumResultCount || query.Number < 0 ||
-            !string.IsNullOrEmpty(query.Category))
+        var values = new List<TizenEntityPhoto>();
+        var status = Invoke(() =>
         {
-            var status = Failure("Search requires a bounded keyword, a result count from 0 to 200, and no category filter.");
-            LogInvocation("Tv_Tizen.Action.Photo_Search", "none", "invalid", "validation", status, stopwatch);
-            return status;
-        }
-
-        try
-        {
-            using var cancellation = new CancellationTokenSource(ProviderReadTimeout);
-            var criteria = PhotoSearchCriteria.Create(query.Keyword, null, null, query.Number == 0 ? 20 : query.Number);
-            result = _queries.SearchAsync(criteria, cancellation.Token).GetAwaiter().GetResult().Photos.Select(ToEntity).ToList();
-            var status = Success();
-            LogInvocation("Tv_Tizen.Action.Photo_Search", "none", "valid", "completed", status, stopwatch);
-            return status;
-        }
-        catch (OperationCanceledException exception)
-        {
-            var status = Failure("The media library did not respond before the bounded provider timeout.");
-            LogInvocation("Tv_Tizen.Action.Photo_Search", "none", "valid", "timeout", status, stopwatch, exception);
-            return status;
-        }
-        catch (Exception exception)
-        {
-            var status = Failure("The media library is unavailable.");
-            LogInvocation("Tv_Tizen.Action.Photo_Search", "none", "valid", "exception", status, stopwatch, exception);
-            return status;
-        }
+            if (query is null) throw new ArgumentException("invalid: query is required");
+            values = _service.Search(query.Id, query.Keyword, query.Category, query.Limit).Select(ToEntity).ToList();
+        });
+        result = values; return status;
     }
-
-    public override TizenEntityStatus GetPhotoByIds(
-        List<string> ids,
-        out List<TizenEntityPhoto> result,
-        out List<string> unresolvedIds)
-    {
-        var stopwatch = Stopwatch.StartNew();
-        result = [];
-        unresolvedIds = [];
-        if (ids is null || ids.Count > PhotoResolver.MaximumIdsPerRequest ||
-            ids.Any(id => string.IsNullOrWhiteSpace(id) || id.Length > PhotoRecord.MaximumIdLength))
-        {
-            var status = Failure("ids must contain at most 100 non-empty stable IDs, each no longer than 256 characters.");
-            LogInvocation("Tv_Tizen.Action.Photo_GetPhotoByIds", SafeCorrelate(ids), "invalid", "validation", status, stopwatch);
-            return status;
-        }
-
-        try
-        {
-            var resolution = PhotoResolver.ResolveByIds(ReadSnapshot(), ids);
-            result = resolution.Photos.Select(ToEntity).ToList();
-            unresolvedIds = resolution.UnresolvedIds.ToList();
-            var status = Success();
-            LogInvocation("Tv_Tizen.Action.Photo_GetPhotoByIds", SafeCorrelate(ids), "valid", "completed", status, stopwatch);
-            return status;
-        }
-        catch (OperationCanceledException exception)
-        {
-            var status = Failure("The media library did not respond before the bounded provider timeout.");
-            LogInvocation("Tv_Tizen.Action.Photo_GetPhotoByIds", SafeCorrelate(ids), "valid", "timeout", status, stopwatch, exception);
-            return status;
-        }
-        catch (Exception exception)
-        {
-            var status = Failure("The media library is unavailable.");
-            LogInvocation("Tv_Tizen.Action.Photo_GetPhotoByIds", SafeCorrelate(ids), "valid", "exception", status, stopwatch, exception);
-            return status;
-        }
-    }
-
+    public override TizenEntityStatus Show(TizenEntityPhoto photo) => Invoke(() => _service.Show(Id(photo)));
+    public override TizenEntityStatus StartSlideshow() => Invoke(_service.StartSlideshow);
+    public override TizenEntityStatus StopSlideshow() => Invoke(_service.StopSlideshow);
     public override TizenEntityStatus ToPresentation(TizenEntityPhoto photo, out TizenEntityPresentation result)
     {
-        var stopwatch = Stopwatch.StartNew();
-        result = new TizenEntityPresentation { Template = string.Empty, Document = string.Empty };
-        if (photo is null || string.IsNullOrWhiteSpace(photo.Id) || photo.Id.Length > PhotoRecord.MaximumIdLength)
-        {
-            var status = Failure("A stable photo ID is required.");
-            LogInvocation("Tv_Tizen.Action.Photo_ToPresentation", SafeCorrelate(photo?.Id), "invalid", "validation", status, stopwatch);
-            return status;
-        }
-
-        try
-        {
-            var resolved = PhotoResolver.ResolveByIds(ReadSnapshot(), [photo.Id]);
-            if (resolved.Photos.Count == 0)
-            {
-                var status = Failure("The requested photo is no longer available.");
-                LogInvocation("Tv_Tizen.Action.Photo_ToPresentation", SafeCorrelate(photo.Id), "valid", "not-found", status, stopwatch);
-                return status;
-            }
-
-            var currentEntity = ToEntity(resolved.Photos[0]);
-            var entityInfo = currentEntity.ToJson();
-            result = new TizenEntityPresentation
-            {
-                Template = JsonSerializer.Serialize(new
-                {
-                    surfaceUpdate = new
-                    {
-                        surfaceId = "photogallery.photo",
-                        root = new
-                        {
-                            type = "Column",
-                            children = new object[]
-                            {
-                                new { type = "Text", text = "${photo.title}" },
-                                new { type = "Text", text = "${photo.id}" },
-                            },
-                        },
-                    },
-                }),
-                Document = JsonSerializer.Serialize(new
-                {
-                    dataModelUpdate = new
-                    {
-                        photo = new { id = currentEntity.Id, title = currentEntity.Extra, entityInfo },
-                        state = new { screen = "detail", availableControls = new[] { "back" } },
-                    },
-                }),
-            };
-            var completed = Success();
-            LogInvocation("Tv_Tizen.Action.Photo_ToPresentation", SafeCorrelate(photo.Id), "valid", "completed", completed, stopwatch);
-            return completed;
-        }
-        catch (OperationCanceledException exception)
-        {
-            var status = Failure("The media library did not respond before the bounded provider timeout.");
-            LogInvocation("Tv_Tizen.Action.Photo_ToPresentation", SafeCorrelate(photo?.Id), "valid", "timeout", status, stopwatch, exception);
-            return status;
-        }
-        catch (Exception exception)
-        {
-            var status = Failure("The media library is unavailable.");
-            LogInvocation("Tv_Tizen.Action.Photo_ToPresentation", SafeCorrelate(photo?.Id), "valid", "exception", status, stopwatch, exception);
-            return status;
-        }
+        var value = new TizenEntityPresentation { Template = "", Document = "" };
+        var status = Invoke(() => { var p = PhotoPresentation.Create(_service.Find(Id(photo))); value.Template = p.Template; value.Document = p.Document; });
+        result = value; return status;
     }
-
-    private IReadOnlyList<PhotoRecord> ReadSnapshot()
+    private static string Id(TizenEntityPhoto? photo) => photo?.Id ?? "";
+    public static TizenEntityPhoto ToEntity(PhotoRecord p) => new()
     {
-        using var cancellation = new CancellationTokenSource(ProviderReadTimeout);
-        return _library.ReadSnapshotAsync(cancellation.Token).GetAwaiter().GetResult();
-    }
-
-    private static TizenEntityPhoto ToEntity(PhotoRecord photo) => new()
-    {
-        Id = photo.Id,
-        Extra = photo.Title,
-        Location = photo.Location,
-        Date = photo.CapturedAt.ToString("O"),
-        Path = photo.Path,
-        Note = photo.Note,
+        Id = p.Id, Extra = JsonSerializer.Serialize(new { schemaVersion = 1, title = p.Title, album = p.Album, favorite = p.Favorite, owned = p.Owned }),
+        Location = p.Location, Date = p.CapturedAt.ToString("O"), Note = p.Note,
+        File = new TizenEntityFile { Id = p.Id, Extra = "", Path = p.Path, StorageType = p.StorageType, Size = (int)Math.Clamp(p.FileSize, 0, int.MaxValue), ModifiedDate = p.CapturedAt.ToString("O"), MimeType = p.MimeType },
     };
-
-    private static TizenEntityStatus Success() => new() { Success = true, Reason = string.Empty };
-
-    private static TizenEntityStatus Failure(string reason) => new() { Success = false, Reason = reason };
-
-    private static bool HasValidPhotoId(TizenEntityPhoto? photo) =>
-        photo is not null && !string.IsNullOrWhiteSpace(photo.Id) && photo.Id.Length <= PhotoRecord.MaximumIdLength;
-
-    private static string SafeCorrelate(string? stableId)
+    public static TizenEntityPhoto EmptyPhoto() => new() { Id = "", Extra = "", Location = "", Date = "", Note = "", File = new TizenEntityFile { Id = "", Extra = "", Path = "", StorageType = "internal", ModifiedDate = "", MimeType = "" } };
+    private static TizenEntityStatus Invoke(Action action)
     {
-        try
-        {
-            return PhotoActionDiagnostics.Correlate(stableId);
-        }
-        catch
-        {
-            return "unavailable";
-        }
+        try { action(); return new() { Success = true, Reason = "" }; }
+        catch (Exception ex) { return new() { Success = false, Reason = GalleryProviderErrors.Describe(ex) }; }
     }
+}
 
-    private static string SafeCorrelate(IReadOnlyCollection<string>? stableIds)
+internal static class GalleryProviderErrors
+{
+    internal static string Describe(Exception ex) => ex switch
     {
-        try
-        {
-            return PhotoActionDiagnostics.Correlate(stableIds);
-        }
-        catch
-        {
-            return "unavailable";
-        }
-    }
-
-    private static void LogInvocation(
-        string action,
-        string correlation,
-        string validation,
-        string branch,
-        TizenEntityStatus status,
-        Stopwatch stopwatch,
-        Exception? exception = null)
-    {
-        try
-        {
-            var message = PhotoActionDiagnostics.Format(
-                action,
-                correlation,
-                validation,
-                branch,
-                status.Success ? "success" : "failure",
-                stopwatch,
-                exception);
-
-            if (branch == "exception")
-            {
-                Tizen.Log.Error("PhotoGallery", message);
-            }
-            else if (branch == "timeout")
-            {
-                Tizen.Log.Warn("PhotoGallery", message);
-            }
-            else
-            {
-                Tizen.Log.Info("PhotoGallery", message);
-            }
-        }
-        catch (Exception diagnosticException)
-        {
-            try
-            {
-                Tizen.Log.Error(
-                    "PhotoGallery",
-                    $"action={action} correlation={correlation} validation=not-run " +
-                    $"branch=diagnostic-failure status={(status.Success ? "success" : "failure")} " +
-                    $"durationMs={Math.Max(0, stopwatch.ElapsedMilliseconds)} " +
-                    $"exception={diagnosticException.GetType().Name}");
-            }
-            catch
-            {
-                // Diagnostics must never alter an Action's typed result.
-            }
-        }
-    }
+        ArgumentException => "invalid: " + ex.Message.Split('\n')[0],
+        InvalidOperationException => "unavailable: " + ex.Message,
+        UnauthorizedAccessException => "unavailable: media access denied",
+        FileNotFoundException => "not_found: the photo file is no longer available",
+        IOException => "unavailable: media storage could not complete the operation",
+        _ => "internal: photo operation failed (" + ex.GetType().Name + ")",
+    };
 }

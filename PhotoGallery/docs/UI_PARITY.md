@@ -1,73 +1,82 @@
-# PhotoGallery UI parity ledger
+# PhotoGallery HTML / NUI parity — 2026-09-07
 
-> Status: the executable browser sample is implemented and pending its first installed NUI counterpart. This ledger never treats a browser capture as native evidence.
+The canonical [executable sample](../refs/one-ui-sample.html) and installed .NET
+Gallery implement Pictures, Albums, Favorites, search, detail, info, slideshow,
+import and deletion confirmation. This ledger supersedes the August browser-only
+proposal. Requirements and architecture are in Markdown, not embedded in the sample.
 
-## Reference audit and Tizen adaptation — 2026-08-09
+## Reference and adaptation
 
-**Primary task and surface:** browse a real device photo library, find a picture, inspect it, and explicitly confirm removal. This is an **Explore** surface: date-grouped image discovery is primary; search and detail are drill-down states.
+Primary reference: Samsung Gallery; official [Gallery support guide](https://www.samsung.com/us/support/answer/ANS10002535/),
+inspected 2026-09-06 for Pictures/Albums, search, information, favorite, delete and
+slideshow. The guide does not identify a precise binary version and allows device
+variation. Four-column paging, TV-distance type, surrounding remote controls and
+explicit focus restoration are Tizen adaptations. Deletion applies only to
+app-imported copies and does not claim Samsung Trash retention or cloud features.
 
-### Authoritative reference sources inspected
+Both surfaces use one centered 1920×1080 canvas, a quiet light library, dark image
+viewer, rounded controls, restrained blue focus and a bounded modal. Native NUI
+uses actual MediaContent; the browser uses local original fixture PNGs. The browser
+`galleryPreview.library(...)` seam loads the native fixture ordering/metadata for
+comparison, and `state(...)` exposes test-only loading/error states. These seams
+are not product commands. The TPK includes no fixture photo library.
 
-1. Samsung Korea, [Samsung Gallery](https://www.samsung.com/sec/apps/samsung-gallery/) — first-party Samsung Gallery product page; fetched successfully on 2026-08-09.
-2. Samsung, [One UI](https://www.samsung.com/us/one-ui/) — Samsung’s first-party One UI entry point; fetched on 2026-08-09 (the regional endpoint redirected to Samsung US home in this environment).
-3. Samsung Support URL research was attempted on 2026-08-09. The older US support route redirected to the generic phones category and the public Galaxy Store detail endpoint returned 404 in this environment, so neither is used as behavioral evidence.
+## Captured state comparison
 
-The successfully fetched Samsung Gallery page establishes the first-party Gallery reference. The sample’s Pictures-first discovery, in-place search, detail inspection, unavailable/empty recovery, and explicit destructive confirmation are restrained category adaptations; they do not claim undocumented Samsung implementation details and do not reproduce Samsung branding, imagery, account content, or device-specific navigation.
+Every link below points to retained evidence. All paired images are 1920×1080.
+Hierarchy, geometry, spacing, content density, colors, controls, state, focus and
+scaling were compared. Native type uses the platform font; browser uses Arial.
 
-| Reference-derived convention | PhotoGallery adaptation for Tizen NUI | Deliberate deviation / reason |
-|---|---|---|
-| Pictures is the discovery surface; individual photos lead to a detail context. | `Pictures` opens on a date-labelled photo grid; Enter/tap opens `Photo details`. | Tizen TV uses four large columns rather than a phone-density grid so remote focus is visible and hit targets stay large. |
-| Search narrows the gallery rather than replacing it with unrelated navigation. | A visible `Search` command opens an in-place query state and an empty-results recovery command. Back or Cancel restores Pictures. | Search is text-only because location, paths, notes, faces, cloud, and account data are outside the privacy-bounded product scope. |
-| Gallery is resilient when library content is unavailable or empty. | Loading, unavailable-media, empty-library, and no-result states have a visible recovery action. | The sample uses local geometric placeholders. Production must query `MediaContent`; fixtures are not product media. |
-| A destructive removal needs an explicit decision. | Detail’s Delete opens a modal that traps focus. Back/Cancel returns focus to Delete; success restores a valid Pictures card. | “Moved out of this gallery view” is intentionally not a claim about Samsung Trash retention; actual MediaContent mutation semantics are an unresolved target capability gate. |
-| One UI uses calm content hierarchy, readable type, and restrained emphasis. | White top bar, neutral surface, single blue focus/action color, compact rounded controls, no gradients/glass/dock/dashboard. | Focus uses blue outline **and** thumb border/scale, which is necessary for remote accessibility and is not a visual copy. |
-
-## Executable sample
-
-- Canonical preview: [`../refs/one-ui-sample.html`](../refs/one-ui-sample.html)
-- Local fixtures: six non-identifying geometric placeholder photos. They contain no paths, locations, people, accounts, or remote images.
-- State reducer: `window.photoGalleryPreview.command(type, value)` is the single command path used by pointer/touch and keyboard. Supported commands are `openSearch`, `closeSearch`, `setQuery`, `openDetail`, `back`, `askDelete`, `cancelDelete`, `confirmDelete`, `retry`, and the test-only `simulate`.
-- Input: pointer/touch click; Arrow keys emulate D-pad traversal; Enter/Space activate; Escape emulates Back. Search Escape restores Pictures. The Delete modal traps the rendered focus list and restores focus deterministically.
-- Scaling: a single centered 1920×1080 canvas transform maps the browser canvas to its viewport. Production NUI must use the corresponding inset-aware ancestor transform, not manual independent scaling.
-
-### Sample state inventory and implementation mapping
-
-| Sample control/state | NUI/TizenFX implementation target | Domain command/state | Action / ViewAnnotation / A2UI mapping |
+| State | Browser | Installed NUI | Comparison / disposition |
 |---|---|---|---|
-| Pictures header and `Search` button | `TextLabel` + focusable `Button` in `PhotoGallery.App` header | `GalleryScreen.Pictures`; `OpenSearch` | No public navigation Action. Header is not annotated. A2UI surface reports current `pictures` state and available `search` control. |
-| Date group and photo card | Real NUI image actor/thumbnail loader with a focusable per-card hit surface | `PhotoRecord` snapshot, `SelectPhoto(id)`, `OpenDetail(id)` | Visible card publishes View ID `pictures:<id>`, `Tizen.Entity.Photo` identity, canonical generated `Photo.ToJson()` in `Annotation.EntityInfo`, real bounds/focus. `View_ToPresentation` derives current photo A2UI from that snapshot. |
-| Search field, Cancel, result grid | NUI text input plus focusable Cancel and photo-card actors | `GalleryScreen.Search`, bounded `PhotoSearchCriteria`, cancellable `SearchAsync` | `Tv_Tizen.Action.Photo_Search` shares `PhotoQueryService`; typed invalid/unavailable failure maps to error. A2UI reports query/result/empty status without raw paths or notes. |
-| Loading grid state | NUI progress/placeholder actors | `GalleryLoadState.Loading`; refresh generation | No stale annotations. A2UI represents loading only; no canned photo content. |
-| Empty library / no results | NUI label + focusable Refresh / Show all button | `GalleryLoadState.Empty` / `SearchEmpty`; `Refresh` / `ClearSearch` | No false Entity annotation. A2UI exposes recovery control and current empty reason. |
-| Media unavailable + Try again | NUI error surface + Button | `GalleryLoadState.Unavailable`; capability/preflight result; `Retry` | Provider returns typed capability-unavailable rather than advertising a fake media operation. A2UI includes bounded error code/message. |
-| Detail header Back, image, metadata | NUI `View` image surface, `TextLabel`, Buttons | `GalleryScreen.Detail`, selected ID; `BackToPictures` | Detail publishes View ID `detail:<id>` while visible. `Tv_Tizen.Action.Photo_ToPresentation` and `View_ToPresentation` must build separate current `surfaceUpdate` / `dataModelUpdate` JSON from the same generated Entity snapshot. |
-| Delete and confirmation modal | NUI modal overlay with explicit focus trap and restoring `FocusManager` target | `RequestDelete(id)`, `CancelDelete`, `ConfirmDelete` | `Tv_Tizen.Action.Photo_DeleteImage` only after target MediaContent delete capability is proven. On success, refresh/resolver verifies postcondition; modal is removed from annotations. A2UI reports confirmation and resulting state, never a static fixture. |
-| Focus ring / selection / resize | NUI `FocusManager`, measured `CalculateScreenPositionSize()`, physical root plus transformed canvas | Focused view ID, selected Entity ID, viewport state | `GetAnnotatedViews`, `GetFocusedView`, `FindById` reflect only live views; enclosing `Tizen.Entity.View` owns measured bounds and `IsFocused`. |
+| Pictures | [Preview](images/preview-pictures-fhd.png) | [Native](images/native-pictures-fhd.png) | Same 4×2 grid, 433×230 thumbnails, captions, header commands and bottom tabs. Preview thumbnail fitting and tab widths were aligned to native. Native startup retains Import focus from loading. |
+| D-pad photo focus | [Preview](images/preview-dpad-focus-fhd.png) | [Native](images/native-dpad-focus-fhd.png) | Both expose visible blue focus plus a second border/scale cue and bounded traversal. Different tested starting selections are intentional. |
+| Albums | [Preview](images/preview-albums-fhd.png) | [Native](images/native-albums-fhd.png) | Folder-derived cover and name lead to album pictures; test imports form Gallery album. |
+| Album pictures | [Preview](images/preview-album-pictures-fhd.png) | [Native](images/native-album-pictures-fhd.png) | Same page/grid under selected album heading; Back returns to album discovery. |
+| Favorites | [Preview](images/preview-favorites-fhd.png) | [Native](images/native-favorites-fhd.png) | Same persisted favorite subset. Native heart uses platform emoji coloring; browser glyph is monochrome. |
+| Detail | [Preview](images/preview-detail-fhd.png) | [Native](images/native-detail-fhd.png) | Full image aspect is preserved in the 1640×690 actor, with Back/title and six commands. Native decode sampling and font rasterization differ. |
+| Information | [Preview](images/preview-info-fhd.png) | [Native](images/native-info-fhd.png) | Same title/album/date/owned-copy context and bounded close control. Metadata comes from current state, not caller snapshots. |
+| Delete | [Preview](images/preview-delete-fhd.png) | [Native](images/native-delete-fhd.png) | Same modal and irreversible-copy wording. Browser capture is after Right to confirm; native capture is initial Cancel. Both states and Back restoration are asserted. |
+| Applied empty search | [Preview](images/preview-search-empty-fhd.png) | [Native](images/native-search-empty-fhd.png) | Same Search/Close controls and no-results recovery. Native Apply explicitly dismisses the IME and retains button focus. |
+| Search input / IME | Browser uses host input field | [Native keyboard](images/native-search-keyboard-fhd.png) | Native system IME owns its inset; the uniform canvas shrinks and centers without discarding draft. Browser has no Tizen IME, an explicit platform difference. |
+| Import form | [Preview](images/preview-import-fhd.png) | [Native](images/native-import-fhd.png) | Same local-file workflow and Cancel-first modal. Only native performs real copy/MediaContent registration. |
+| Import validation | [Preview](images/preview-import-error-fhd.png) | [Native](images/native-import-error-fhd.png) | Both show bounded invalid-path feedback inside the modal. The browser's fixture-only message is an adaptation; actual storage restrictions are native. |
+| Empty library | [Preview](images/preview-empty-fhd.png) | [Native](images/native-empty-fhd.png) | Same no-pictures hierarchy and Import recovery. No invented photo entities. |
+| Unavailable / recovery | [Preview](images/preview-error-fhd.png) | [Native error](images/native-metadata-error-fhd.png), [restored](images/native-recovered-fhd.png) | Browser injects state. Native corrupt-metadata test reaches real failure, then valid-state restore/restart recovers IDs and favorite. |
+| Loading | [Preview](images/preview-loading-fhd.png) | Transient real MediaContent scan, no retained frame | Native async loading is implemented; a stable captured loading frame is not claimed. Its controls/empty layout share the tested root. |
 
-## A2UI current-state contract
+Native source-typed [Import](images/native-import-typed-fhd.png), its
+[result](images/native-import-result-fhd.png), and confirmed
+[Delete result](images/native-delete-result-fhd.png) prove the real mutation UI.
+Search verifies the new ID and its later absence; the source remains intact.
+Slideshow advances actual selected photos on the 3-second timer and Stop retains
+selection; these temporal postconditions are Action assertions rather than a still
+image pretending to prove movement.
 
-PhotoGallery supports Presentation through `Tv_Tizen.Action.Photo_ToPresentation` and the required View `ToPresentation` path. Therefore every production presentation must be generated from the **current generated Photo Entity snapshot and rendered reducer state**, not from the browser fixture.
+Small font metrics, anti-aliasing, emoji rendering, focus ring rasterization and
+the native Back/Home overlay are platform differences. Browser controls cannot
+replicate storage, Tizen IME or MediaContent and are not evidence for those APIs.
+No screenshots are reconstructed, composited or scaled to claim a native profile.
 
-| Producer | Required output | Consumer and proof still required |
+## Scaling and interoperability
+
+| Slice | Evidence | Scope |
 |---|---|---|
-| `Tv_Tizen.Action.Photo_ToPresentation` for a resolved current `Photo` | Valid JSON `Presentation.Template` with `surfaceUpdate`, and independent JSON `Presentation.Document` with matching `dataModelUpdate`; bounded One UI profile semantics for title/image state, selection, availability, and controls | DisplayPresentation’s versioned Samsung One UI A2UI profile must render the real PhotoGallery output on the Common Emulator. No target evidence yet. |
-| `Common_Tizen.Action.View_ToPresentation` for `pictures:<id>` / `detail:<id>` | Same two JSON documents derived from `Annotation.EntityInfo` created by generated `Photo.ToJson()`, plus live focus/visible state | Discover annotated View, parse nested `EntityInfo`, call View action, then compare DisplayPresentation render. No provider or target evidence yet. |
+| FHD | Paired table above | Full UI, D-pad/pointer/keyboard, modal/back restoration and live annotations |
+| UHD | [3840×2160](images/native-pictures-uhd.png) | Actual native 2× rendering, bounds and 110 Action checks |
+| DCI 4K | [Pictures](images/native-pictures-dci4k.png), [Detail](images/native-detail-dci4k.png) | Actual 4096×2160, 2× canvas, 128px side margins, 81 geometry/View checks |
+| 8K | Host and browser 7680×4320 tests | **Unverified on target due to emulator DRM constraint** |
+| Current-state presentations | [Action](images/native-action-presentation-fhd.png), [photo View](images/native-view-presentation-fhd.png), [page View](images/native-page-presentation-fhd.png) | Actual installed DisplayPresentation, legacy A2UI v0.8; renderer UI belongs to DisplayPresentation |
 
-Privacy boundary: external presentation may use a title and stable ID only after the generated schema is inspected. It must not expose raw MediaContent paths, location, notes, thumbnail bytes, accounts, or unbounded metadata. The exact generated `Photo.ToJson()` fields and projection policy remain a code-generation gate.
+The browser suite has 16 assertions, the full FHD suite 127. High-resolution Home
+warnings/occasional Aurum transport crashes required a disposable-VM reboot and
+warning dismissal. Complete high-resolution D-pad input is not inferred from
+geometry/captures; see [validation](STAGE2_VALIDATION.md) for exact boundaries.
 
-## Capture and comparison ledger
-
-| Slice/state | HTML capture | Installed Aurum capture | Comparison: hierarchy / geometry / type / spacing / color / controls / density / focus / state / scaling | Status |
-|---|---|---|---|---|
-| Pictures, initial focused search | Playwright Chromium headless [1920×1080 capture](images/html-pictures-1920x1080.png) | Not implemented/installed | Browser hierarchy and Search focus render; native comparison remains unavailable. | Browser pass / native open |
-| Pictures, focused photo card | D-pad ArrowRight asserted the first card focus cue | Not implemented/installed | Browser focus movement works; native card and measured focus remain unavailable. | Browser pass / native open |
-| Search, matching results | `Morning` query produced one result, then pointer activation opened detail | Not implemented/installed | Browser query/result flow works; native text input and cancellable real media query remain unavailable. | Browser pass / native open |
-| Search, empty results | `missing` query rendered no-result recovery; Show all returned Pictures | Not implemented/installed | Browser recovery works; native route remains unavailable. | Browser pass / native open |
-| Detail | Search result pointer activation rendered detail | Not implemented/installed | Browser detail works; target thumbnail loading remains unavailable. | Browser pass / native open |
-| Delete confirmation / Cancel focus restoration | Escape closed modal and restored `Delete`; confirmation returned to Pictures with visible outcome | Not implemented/installed | Browser modal focus defect was fixed; actual mutation capability and NUI modal remain unavailable. | Browser pass / native open |
-| Media unavailable | Test-only state injection rendered unavailable; Retry returned Pictures and restored Search focus | Not implemented/installed | The preview state is covered, but target capability preflight remains unavailable. | Browser pass / native open |
-| Loading / responsive canvas | Test-only state injection [1920×1080](images/html-loading-1920x1080.png) and [1280×720](images/html-loading-1280x720.png) captures; smaller viewport asserted a non-identity canvas transform | Not implemented/installed | Browser loading and reference-canvas scaling work; native viewport behavior remains unavailable. | Browser pass / native open |
-
-## Evidence boundary
-
-Browser verification may prove the sample’s interaction and responsive canvas only. On 2026-08-11, Playwright Chromium headless ran D-pad card focus, Pictures → Search matching/no-result → Detail → Delete cancel/confirm plus injected unavailable/loading states, and retained the linked 1920×1080 and 1280×720 PNG captures. The injected states are test seams, not user-reachable product commands. It does **not** prove MediaContent access, generated bindings, NUI rendering, package signing, provider discovery, ViewAnnotation, A2UI, DisplayPresentation rendering, Aurum input, or Telegram screenshot delivery. Each must be added to this ledger with retained installed-target evidence before the corresponding status becomes pass.
+Capture provenance: 2026-09-06/07, Public Tizen 10.1 Unified Common Emulator,
+`emulator-26111` FHD and owned `emulator-26101` UHD/DCI, app
+`org.tizen.photogallery`, repository Aurum screenshot/remote-key/native-coordinate
+RPCs. Aurum accessibility tree was empty; actual View bounds and inspected native
+frames supplied the coordinate fallback. Browser captures use Chromium through
+agent-browser. Original test PNGs are in `../tests/fixtures/`. Pre-existing August
+`html-*.png` captures are historical and not current parity evidence.
