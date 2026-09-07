@@ -68,6 +68,7 @@ internal sealed class ReminderApplication : NUIApplication
     {
         base.OnResume();
         _paused = false;
+        OnWindowResized(this, EventArgs.Empty);
         RefreshFromService();
     }
 

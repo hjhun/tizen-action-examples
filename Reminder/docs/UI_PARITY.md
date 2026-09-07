@@ -23,6 +23,19 @@ input after Save reports the external deletion. The
 [reservation cancellation capture](images/reminder-live-refresh-focus.png)
 shows cleared detail/list data and focus restored to the visible Search action.
 
+## Resume geometry follow-up (2026-09-08)
+
+`OnResume` now reuses the resize path after clearing the paused flag and before
+refreshing service data, covering geometry events skipped while paused. For an
+existing canvas, this applies valid window/inset geometry without recreating
+editor actors; invalid geometry retains the previous frame's geometry.
+`Reminder.Core.Tests` passes and the Reminder Release build completes with zero
+warnings and errors. These are host regression and compile results, not lifecycle
+RED/GREEN or native acceptance. Actual pause/inset changes and retained drafts,
+caret/IME focus, modal focus and measured annotations remain unverified for this
+change. Native high-resolution coverage and SystemInfo initial sizing remain open.
+Earlier UI evidence retains its original validation scope.
+
 ## Reference and adaptation
 
 The [official Samsung Reminder guide](https://www.samsung.com/us/support/answer/ANS10003651/)
