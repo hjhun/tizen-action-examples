@@ -1,24 +1,24 @@
 # Common Emulator TPK 배포 묶음
 
-- 빌드 날짜: 2026-09-08T07:56:56+09:00.
-- 소스 기준 commit: `9a951b6dbdb1f91a46a08a21fbd0cb983e151e10`. Calendar/Reminder/PhotoGallery/Browser는 해당 committed source에서 빌드했습니다.
-- DisplayPresentation은 이 commit 위의 기존 **미커밋 작업본**에서 빌드했습니다. 패키지 배포 commit만으로 renderer 산출물을 재현할 수는 없습니다. 이후 `Record API14 Presentation provider and legacy paging support` 소스 커밋에 해당 구현을 선별 포함했습니다. [소스 검토 기록](../DisplayPresentation/docs/UI_PARITY.md#2026-09-08-source-review)을 참조하세요.
+- 빌드 날짜: 2026-09-08T08:30:30+09:00.
+- 소스 기준 commit: `ff7a432f13451a9da0dd7c66e58427c9c07781c2`. 5개 앱 모두 해당 committed source에서 빌드했습니다.
+- DisplayPresentation도 커밋된 소스를 사용합니다. 이전 미커밋 작업본 기반 패키징과 구분하며 [소스 검토 기록](../DisplayPresentation/docs/UI_PARITY.md#2026-09-08-source-review)을 참조하세요.
 - Release / .NET 8, dotnet API14. Manifest 최소 플랫폼 버전10.0과 구분합니다. NuGet 참조는 기존 버전을 유지했습니다.
 - 기존 Tizen Studio Common Emulator 시험용 signer 사용. TV/제품 배포 인증을 의미하지 않습니다.
 
 | 앱 | TPK | 크기(bytes) | DLL | 빌드 warnings/errors |
 |---|---|---:|---:|---|
-| Calendar | [org.tizen.calendar-0.1.0-api14.tpk](org.tizen.calendar-0.1.0-api14.tpk) | 290255 | 7 | 0/0 |
-| Reminder | [org.tizen.reminder-0.1.0-api14.tpk](org.tizen.reminder-0.1.0-api14.tpk) | 219734 | 6 | 0/0 |
-| PhotoGallery | [org.tizen.photogallery-0.1.0-api14.tpk](org.tizen.photogallery-0.1.0-api14.tpk) | 218071 | 6 | 0/0 |
-| Browser | [org.tizen.browser-0.1.0-api14.tpk](org.tizen.browser-0.1.0-api14.tpk) | 248934 | 6 | 227/0 |
-| DisplayPresentation | [org.tizen.displaypresentation-0.1.0-api14.tpk](org.tizen.displaypresentation-0.1.0-api14.tpk) | 166661 | 6 | 0/0 |
+| Calendar | [org.tizen.calendar-0.1.0-api14.tpk](org.tizen.calendar-0.1.0-api14.tpk) | 290295 | 7 | 0/0 |
+| Reminder | [org.tizen.reminder-0.1.0-api14.tpk](org.tizen.reminder-0.1.0-api14.tpk) | 219788 | 6 | 0/0 |
+| PhotoGallery | [org.tizen.photogallery-0.1.0-api14.tpk](org.tizen.photogallery-0.1.0-api14.tpk) | 218100 | 6 | 0/0 |
+| Browser | [org.tizen.browser-0.1.0-api14.tpk](org.tizen.browser-0.1.0-api14.tpk) | 248986 | 6 | 227/0 |
+| DisplayPresentation | [org.tizen.displaypresentation-0.1.0-api14.tpk](org.tizen.displaypresentation-0.1.0-api14.tpk) | 166717 | 6 | 0/0 |
 
 모두 package/app ID=`org.tizen.<소문자 앱명>`, version0.1.0입니다. [SHA256SUMS](SHA256SUMS)에 전체 SHA256을 기록했습니다. Music/Video는 디자인 참고 파일만 있으며 빌드 가능한 앱이 없어 포함하지 않았습니다.
 
 ## 검사 범위
 
-- 5개 앱 빌드·패키징 성공. Browser의 기존 generated nullable 등 경고227개는 보존했으며 generated 원본을 수정하지 않았습니다.
+- 5개 앱 빌드·패키징 성공. 이번 빌드 경고/오류 수는 위 표에 기록했습니다. Browser의 기존 generated 경고는 수작업 수정하지 않았습니다.
 - ZIP CRC, manifest source byte equality, 전체 Release DLL 및 app-owned schema resource byte equality 확인.
 - author/distributor 서명10개: JDK XMLDSig로 C14N11 내부 참조를 포함한 digest와 RSA-SHA512 signature 검증 PASS. 전체 payload coverage도 확인했습니다. 인증서 신뢰 체인/폐기 상태/제품 설치 검증은 아닙니다.
 - 이번 TPK는 target에 설치하거나 실행하지 않았습니다. 과거 source/native 검증과 새 패키지 검사를 구분합니다.
