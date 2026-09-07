@@ -8,13 +8,13 @@ namespace DisplayPresentation.ActionProvider;
 /// </summary>
 public static class DisplayPresentationActionProviderHost
 {
-    private static TizenActionDisplay _stub;
+    private static TizenActionPresentation _stub;
 
     public static void Start(PresentationRenderCoordinator renderer)
     {
         ArgumentNullException.ThrowIfNull(renderer);
         DisplayPresentationActionProviderState.Configure(renderer);
-        _stub ??= new TizenActionDisplay();
+        _stub ??= new TizenActionPresentation();
         if (!_stub.GetListenStatus())
         {
             _stub.Listen(typeof(DisplayPresentationService));

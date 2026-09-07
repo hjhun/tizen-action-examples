@@ -1,0 +1,16 @@
+csproj_file: DisplayPresentation.App.csproj
+profile: common
+api_version: "10.0"
+build_type: Release
+signing_profile: ""
+files:
+  - DisplayPresentation.App.csproj
+  - DisplayPresentationApplication.cs
+  - OneUiPresentationCanvas.cs
+  - tizen-manifest.xml
+deps:
+  - ../DisplayPresentation.Domain/DisplayPresentation.Domain.csproj
+  - ../DisplayPresentation.UseCases/DisplayPresentation.UseCases.csproj
+  - ../DisplayPresentation.Persistence/DisplayPresentation.Persistence.csproj
+  - ../DisplayPresentation.ActionProvider/DisplayPresentation.ActionProvider.csproj
+  - ../DisplayPresentation.ViewActionProvider/DisplayPresentation.ViewActionProvider.csproj

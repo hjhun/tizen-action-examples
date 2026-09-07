@@ -7,6 +7,8 @@ Assert(Viewport.TryCreate(2560, 1080, new Insets(0, 0, 0, 0), out var wide) && N
 Assert(Viewport.TryCreate(1920, 1080, new Insets(10, 30, 20, 40), out var inset) && inset.OffsetX > 10f && inset.OffsetY == 20f, "Asymmetric insets must be included in canvas placement.");
 Assert(!Viewport.TryCreate(0, 1080, new Insets(0, 0, 0, 0), out _), "Zero width must be rejected.");
 Assert(!Viewport.TryCreate(100, 100, new Insets(50, 50, 0, 0), out _), "Insets that consume width must be rejected.");
+Assert(!Viewport.TryCreate(1920, 1080, new Insets(-10, 0, 0, 0), out _), "Negative insets must not expand the drawable area.");
+Assert(!Viewport.TryCreate(1920, 1080, new Insets(0, float.NaN, 0, 0), out _), "Non-finite insets must preserve the existing frame.");
 Console.WriteLine("DisplayPresentation.Domain.Tests: PASS");
 
 static bool Near(float value, float expected) => MathF.Abs(value - expected) < .001f;

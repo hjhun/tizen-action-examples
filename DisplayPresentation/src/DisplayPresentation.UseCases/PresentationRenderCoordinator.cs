@@ -12,7 +12,7 @@ public sealed class PresentationRenderCoordinator
     private readonly object _gate = new();
     private readonly A2UiPresentationParser _parser;
     private long _requestId;
-    private RenderOutcome _current = RenderOutcome.Fail(RenderFailureKind.InvalidInput, "No presentation is currently available.");
+    private RenderOutcome _current = RenderOutcome.Empty();
 
     public PresentationRenderCoordinator(A2UiPresentationParser? parser = null)
     {
@@ -51,10 +51,10 @@ public sealed class PresentationRenderCoordinator
     /// </summary>
     public RenderOutcome Dismiss()
     {
-        var outcome = RenderOutcome.Fail(RenderFailureKind.InvalidInput, "No presentation is currently available.");
-        Interlocked.Increment(ref _requestId);
+        var outcome = RenderOutcome.Empty();
         lock (_gate)
         {
+            Interlocked.Increment(ref _requestId);
             _current = outcome;
         }
 

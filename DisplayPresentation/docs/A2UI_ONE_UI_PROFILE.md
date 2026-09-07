@@ -13,6 +13,31 @@ This renderer is an **Inspect / Operate** surface, not a landing page or dashboa
 
 Google A2UI가 versioned wire contract, surface lifecycle, catalog, semantic component, data binding과 client action을 소유한다. Samsung One UI adaptation은 그 의미를 Tizen NUI component, typography, spacing, shape, color, focus와 input으로 표현하는 renderer 책임이다. Renderer support matrix는 Google A2UI catalog를 재정의하지 않는다.
 
+## Implemented scope (2026-09-06)
+
+The current app builds against .NET API 14 and exposes
+`Tv_Tizen.Action.Presentation_Show` plus the four common View actions. Only the
+legacy split transport and Column/Text semantics below are implemented. The
+repository's plain `dataModelUpdate.value` object, optional Text `role` and direct
+array children are compatibility conventions, not claims of complete official
+v0.8 JSONL conformance. Canonical version/catalog negotiation, client actions,
+Button/TextField payload components, loading composition, and transparent window
+policy remain future work. Renderer-owned pagination controls are not payload
+Button support.
+
+JSON pointer bindings accept up to eight segments and 1,024 characters with `~0`
+and `~1` escapes and canonical nonnegative array indices. Each JSON string is
+bounded to 65,536 UTF-16 code units. Calendar's 100 short events fit 501 nodes;
+longer aggregate output fails the transport bound explicitly. Four text fields
+are shown per page; Previous/Next and Dismiss are renderer-owned controls.
+Initial focus prefers enabled Next, then Previous, then Dismiss. Back/dismiss
+clears the presentation to a neutral empty state and never restores old data.
+
+The browser and host checks in [the follow-up record](2026-09-06-interop-followup.md)
+passed. Native compositing, input, focus restoration and annotation measurements
+remain target gates. The broader matrices below are design requirements where
+implementation is explicitly marked pending, not proof of delivered features.
+
 ## Wire envelope and safety boundary
 
 The current Tizen Presentation compatibility adapter requires `Template` to be one JSON object with legacy v0.8 `surfaceUpdate` and `Document` to be one JSON object with matching `dataModelUpdate`. Both are untrusted. This split pair is retained for existing producers but is **not** labeled v0.9.1. A future canonical adapter must explicitly negotiate version/catalog and process the matching v0.9.1 lifecycle (`createSurface`, `updateComponents`, `updateDataModel`, `deleteSurface`) or a separately declared candidate profile; message names from different versions may not be mixed. Every adapter performs JSON parsing, type checks, schema/profile validation, binding resolution, depth/count/string limits, lifecycle/order checks, and stale-request checks before the NUI renderer receives a semantic tree.
@@ -46,8 +71,8 @@ The host parser currently implements the bounded legacy-compatible `Column`/path
 
 | A2UI component | Accepted v0.1 properties/bindings | Semantic node | reusable NUI component | One UI treatment | Input/state behavior | bounds and privacy |
 |---|---|---|---|---|---|---|
-| `Column` | `id`; ordered `children` component IDs; no styling props | `VerticalGroup` | `OneUiSection` / `OneUiStack` | 24dp outer gutter, 16dp related-item gap, neutral full-window surface; section container only for explicit grouping | Not independently focusable. D-pad traverses its enabled focusable descendants. | Maximum depth 4, 32 nodes; IDs ≤64 ASCII-safe chars; no hidden content node publication. |
-| `Text` | `id`; `text.path` to a scalar string in document `value`; optional profile enum `role`: `headline`, `title`, `body`, `label`, `supporting` | `TextValue` | `OneUiText` | Profile picks type, never payload font: headline 32sp/semibold, title 24sp/semibold, body 18sp/regular, label 14sp/medium, supporting 16sp/regular; ink/muted tokens provide hierarchy | Static, non-focusable unless it is the label child of a supported control. Loading uses profile skeleton; error is profile-owned. | One bound value ≤256 chars; only scalar strings; text is escaped; source data fields not bound into rendered nodes are not exposed. |
+| `Column` | `id`; ordered `children.explicitList` IDs (direct array retained as legacy repository shorthand); no styling props | `VerticalGroup` | `OneUiSection` / `OneUiStack` | 1920×1080 reference canvas; content at (132,176), 1656×660; four 120px fields per page; neutral surface and explicit group actors | Not independently focusable. D-pad traverses its enabled focusable descendants. | Maximum depth 4, 512 nodes; IDs ≤64 ASCII-safe chars; no hidden content node publication. |
+| `Text` | `id`; `text.path` through bounded nested objects/arrays to a scalar string in document `value`; optional profile enum `role`: `headline`, `title`, `body`, `label`, `supporting` | `TextValue` | `OneUiText` | Profile picks type, never payload font: reference PixelSize: headline 44, title 36, body 28, label 24, supporting 26; ink/muted tokens provide hierarchy | Static, non-focusable unless it is the label child of a supported control. Loading uses profile skeleton; error is profile-owned. | One bound value ≤256 chars; only scalar strings; text is escaped; source data fields not bound into rendered nodes are not exposed. |
 | `Button` | `id`; exactly one `Text` label child; `action.name` from a registered allowlist; `enabled` boolean binding | `Command` | `OneUiButton` | Primary filled button or secondary outlined button is selected by registered action semantics, not payload color; minimum 48dp hit/focus height | D-pad/keyboard arrows move in deterministic document order; Enter/Space and pointer Down+Up-inside dispatch the same command; disabled is not focusable; Back restores invoker after profile modal recovery. | Action names ≤64 chars and must be registered by app; no payload callback/script; action argument is bounded schema data only. |
 | `TextField` | `id`; `label` Text child; `value.path`; `inputType` enum `shortText`/`number`/`obscured`; `enabled` binding | `Input` | `OneUiTextField` | Label above field, 1dp neutral outline, 12dp radius, 16dp internal padding; focused outline + elevation/scale cue | Enter begins/commits edit according to active editor; pointer focuses; Back cancels edit and restores focus; obscured text is never reflected in Annotation or Presentation snapshot. | Maximum input 256 chars; no remote validation or arbitrary regex; obscured values are redacted. |
 
@@ -68,9 +93,9 @@ NUI uses an inset-aware 1920×1080 reference canvas with one centered uniform an
 
 ## Annotation and A2UI round trip
 
-Each currently visible meaningful component has a stable per-surface View ID (`display:<surface-id>:<component-id>`). The enclosing `Tizen.Entity.View` owns measured `ScreenBounds`/`WindowBounds` and actual `IsFocused`; nested `Annotation` carries `EntityType`, `EntityId`, and generated `Presentation.ToJson()` in `EntityInfo`. Snapshot content excludes obscured values, unrendered source fields, and parser diagnostics that could disclose raw payloads.
+The current page has a stable View ID (`display:<surface-id>:page:<index>`); its enabled Previous/Next/Dismiss controls append `:control:<name>`. These annotations serialize the visible semantic page only, not the full source surface. The enclosing `Tizen.Entity.View` owns measured `ScreenBounds`/`WindowBounds` and actual `IsFocused`; nested `Annotation` carries `EntityType`, `EntityId`, and generated `Presentation.ToJson()` in `EntityInfo`. Snapshot content excludes obscured values, unrendered source fields, and parser diagnostics that could disclose raw payloads.
 
-`View_ToPresentation` reconstructs separate `surfaceUpdate` and `dataModelUpdate` JSON from the accepted semantic tree, not the raw incoming payload. It preserves surface ID, supported node order, allowed properties, bounded resolved current values, enabled/selected state, and profile version, while remaining semantically equivalent to the rendered tree.
+`View_ToPresentation` reconstructs separate `surfaceUpdate` and `dataModelUpdate` JSON from the currently visible semantic page, not the raw incoming payload or off-page content. It preserves surface ID, supported node order, allowed properties, bounded resolved current values, enabled/selected state, and profile version, while remaining semantically equivalent to the rendered tree.
 
 For the current compatibility profile this reconstruction intentionally remains legacy v0.8 so existing consumers are not broken. Canonical v0.9.1 publication, when added, must emit its own ordered lifecycle messages and catalog declaration through a distinct adapter/contract; v1.0 remains Candidate and cannot be advertised as stable.
 
@@ -79,7 +104,7 @@ For the current compatibility profile this reconstruction intentionally remains 
 - **Protocol source audit:** current v0.9.1 lifecycle/catalog baseline and v1.0 Candidate status inspected; canonical v0.9.1 parser conformance is not implemented.
 - **Legacy compatibility:** current `surfaceUpdate` / `dataModelUpdate` parser and serializer are bounded host-tested compatibility behavior, not official v0.9.1 conformance.
 - **Renderer source audit:** complete for the v0.1 Samsung One UI adaptation references above.
-- **Executable browser preview:** source/parse structure and JavaScript syntax checked; visual browser/console verification remains pending because this worker image has no browser automation runtime.
-- **Cross-app fixtures:** Browser currently emits an empty component surface and non-profile document shape; PhotoGallery has no Presentation producer. Neither may yet be used as positive v0.1 evidence.
+- **Executable browser preview:** Chromium checks pass for actual Calendar/reminder fixtures, 100 pages, keyboard, resize, dismissal and malformed/unsupported states. The FHD browser image is recorded in [UI_PARITY.md](UI_PARITY.md); native comparison remains pending.
+- **Cross-app fixtures:** Calendar event/reminder and shared page/control producers pass host parser/serializer checks. Earlier Browser/PhotoGallery gaps remain outside this follow-up; no fresh positive evidence is claimed for those apps.
 - **Native/Aurum parity and target round-trip:** not yet verified; tracked in `UI_PARITY.md`. The app now publishes a lock-protected View snapshot only after `CalculateScreenPositionSize()` yields finite positive geometry; the generated View provider maps discovery and `View_ToPresentation` back to that exact current generated Presentation snapshot. Invalid/unsupported inputs instead render a profile-owned `Dismiss` recovery control; dismissing never restores a prior payload. This is host-build evidence, not target evidence.
 - **Transparent overlay:** unverified. No claim may be made from an ARGB8888 buffer, host compile, `WindowMode.Transparent`, `SetTransparency(true)`, or transparent View/root color. Required evidence is a Common Emulator native screenshot sequence over a known underlying app (fully transparent, semitransparent, and opaque regions), plus D-pad/key focus, pointer/touch inside/outside declared hit regions, Back/dismiss, focus restoration, pause/resume, and opaque-fallback traces.

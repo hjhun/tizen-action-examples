@@ -10,7 +10,8 @@ namespace DisplayPresentation.UseCases;
 public sealed class A2UiPresentationParser
 {
     public const int MaximumJsonCharacters = 64 * 1024;
-    public const int MaximumNodes = 32;
+    // A bounded Calendar collection has one root plus five components per event.
+    public const int MaximumNodes = 512;
     public const int MaximumDepth = 4;
     public const int MaximumDisplayCharacters = 256;
     public const int MaximumIdentifierCharacters = 64;
@@ -49,7 +50,7 @@ public sealed class A2UiPresentationParser
         if (template.ValueKind != JsonValueKind.Object || document.ValueKind != JsonValueKind.Object ||
             !template.TryGetProperty("surfaceUpdate", out var surfaceUpdate) || surfaceUpdate.ValueKind != JsonValueKind.Object ||
             !document.TryGetProperty("dataModelUpdate", out var dataModelUpdate) || dataModelUpdate.ValueKind != JsonValueKind.Object ||
-            !TryString(surfaceUpdate, "surfaceId", out var surfaceId) ||
+            !TryIdentifier(surfaceUpdate, "surfaceId", out var surfaceId) ||
             !TryString(dataModelUpdate, "surfaceId", out var documentSurfaceId) || surfaceId != documentSurfaceId ||
             !TryExactString(dataModelUpdate, "path", "/") ||
             !surfaceUpdate.TryGetProperty("components", out var components) || components.ValueKind != JsonValueKind.Array ||
@@ -156,7 +157,7 @@ public sealed class A2UiPresentationParser
         {
             if (definition is TextDefinition text)
             {
-                if (!TryValueAtRootPath(value, text.Path, out var displayValue))
+                if (!LegacyA2UiBindings.TryResolveString(value, text.Path, out var displayValue))
                 {
                     failure = Invalid($"Document does not provide a string for '{text.Path}'.");
                     return null;
@@ -201,9 +202,9 @@ public sealed class A2UiPresentationParser
         if (type.NameEquals("Column"))
         {
             if (type.Value.ValueKind != JsonValueKind.Object || !HasOnlyProperties(type.Value, "children") ||
-                !TryIdentifiers(type.Value, "children", out var children))
+                !TryIdentifiers(type.Value, out var children))
             {
-                failure = Unsupported("Column supports only an ordered children ID array.");
+                failure = Unsupported("Column requires children.explicitList (or a legacy repository ID array).");
                 return false;
             }
             definition = new ColumnDefinition(id, children);
@@ -215,9 +216,9 @@ public sealed class A2UiPresentationParser
             if (type.Value.ValueKind != JsonValueKind.Object || !HasOnlyProperties(type.Value, "text", "role") ||
                 !type.Value.TryGetProperty("text", out var text) || text.ValueKind != JsonValueKind.Object ||
                 !HasOnlyProperties(text, "path") || !TryString(text, "path", out var path) ||
-                !IsRootPath(path))
+                !LegacyA2UiBindings.IsPath(path))
             {
-                failure = Unsupported("Text supports only a root string text.path and optional profile role.");
+                failure = Unsupported("Text requires a bounded absolute string text.path and optional renderer role.");
                 return false;
             }
 
@@ -236,10 +237,10 @@ public sealed class A2UiPresentationParser
         return false;
     }
 
-    private static bool TryIdentifiers(JsonElement element, string property, out IReadOnlyList<string> identifiers)
+    private static bool TryIdentifiers(JsonElement element, out IReadOnlyList<string> identifiers)
     {
         identifiers = Array.Empty<string>();
-        if (!element.TryGetProperty(property, out var array) || array.ValueKind != JsonValueKind.Array)
+        if (!LegacyA2UiBindings.TryChildren(element, out var array) || array.GetArrayLength() > MaximumNodes)
         {
             return false;
         }
@@ -276,16 +277,6 @@ public sealed class A2UiPresentationParser
 
     private static bool TryExactString(JsonElement element, string property, string expected) =>
         element.TryGetProperty(property, out var child) && child.ValueKind == JsonValueKind.String && child.GetString() == expected;
-
-    private static bool IsRootPath(string path) => path.StartsWith("/", StringComparison.Ordinal) && path.Length > 1 &&
-        !path[1..].Contains('/');
-
-    private static bool TryValueAtRootPath(JsonElement value, string path, out string displayValue)
-    {
-        displayValue = string.Empty;
-        return value.TryGetProperty(path[1..], out var item) && item.ValueKind == JsonValueKind.String &&
-            (displayValue = item.GetString() ?? string.Empty) is not null;
-    }
 
     private static string Bound(string value) => value.Length <= MaximumDisplayCharacters ? value : value[..MaximumDisplayCharacters];
 

@@ -5,125 +5,120 @@ using NuiButton = Tizen.NUI.Components.Button;
 
 namespace DisplayPresentation.App;
 
-/// <summary>
-/// Profile-owned NUI composition for the parser's immutable semantic tree. It deliberately has
-/// no JSON, payload styles, or action callbacks: those remain outside this NUI mapping seam.
-/// </summary>
+/// <summary>Renderer-owned geometry for one bounded semantic page.</summary>
 internal sealed class OneUiPresentationCanvas
 {
     internal const float DesignWidth = 1920f;
     internal const float DesignHeight = 1080f;
-    private const float Gutter = 132f;
     private const float ContentWidth = 1656f;
-    private const float Top = 176f;
+    private readonly List<NuiButton> _controls = [];
 
-    internal OneUiPresentationCanvas(RenderOutcome outcome, Action dismiss)
+    internal OneUiPresentationCanvas(RenderOutcome outcome, int page, int pageCount,
+        Action<int> changePage, Action dismiss, string? preferredControl)
     {
         Canvas = new View
         {
-            Name = "DisplayPresentationReferenceCanvas",
-            Size = new Size(DesignWidth, DesignHeight),
-            ParentOrigin = ParentOrigin.TopLeft,
-            PivotPoint = PivotPoint.TopLeft,
-            BackgroundColor = new Color("#F7F7F8FF"),
-            FocusableChildren = true,
+            Name = "DisplayPresentationReferenceCanvas", Size = new Size(DesignWidth, DesignHeight),
+            ParentOrigin = ParentOrigin.TopLeft, PivotPoint = PivotPoint.TopLeft,
+            BackgroundColor = new Color("#F7F7F8FF"), FocusableChildren = true,
         };
-
-        Canvas.Add(Label("Presentation", "#6F7078FF", 5f, new Position(Gutter, 56f), new Size(ContentWidth, 36f), HorizontalAlignment.Begin));
+        Canvas.Add(Label("Presentation", "#6F7078FF", 24f, 132f, 56f, ContentWidth, 36f));
+        Content = new View
+        {
+            Name = "PresentationContent", Position = new Position(132f, 176f), Size = new Size(ContentWidth, 660f),
+            BackgroundColor = Color.White, CornerRadius = 18f, BorderlineWidth = 1f,
+            BorderlineColor = new Color(outcome.Failure is null ? "#D8D8DEFF" : "#E9BBB6FF"),
+        };
+        Canvas.Add(Content);
+        var cursor = 40f;
         if (outcome.Plan is { } plan)
         {
-            AddSurface(plan.Surface);
+            AddNode(Content, plan.Surface.Root, ref cursor);
+            if (cursor == 40f) Content.Add(Label("No items", "#1B1B20FF", 28f, 52f, 40f, 1552f, 120f));
         }
-        else
+        else if (outcome.Failure is { } failure)
         {
-            AddFailure(outcome.Failure?.Message ?? "No presentation is currently available.", dismiss);
+            Content.Add(Label("This presentation cannot be shown", "#B3261EFF", 36f, 52f, 40f, 1552f, 120f));
+            Content.Add(Label(failure.Message, "#1B1B20FF", 28f, 52f, 164f, 1552f, 120f));
         }
+        else Content.Add(Label("No presentation is currently available.", "#1B1B20FF", 28f, 52f, 40f, 1552f, 120f));
+        if (pageCount > 1)
+        {
+            AddButton("previous", "Previous", 132f, page > 0, () => changePage(-1));
+            Canvas.Add(Label($"{page + 1} / {pageCount}", "#6F7078FF", 26f, 340f, 884f, 180f, 68f));
+            AddButton("next", "Next", 544f, page < pageCount - 1, () => changePage(1));
+        }
+        AddButton("dismiss", "Dismiss", 1604f, true, dismiss);
+        InitialFocus = _controls.FirstOrDefault(x => x.Name == preferredControl && x.IsEnabled)
+            ?? _controls.FirstOrDefault(x => x.Name == "next" && x.IsEnabled)
+            ?? _controls.First(x => x.IsEnabled);
     }
 
     internal View Canvas { get; }
+    internal View Content { get; }
+    internal NuiButton InitialFocus { get; }
+    internal IReadOnlyList<NuiButton> Controls => _controls;
 
-    private void AddSurface(SemanticSurface surface)
+    internal void MoveFocus(int direction)
     {
-        var section = new View
-        {
-            Name = $"OneUiSection:{surface.SurfaceId}",
-            Position = new Position(Gutter, Top),
-            Size = new Size(ContentWidth, 620f),
-            BackgroundColor = Color.White,
-            CornerRadius = 18f,
-            BorderlineWidth = 1f,
-            BorderlineColor = new Color("#D8D8DEFF"),
-        };
-        Canvas.Add(section);
-        var cursor = 52f;
-        AddNode(section, surface.Root, 52f, ref cursor);
+        var enabled = _controls.Where(x => x.IsEnabled).ToArray();
+        var index = Array.FindIndex(enabled, x => x == FocusManager.Instance.GetCurrentFocusView());
+        FocusManager.Instance.SetCurrentFocusView(enabled[(index + direction + enabled.Length) % enabled.Length]);
     }
 
-    private static void AddNode(View parent, SemanticNode node, float left, ref float cursor)
+    private void AddButton(string name, string text, float x, bool enabled, Action activate)
     {
-        switch (node)
+        var button = new NuiButton
         {
-            case TextValue text:
-                var height = RoleHeight(text.Role);
-                parent.Add(Label(text.Value, RoleColor(text.Role), RolePointSize(text.Role), new Position(left, cursor), new Size(ContentWidth - (left * 2f), height), HorizontalAlignment.Begin));
-                cursor += height + 18f;
-                return;
-            case VerticalGroup group:
-                foreach (var child in group.Children)
-                {
-                    AddNode(parent, child, left, ref cursor);
-                }
-                cursor += 10f;
-                return;
-            default:
-                throw new InvalidOperationException("Only profile-validated semantic nodes may reach NUI composition.");
+            Name = name, Text = text, AccessibilityName = text, Position = new Position(x, 884f),
+            Size = new Size(184f, 68f), Focusable = enabled, IsEnabled = enabled,
+            BackgroundColor = Color.White, CornerRadius = 12f,
+            BorderlineWidth = 1f, BorderlineColor = new Color("#D8D8DEFF"),
+        };
+        button.TextLabel.PixelSize = 28f;
+        button.TextColor = new Color(enabled ? "#1B1B20FF" : "#8B8B90FF");
+        button.FocusGained += (_, _) =>
+        {
+            button.BorderlineWidth = 4f;
+            button.BorderlineColor = new Color("#1466C3FF");
+            button.BackgroundColor = new Color("#E8F1FBFF");
+            button.Scale = new Vector3(1.02f, 1.02f, 1f);
+        };
+        button.FocusLost += (_, _) =>
+        {
+            button.BorderlineWidth = 1f;
+            button.BorderlineColor = new Color("#D8D8DEFF");
+            button.BackgroundColor = Color.White;
+            button.Scale = Vector3.One;
+        };
+        button.Clicked += (_, _) => { if (button.IsEnabled) activate(); };
+        _controls.Add(button);
+        Canvas.Add(button);
+    }
+
+    private static void AddNode(View parent, SemanticNode node, ref float cursor)
+    {
+        if (node is TextValue text)
+        {
+            var label = Label(text.Value, text.Role is "label" or "supporting" ? "#6F7078FF" : "#1B1B20FF",
+                text.Role switch { "headline" => 44f, "title" => 36f, "label" => 24f, "supporting" => 26f, _ => 28f },
+                52f, cursor, 1552f, 120f);
+            label.Name = "PresentationText-" + text.Id;
+            parent.Add(label);
+            cursor += 124f;
+            return;
         }
+        if (node is not VerticalGroup group) throw new InvalidOperationException("Only validated semantic nodes may reach NUI composition.");
+        // Keep semantic group actors, in their parent's coordinate system.
+        var stack = new View { Name = "PresentationGroup-" + group.Id, Size = new Size(ContentWidth, 660f) };
+        parent.Add(stack);
+        foreach (var child in group.Children) AddNode(stack, child, ref cursor);
     }
 
-    private void AddFailure(string reason, Action dismiss)
+    private static TextLabel Label(string text, string color, float pixels, float x, float y, float width, float height) => new(text)
     {
-        var section = new View
-        {
-            Name = "OneUiProfileError",
-            Position = new Position(Gutter, Top),
-            Size = new Size(ContentWidth, 454f),
-            BackgroundColor = Color.White,
-            CornerRadius = 18f,
-            BorderlineWidth = 1f,
-            BorderlineColor = new Color("#E9BBB6FF"),
-        };
-        section.Add(Label("PRESENTATION UNAVAILABLE", "#B3261EFF", 4.5f, new Position(52f, 52f), new Size(1250f, 42f), HorizontalAlignment.Begin));
-        section.Add(Label("This presentation cannot be shown", "#1B1B20FF", 12f, new Position(52f, 102f), new Size(1450f, 76f), HorizontalAlignment.Begin));
-        section.Add(Label(reason, "#6F7078FF", 6f, new Position(52f, 198f), new Size(1450f, 104f), HorizontalAlignment.Begin));
-        var dismissButton = new NuiButton
-        {
-            Name = "OneUiRecoveryDismiss",
-            Text = "Dismiss",
-            Position = new Position(52f, 330f),
-            Size = new Size(210f, 62f),
-            Focusable = true,
-        };
-        dismissButton.Clicked += (_, _) => dismiss();
-        section.Add(dismissButton);
-        RecoveryFocus = dismissButton;
-        Canvas.Add(section);
-    }
-
-    internal View? RecoveryFocus { get; private set; }
-
-    private static float RoleHeight(string role) => role switch { "headline" => 86f, "title" => 62f, "label" => 40f, _ => 54f };
-    private static float RolePointSize(string role) => role switch { "headline" => 13f, "title" => 9f, "label" => 5f, "supporting" => 6f, _ => 7f };
-    private static string RoleColor(string role) => role is "label" or "supporting" ? "#6F7078FF" : "#1B1B20FF";
-
-    private static TextLabel Label(string text, string color, float pointSize, Position position, Size size, HorizontalAlignment alignment) => new(text)
-    {
-        Position = position,
-        Size = size,
-        TextColor = new Color(color),
-        PointSize = pointSize,
-        HorizontalAlignment = alignment,
-        VerticalAlignment = VerticalAlignment.Center,
-        Ellipsis = true,
-        MultiLine = true,
+        Position = new Position(x, y), Size = new Size(width, height), TextColor = new Color(color), PixelSize = pixels,
+        HorizontalAlignment = HorizontalAlignment.Begin, VerticalAlignment = VerticalAlignment.Center,
+        Ellipsis = true, MultiLine = true,
     };
 }

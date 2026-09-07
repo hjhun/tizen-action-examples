@@ -6,10 +6,10 @@ using RPCPort.DisplayActions.Stub;
 namespace DisplayPresentation.ActionProvider;
 
 /// <summary>
-/// Typed boundary for <c>Tv_Tizen.Action.Display_Show</c>. Rendering is added by the
+/// Typed boundary for <c>Tv_Tizen.Action.Presentation_Show</c>. Rendering is added by the
 /// application composition root; this boundary validates the wire payload first.
 /// </summary>
-public sealed class DisplayPresentationService : TizenActionDisplay.ServiceBase
+public sealed class DisplayPresentationService : TizenActionPresentation.ServiceBase
 {
     private readonly PresentationRenderCoordinator _renderer;
 

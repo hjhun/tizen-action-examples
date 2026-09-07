@@ -29,6 +29,8 @@ public sealed record RenderOutcome(RenderPlan? Plan, RenderFailure? Failure)
 {
     public bool IsSuccess => Plan is not null;
 
+    public static RenderOutcome Empty() => new(null, null);
+
     public static RenderOutcome Success(RenderPlan plan) => new(plan, null);
 
     public static RenderOutcome Fail(RenderFailureKind kind, string message) => new(null, new(kind, message));
@@ -41,6 +43,9 @@ public readonly record struct Viewport(float Scale, float OffsetX, float OffsetY
     public static bool TryCreate(float windowWidth, float windowHeight, Insets insets, out Viewport viewport)
     {
         viewport = default;
+        if (!float.IsFinite(insets.Start) || !float.IsFinite(insets.End) ||
+            !float.IsFinite(insets.Top) || !float.IsFinite(insets.Bottom) ||
+            insets.Start < 0 || insets.End < 0 || insets.Top < 0 || insets.Bottom < 0) return false;
         var availableWidth = windowWidth - insets.Start - insets.End;
         var availableHeight = windowHeight - insets.Top - insets.Bottom;
         if (!float.IsFinite(windowWidth) || !float.IsFinite(windowHeight) ||

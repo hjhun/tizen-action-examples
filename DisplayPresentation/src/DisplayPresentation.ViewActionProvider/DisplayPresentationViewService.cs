@@ -7,7 +7,7 @@ namespace DisplayPresentation.ViewActionProvider;
 /// Typed View routes over the lock-protected snapshot of currently rendered NUI content.
 /// The registry never turns an arbitrary caller-supplied View into a Presentation.
 /// </summary>
-public sealed class DisplayPresentationViewService : TizenInternalActionView.ServiceBase
+public sealed class DisplayPresentationViewService : TizenActionView.ServiceBase
 {
     public override void OnCreate()
     {
@@ -82,18 +82,14 @@ internal static class DisplayPresentationViewProviderState
     private static readonly object Gate = new();
     private static IReadOnlyList<PublishedPresentationView> _visibleViews = [];
 
-    internal static void Publish(PublishedPresentationView view)
+    internal static void Publish(IEnumerable<PublishedPresentationView> views)
     {
-        ArgumentNullException.ThrowIfNull(view);
-        if (!IsValid(view.ScreenX, view.ScreenY, view.Width, view.Height))
-        {
-            Clear();
-            return;
-        }
+        var measured = views.Where(view => IsValid(view.ScreenX, view.ScreenY, view.Width, view.Height))
+            .GroupBy(view => view.ViewId, StringComparer.Ordinal).Select(group => group.First()).ToArray();
 
         lock (Gate)
         {
-            _visibleViews = [view];
+            _visibleViews = measured;
         }
     }
 
@@ -148,7 +144,7 @@ internal static class DisplayPresentationViewProviderState
         Id = snapshot.ViewId,
         Extra = string.Empty,
         Type = "DisplayPresentation.Surface",
-        Description = "Current bounded A2UI presentation surface",
+        Description = snapshot.Description,
         ScreenBounds = new ScreenBounds { X = snapshot.ScreenX, Y = snapshot.ScreenY, Width = snapshot.Width, Height = snapshot.Height },
         WindowBounds = snapshot.WindowX is { } windowX && snapshot.WindowY is { } windowY
             ? new WindowBounds { X = windowX, Y = windowY, Width = snapshot.Width, Height = snapshot.Height }
@@ -189,5 +185,6 @@ internal static class DisplayPresentationViewProviderState
         double? WindowY,
         double Width,
         double Height,
-        bool IsFocused);
+        bool IsFocused,
+        string Description = "Current bounded A2UI presentation page");
 }

@@ -2,7 +2,16 @@ using System.Text.Json;
 using DisplayPresentation.Domain;
 using DisplayPresentation.UseCases;
 
+if (args is ["--write-fixtures", var fixturePath])
+{
+    ProducerInteropTests.WriteFixtures(fixturePath);
+    return;
+}
+
 var parser = new A2UiPresentationParser();
+ProducerInteropTests.Run();
+PagingTests.Run();
+LegacyBindingTests.Run();
 var valid = new PresentationInput(
     JsonSerializer.Serialize(new
     {
@@ -52,6 +61,7 @@ Assert(!coordinator.Submit(valid with { Template = "{" }).IsSuccess && !coordina
     "A newer invalid request must replace the prior visible result rather than retain stale content.");
 Assert(!coordinator.Dismiss().IsSuccess && !coordinator.Current.IsSuccess && notifications == 3,
     "Dismissing the profile recovery state must not resurrect a stale accepted Presentation.");
+Assert(coordinator.Current.Failure is null, "Dismiss must produce an empty state, not an input error.");
 Console.WriteLine("DisplayPresentation.UseCases.Tests: PASS");
 
 static void Assert(bool condition, string message)

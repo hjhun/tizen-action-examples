@@ -2,7 +2,7 @@
 
 - 빌드 날짜: 2026-09-08T07:56:56+09:00.
 - 소스 기준 commit: `9a951b6dbdb1f91a46a08a21fbd0cb983e151e10`. Calendar/Reminder/PhotoGallery/Browser는 해당 committed source에서 빌드했습니다.
-- DisplayPresentation은 이 commit 위의 기존 **미커밋 작업본**에서 빌드했습니다. 소스 변경은 이번 배포 커밋에 포함하지 않으므로 이 commit만으로 renderer 산출물을 재현할 수 없습니다.
+- DisplayPresentation은 이 commit 위의 기존 **미커밋 작업본**에서 빌드했습니다. 패키지 배포 commit만으로 renderer 산출물을 재현할 수는 없습니다. 이후 `Record API14 Presentation provider and legacy paging support` 소스 커밋에 해당 구현을 선별 포함했습니다. [소스 검토 기록](../DisplayPresentation/docs/UI_PARITY.md#2026-09-08-source-review)을 참조하세요.
 - Release / .NET 8, dotnet API14. Manifest 최소 플랫폼 버전10.0과 구분합니다. NuGet 참조는 기존 버전을 유지했습니다.
 - 기존 Tizen Studio Common Emulator 시험용 signer 사용. TV/제품 배포 인증을 의미하지 않습니다.
 

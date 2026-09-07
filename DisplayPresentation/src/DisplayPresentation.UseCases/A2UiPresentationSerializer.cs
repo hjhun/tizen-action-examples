@@ -25,7 +25,7 @@ public static class A2UiPresentationSerializer
         switch (node)
         {
             case VerticalGroup group:
-                components.Add(new { id = group.Id, component = new { Column = new { children = group.Children.Select(child => child.Id).ToArray() } } });
+                components.Add(new { id = group.Id, component = new { Column = new { children = new { explicitList = group.Children.Select(child => child.Id).ToArray() } } } });
                 foreach (var child in group.Children)
                 {
                     AddNode(child, components, value);

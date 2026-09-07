@@ -58,7 +58,7 @@ Before checking an app complete, its autonomous Goal must establish and verify a
   - Action/Entity baseline: add/delete/search, stable-ID lookup, gallery presentation.
   - Note: `PhotoGallery/` currently exists as an untracked user workspace; preserve it until explicitly adopted.
 
-- [ ] DisplayPresentation — `Tizen.Action.Display` infrastructure fixture
+- [ ] DisplayPresentation — `Tizen.Action.Presentation` infrastructure fixture (API 14; legacy integration follow-up in [validation record](../DisplayPresentation/docs/2026-09-06-interop-followup.md))
   - Package/app ID: `org.tizen.displaypresentation`
   - Product baseline: deterministic Google A2UI-compatible renderer for a provider-produced `Presentation`; supported semantics use Samsung One UI-adapted Tizen NUI presentation and run in either a capability-verified transparent overlay or the mandatory opaque full-window fallback.
   - Action/Entity baseline: typed presentation display, linked from apps that publish `View_ToPresentation`.

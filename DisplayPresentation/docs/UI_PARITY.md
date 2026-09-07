@@ -1,28 +1,70 @@
-# DisplayPresentation UI parity ledger
+# DisplayPresentation UI parity
 
-Profile: [A2UI Samsung One UI Profile v0.1](A2UI_ONE_UI_PROFILE.md)
-Canonical executable preview: [`../refs/one-ui-sample.html`](../refs/one-ui-sample.html)
+Profile: [A2UI and One UI](A2UI_ONE_UI_PROFILE.md).
+Single executable preview: [one-ui-sample.html](../refs/one-ui-sample.html).
 
-## Mapping and evidence rule
+## 2026-09-06 evidence
 
-The preview parses the bounded local Presentation fixture before rendering `Column`/`Text` semantics. Its `OneUiSection` and `OneUiText` map to the planned reusable NUI components; its profile-owned recovery button maps to `OneUiButton`. The verification-state switcher is outside the product canvas and is not an NUI product control.
+The preview fixtures are generated from actual Calendar domain producers, not
+handwritten renderer-only data. Regenerate them from the repository root:
 
-| Profile component/state | HTML state | Planned NUI mapping | HTML capture | Native Aurum capture | Comparison / status |
-|---|---|---|---|---|---|
-| `Column` + headline/supporting/body `Text` | Valid | `OneUiSection` + `OneUiText` | Pending browser capture | Pending | NUI composition and generated-entity View snapshot mapping host-build; installed comparison pending. |
-| Parser loading | Loading | profile-owned loading surface | Pending browser capture | Pending | NUI loading composition remains pending. |
-| malformed/mismatched/oversized input | Malformed | profile-owned safe error surface + `Dismiss` | Pending browser capture | Pending | NUI recovery control is host-built; installed comparison pending. |
-| unsupported component/property | Unsupported | profile-owned unsupported recovery surface + `Dismiss` | Pending browser capture | Pending | NUI recovery control is host-built; installed comparison pending. |
-| disabled command | Disabled control | `OneUiButton` | Pending browser capture | Pending | Button mapping is future profile work. |
-| focused recovery | Malformed then D-pad/keyboard | `OneUiButton` measured-focus View | Pending browser capture | Pending | Focus semantics defined, not native-verified. |
+```bash
+dotnet run --project DisplayPresentation/tests/DisplayPresentation.UseCases.Tests -c Release -- --write-fixtures DisplayPresentation/refs/fixtures.js
+python3 DisplayPresentation/tests/check_preview.py --browser-path /path/to/chrome --screenshots DisplayPresentation/docs/images/browser
+```
 
-## Cross-app Presentation flow ledger
+The fixture selector is visible only with `?verify=1`, outside the product canvas.
+The regular preview shows the same renderer-owned page navigation as NUI.
 
-| Source flow | Current source finding | HTML fixture/capture | DisplayPresentation native capture | Result |
-|---|---|---|---|---|
-| Browser `Tizen.Action.Browser_ToPresentation` | Current producer emits `surfaceUpdate` with an empty `components` array and a document shape without the v0.1 required matching `surfaceId`/`value`; it is not a valid positive profile fixture. | Blocked by source fixture contract | Pending | Blocked; Browser-owned producer must emit current bounded A2UI. |
-| PhotoGallery Presentation / `View_ToPresentation` | No producer or Presentation output was found in current PhotoGallery C# source. | Blocked by missing source fixture | Pending | Blocked; PhotoGallery-owned producer must exist before integration evidence. |
+| State/check | Browser result | Installed NUI result |
+|---|---|---|
+| Calendar 0/1/7/100 | Pass; empty placeholder / 4 / 28 / 400 fields; all 100 pages reached | Pending |
+| Reminder | Pass; four actual producer fields | Pending |
+| Page 2, Next focused | [FHD browser capture](images/browser/presentation-page-2-fhd.png) | Pending |
+| Previous/Next/Enter | Pass; page transition and focused Next | Pending |
+| 720p, FHD, 4K, 8K, 4:3 | Pass; centered canvas fits viewport and preserves page | Pending native insets/scaling/bounds |
+| Escape/dismiss | Pass; neutral empty state, no old content | Pending |
+| Malformed/unsupported | Pass; recovery surface, no untrusted partial rendering | Pending |
+| Browser console | No errors recorded | Not applicable |
+| ViewAnnotation page/control lifecycle | Host paging/store checks pass | Pending measured geometry, focus and actual RPC |
 
-## Required parity closure
+![Browser preview, Calendar page 2 with Next focused](images/browser/presentation-page-2-fhd.png)
 
-For each row, capture the HTML frame after browser verification and then the same installed Common Emulator state through Aurum. Compare hierarchy, geometry, type scale, spacing, colors, component state, focus, labels, density, and reference-canvas scaling. Store only validated native images under `docs/images/`; link both capture paths here. No native screenshot, target install, or Telegram media has been produced by this slice.
+This image is Chromium evidence, not an Aurum/NUI screenshot. The HTML uses the
+available host font stack; exact native text metrics and control visuals are not
+yet compared. Native captures must be stored separately and labeled with target,
+build, viewport, input and state. Loading, payload Button/TextField and native
+overlay composition remain unimplemented; renderer navigation does not establish
+payload Button support.
+
+## Cross-app flow ledger
+
+| Source | Current evidence | Remaining gate |
+|---|---|---|
+| Calendar event/reminder ToPresentation | Real host builders parse; generated browser fixtures pass | Installed Action output → Show |
+| Calendar/Reminder page/control snapshot | Shared builder parses and round-trips in host tests | Installed View discovery → ToPresentation → Show |
+| DisplayPresentation visible page | Four-field semantic slices serialize and parse in order | Native paging → measured View → Presentation → Show |
+| Browser | Earlier audit found empty components/incompatible document | Producer repair and fresh audit; not rechecked in this follow-up |
+| PhotoGallery | Earlier audit found no Presentation producer | Producer implementation and fresh audit; not rechecked here |
+
+Follow [target validation](TARGET_VALIDATION.md) to close each installed gate.
+Compare geometry, spacing, type, colors, states, labels, focus, density and every
+supported input mode. A successful build, package or browser run is not native
+parity or product completion.
+
+## 2026-09-08 source review
+
+The previously local API14/legacy-binding/paging implementation is now included
+in the source delivery. Fresh actionc generation of the complete Presentation and
+View categories matches both files byte-for-byte; the five advertised actions and
+positional slots match the local catalog. Generated whitespace is preserved as
+raw output; authored changes pass whitespace checks.
+
+Domain, Persistence and UseCases host suites pass, including actual Calendar
+producer compatibility, bounded binding rejection and page serialization tests.
+Release build completes with zero warnings/errors. These are portable/compile
+checks, not host execution of managed RPC providers. Production source is unchanged
+from the five-app package preparation in [Packages](../../Packages/README.md).
+The browser capture and matrices above retain their 2026-09-06 scope; no new
+browser, target installation or native acceptance was performed in this review.
+Canonical A2UI, overlay hosting and unexercised input/lifecycle cases remain open.

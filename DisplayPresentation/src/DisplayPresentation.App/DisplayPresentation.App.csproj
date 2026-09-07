@@ -6,7 +6,7 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Tizen.NET" Version="13.0.0.19198" />
+    <PackageReference Include="Tizen.NET" Version="14.0.0.19326" />
     <ProjectReference Include="../DisplayPresentation.Domain/DisplayPresentation.Domain.csproj" />
     <ProjectReference Include="../DisplayPresentation.UseCases/DisplayPresentation.UseCases.csproj" />
     <ProjectReference Include="../DisplayPresentation.Persistence/DisplayPresentation.Persistence.csproj" />

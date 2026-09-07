@@ -1,10 +1,114 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>DisplayPresentation A2UI preview</title>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Presentation preview</title>
 <style>
-:root{--canvas:#f7f7f8;--surface:#fff;--ink:#1b1b20;--muted:#6f7078;--line:#d8d8de;--accent:#1466c3;--danger:#b3261e;--focus:#073f82;--gutter:clamp(24px,5vw,96px)}*{box-sizing:border-box}body{margin:0;background:#202126;color:var(--ink);font-family:"SamsungOne","Segoe UI",Arial,sans-serif}.shell{min-height:100vh;display:grid;place-items:center}.canvas{width:min(100vw,1920px);min-height:min(100vh,1080px);background:var(--canvas);padding:clamp(28px,5vw,92px) var(--gutter);display:flex;flex-direction:column}.topline{display:flex;justify-content:space-between;border-bottom:1px solid var(--line);padding-bottom:20px;color:var(--muted);font-size:15px;font-weight:600}.status{display:flex;gap:8px;align-items:center}.dot{width:9px;height:9px;border-radius:50%;background:#24834b}.content{flex:1;display:grid;align-content:center;max-width:1000px;margin:auto;width:100%;padding:46px 0}.semantic-column{display:grid;gap:16px}.oneui-section{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:clamp(26px,4vw,54px);box-shadow:0 2px 8px #1b1b2012}.role-headline{font-size:clamp(30px,4.2vw,52px);font-weight:700;line-height:1.12;letter-spacing:-.03em}.role-title{font-size:clamp(23px,2.5vw,32px);font-weight:700}.role-body{font-size:clamp(17px,1.6vw,21px);line-height:1.55}.role-supporting{font-size:17px;line-height:1.5;color:var(--muted)}.role-label{font-size:14px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:var(--muted)}.error{border-color:#e9bbb6}.error .role-headline{color:var(--danger)}.focusable{min-height:48px;padding:0 20px;border-radius:12px;border:1px solid var(--accent);background:var(--accent);color:#fff;font:600 17px inherit;cursor:pointer;align-self:start}.focusable:focus-visible{outline:3px solid var(--focus);outline-offset:4px;transform:scale(1.02);box-shadow:0 4px 10px #073f8230}.footer{color:var(--muted);font-size:14px;padding-top:20px}.tools{position:fixed;right:14px;bottom:14px;z-index:2}.tools button,.panel button{border:1px solid #555;background:#27282e;color:#fff;padding:10px 14px;border-radius:8px;cursor:pointer}.panel{position:fixed;right:14px;bottom:62px;z-index:2;display:grid;gap:6px;padding:8px;background:#27282e;border-radius:10px}
-</style></head><body><div class="shell"><main class="canvas" aria-live="polite"><header class="topline"><span>Presentation</span><span class="status"><i class="dot"></i><span id="surface-name">Ready</span></span></header><section class="content" id="surface" aria-label="A2UI presentation"></section><footer class="footer">A2UI profile v0.1 · Local bounded fixture · directional keys move focus</footer></main></div><div class="tools"><button id="tools-toggle" aria-expanded="false">Verification states</button></div><nav class="panel" id="panel" hidden aria-label="Preview states"><button data-state="valid">Valid</button><button data-state="loading">Loading</button><button data-state="malformed">Malformed</button><button data-state="unsupported">Unsupported</button></nav>
-<script>
-const fixtures={valid:{Template:JSON.stringify({surfaceUpdate:{surfaceId:'fixture',components:[{id:'root',component:{Column:{children:['headline','group']}}},{id:'headline',component:{Text:{text:{path:'/title'},role:'headline'}}},{id:'group',component:{Column:{children:['summary','body']}}},{id:'summary',component:{Text:{text:{path:'/summary'},role:'supporting'}}},{id:'body',component:{Text:{text:{path:'/body'},role:'body'}}}]}}),Document:JSON.stringify({dataModelUpdate:{surfaceId:'fixture',path:'/',value:{title:'Shared presentation',summary:'A2UI content rendered through a bounded One UI profile.',body:'The renderer preserves the semantic tree and document order. It does not accept payload-defined colors, fonts, scripts, or arbitrary layout.'}}})},unsupported:{Template:JSON.stringify({surfaceUpdate:{surfaceId:'fixture',components:[{id:'root',component:{Column:{children:['picture']}}},{id:'picture',component:{Image:{src:{path:'/image'}}}}]}}),Document:JSON.stringify({dataModelUpdate:{surfaceId:'fixture',path:'/',value:{image:'no-network'}}})},malformed:{Template:'{',Document:'{}'}};
-const roles=new Set(['headline','title','body','label','supporting']);function fail(message){return{failure:message}}function parse(p){if(!p.Template||!p.Document||p.Template.length>65536||p.Document.length>65536)return fail('Template and Document must be non-empty JSON values up to 64 KiB.');let t,d;try{t=JSON.parse(p.Template);d=JSON.parse(p.Document)}catch{return fail('Template and Document must be valid JSON objects.')}const s=t.surfaceUpdate,u=d.dataModelUpdate;if(!s||!u||s.surfaceId!==u.surfaceId||u.path!=='/'||!Array.isArray(s.components)||!u.value||typeof u.value!=='object')return fail('A matching A2UI surfaceUpdate and dataModelUpdate object is required.');const defs=new Map,used=new Set;for(const x of s.components){if(!x||typeof x.id!=='string'||!/^[A-Za-z0-9:_-]{1,64}$/.test(x.id)||!x.component||Object.keys(x.component).length!==1||defs.has(x.id))return fail('Each A2UI component needs a bounded ID and exactly one component type.');const[k,v]=Object.entries(x.component)[0];if(k==='Column'){if(Object.keys(v).some(p=>p!=='children')||!Array.isArray(v.children)||v.children.some(id=>typeof id!=='string'))return fail('Column supports only an ordered children ID array.');v.children.forEach(id=>used.add(id));defs.set(x.id,{kind:k,children:v.children})}else if(k==='Text'){if(Object.keys(v).some(p=>p!=='text'&&p!=='role')||!v.text||Object.keys(v.text).some(p=>p!=='path')||typeof v.text.path!=='string'||!/^\/[^/]+$/.test(v.text.path)||v.role&& !roles.has(v.role))return fail('Text supports only a root string text.path and optional profile role.');defs.set(x.id,{kind:k,path:v.text.path,role:v.role||'body'})}else return fail(`Unsupported A2UI component '${k}'.`)}const roots=[...defs.keys()].filter(id=>!used.has(id));if(roots.length!==1||defs.get(roots[0]).kind!=='Column')return fail('A surface must contain exactly one unreferenced Column root.');const seen=new Set;function node(id,depth){if(depth>4||seen.has(id)||!defs.has(id))throw Error('The A2UI semantic tree is invalid.');seen.add(id);const x=defs.get(id);if(x.kind==='Text'){const value=u.value[x.path.slice(1)];if(typeof value!=='string')throw Error(`Document does not provide a string for '${x.path}'.`);return{kind:'Text',id,role:x.role,value:value.slice(0,256)}}return{kind:'Column',id,children:x.children.map(c=>node(c,depth+1))}}try{const root=node(roots[0],1);return seen.size===defs.size?{surfaceId:s.surfaceId,root}:fail('Every A2UI component must be reachable from the root Column.')}catch(e){return fail(e.message)}}
-const surface=document.querySelector('#surface'),name=document.querySelector('#surface-name');function text(role,value){const e=document.createElement(role==='headline'?'h1':'p');e.className='role-'+role;e.textContent=value;return e}function renderNode(n,parent){if(n.kind==='Text'){parent.append(text(n.role,n.value));return}const stack=document.createElement('div');stack.className='semantic-column';n.children.forEach(c=>renderNode(c,stack));parent.append(stack)}function render(state){surface.replaceChildren();name.textContent=state==='loading'?'Loading':'Ready';if(state==='loading'){const x=document.createElement('div');x.className='oneui-section semantic-column';x.append(text('label','Loading presentation'),text('title','Preparing safe content…'));surface.append(x);return}const result=parse(fixtures[state]||fixtures.valid),card=document.createElement('article');card.className='oneui-section semantic-column'+(result.failure?' error':'');if(result.failure){name.textContent='Not rendered';card.append(text('label','Presentation unavailable'),text('headline','This presentation cannot be shown'),text('body',result.failure));const b=document.createElement('button');b.className='focusable';b.textContent='Dismiss';b.onclick=()=>render('valid');card.append(b);surface.append(card);b.focus();return}renderNode(result.root,card);surface.append(card)}const panel=document.querySelector('#panel'),toggle=document.querySelector('#tools-toggle');toggle.onclick=()=>{panel.hidden=!panel.hidden;toggle.setAttribute('aria-expanded',String(!panel.hidden))};panel.onclick=e=>{if(e.target.dataset.state){render(e.target.dataset.state);panel.hidden=true;toggle.setAttribute('aria-expanded','false')}};document.addEventListener('keydown',e=>{if(['ArrowDown','ArrowRight','ArrowUp','ArrowLeft'].includes(e.key)){e.preventDefault();const a=[...document.querySelectorAll('button:not(:disabled)')],i=a.indexOf(document.activeElement),d=['ArrowDown','ArrowRight'].includes(e.key)?1:-1;a[(i+d+a.length)%a.length]?.focus()}if(e.key==='Escape'){panel.hidden=true;toggle.focus()}});render('valid');
+:root{font-family:"SamsungOne","Segoe UI",Arial,sans-serif;color:#1b1b20;background:#f7f7f8}*{box-sizing:border-box}body{margin:0;overflow:hidden}[hidden]{display:none!important}
+#canvas{position:absolute;width:1920px;height:1080px;transform-origin:top left;background:#f7f7f8}header{position:absolute;left:132px;top:56px;color:#6f7078;font-size:24px}
+#surface{position:absolute;left:132px;top:176px;width:1656px;height:660px;padding:40px 52px;background:white;border:1px solid #d8d8de;border-radius:18px;overflow:hidden}
+.column{display:flex;flex-direction:column;gap:4px}.text{margin:0;flex:none;height:120px;overflow:hidden;font-size:28px;line-height:1.25;overflow-wrap:anywhere;display:flex;align-items:center;white-space:pre-wrap}.headline{font-size:44px;font-weight:600}.title{font-size:36px;font-weight:600}.label{font-size:24px;color:#6f7078}.supporting{font-size:26px;color:#6f7078}
+#navigation{position:absolute;left:132px;top:884px;width:1656px;height:76px;display:flex;align-items:center;gap:24px}button{height:68px;min-width:184px;padding:0 26px;border:1px solid #d8d8de;border-radius:12px;background:white;color:#1b1b20;font-family:inherit;font-size:28px;cursor:pointer}button:focus{outline:4px solid #1466c3;outline-offset:4px;background:#e8f1fb;transform:scale(1.02)}button:disabled{opacity:.4;cursor:default}#counter{min-width:180px;font-size:26px;color:#6f7078}#dismiss{margin-left:auto}
+#verification{position:fixed;right:12px;top:12px;z-index:2;display:flex;gap:8px}#verification button{font:14px Arial;height:34px;min-width:0;padding:0 10px}.error{border-color:#e9bbb6!important}.error .title{color:#b3261e}
+</style></head><body>
+<main id="canvas" aria-label="Presentation"><header>Presentation</header><section id="surface" aria-live="polite"></section><nav id="navigation" aria-label="Presentation pages"><button id="previous">Previous</button><span id="counter"></span><button id="next">Next</button><button id="dismiss">Dismiss</button></nav></main>
+<nav id="verification" hidden aria-label="Verification fixtures"></nav><script src="fixtures.js"></script><script>
+'use strict';
+const LIMIT=65536,MAX_NODES=512,TEXTS_PER_PAGE=4,roles=new Set(['headline','title','body','label','supporting']);
+const object=v=>v!==null&&typeof v==='object'&&!Array.isArray(v),only=(v,keys)=>object(v)&&Object.keys(v).every(k=>keys.includes(k)),identifier=v=>typeof v==='string'&&/^[A-Za-z0-9:_-]{1,64}$/.test(v);
+function segments(path){
+  if(typeof path!=='string'||path.length<2||path.length>1024||!path.startsWith('/'))throw Error('A bounded absolute text path is required.');
+  const parts=path.slice(1).split('/');
+  if(parts.length>8||parts.some(p=>/~(?:[^01]|$)/.test(p)))throw Error('The text path is invalid.');
+  return parts.map(p=>p.replace(/~1/g,'/').replace(/~0/g,'~'));
+}
+function parse(input){
+  if(typeof input?.Template!=='string'||typeof input?.Document!=='string'||!input.Template.trim()||!input.Document.trim()||input.Template.length>LIMIT||input.Document.length>LIMIT)throw Error('Template and Document must be non-empty JSON values up to 64 Ki characters.');
+  const t=JSON.parse(input.Template),d=JSON.parse(input.Document),s=t.surfaceUpdate,u=d.dataModelUpdate;
+  if(!object(s)||!object(u)||!identifier(s.surfaceId)||s.surfaceId!==u.surfaceId||u.path!=='/'||!Array.isArray(s.components)||!object(u.value))throw Error('Matching legacy surface and data objects are required.');
+  if(s.components.length>MAX_NODES)throw Error('Too many components.');
+  const defs=new Map,parents=new Set;
+  for(const item of s.components){
+    if(!identifier(item?.id)||!object(item.component)||Object.keys(item.component).length!==1||defs.has(item.id))throw Error('A unique bounded component ID and one component type are required.');
+    const [kind,v]=Object.entries(item.component)[0];
+    if(kind==='Column'){
+      if(!only(v,['children']))throw Error('Column styling is unsupported.');
+      const children=Array.isArray(v.children)?v.children:only(v.children,['explicitList'])?v.children.explicitList:null;
+      if(!Array.isArray(children)||children.length>MAX_NODES||!children.every(identifier))throw Error('Column requires explicit child IDs.');
+      for(const id of children){if(parents.has(id))throw Error('A component cannot have multiple parents.');parents.add(id)}
+      defs.set(item.id,{kind,id:item.id,children});
+    }else if(kind==='Text'){
+      if(!only(v,['text','role'])||!only(v.text,['path'])||('role'in v&&!roles.has(v.role)))throw Error('Unsupported Text property.');
+      defs.set(item.id,{kind,id:item.id,segments:segments(v.text.path),role:v.role||'body'});
+    }else throw Error('Unsupported component: '+kind);
+  }
+  for(const id of parents)if(!defs.has(id))throw Error('Unknown child component.');
+  const roots=[...defs.values()].filter(n=>!parents.has(n.id));
+  if(roots.length!==1||roots[0].kind!=='Column')throw Error('One Column root is required.');
+  const seen=new Set;
+  function build(id,depth){
+    if(depth>4||seen.has(id))throw Error('Invalid component tree.');
+    seen.add(id);const node=defs.get(id);
+    if(node.kind==='Column')return{kind:node.kind,id,children:node.children.map(c=>build(c,depth+1))};
+    let value=u.value;
+    for(const part of node.segments){
+      if(Array.isArray(value)&&!/^(0|[1-9][0-9]*)$/.test(part))throw Error('Invalid array index.');
+      if((!object(value)&&!Array.isArray(value))||!Object.hasOwn(value,part))throw Error('Missing text binding.');
+      value=value[part];
+    }
+    if(typeof value!=='string')throw Error('Text bindings must resolve to strings.');
+    return{kind:node.kind,id,role:node.role,value:value.slice(0,256)};
+  }
+  const root=build(roots[0].id,1);
+  if(seen.size!==defs.size)throw Error('Unreachable components are unsupported.');
+  return{surfaceId:s.surfaceId,root};
+}
+function texts(node){return node.kind==='Text'?[node]:node.children.flatMap(texts)}
+function paginate(surface){
+  const pages=[];
+  for(let first=0;first<Math.max(1,texts(surface.root).length);first+=TEXTS_PER_PAGE){
+    let position=0;
+    function slice(node){
+      if(node.kind==='Text'){const i=position++;return i>=first&&i<first+TEXTS_PER_PAGE?node:null}
+      const children=node.children.map(slice).filter(Boolean);
+      return children.length?{...node,children}:null;
+    }
+    pages.push({...surface,root:slice(surface.root)||{kind:'Column',id:surface.root.id,children:[]}});
+  }
+  return pages;
+}
+const area=document.querySelector('#surface'),previous=document.querySelector('#previous'),next=document.querySelector('#next'),dismiss=document.querySelector('#dismiss'),counter=document.querySelector('#counter');
+let pages=[],page=0,failure='';
+function renderNode(node,parent){
+  const element=document.createElement(node.kind==='Text'?'p':'div');element.dataset.componentId=node.id;
+  if(node.kind==='Text'){element.className='text '+node.role;element.textContent=node.value}
+  else{element.className='column';node.children.forEach(child=>renderNode(child,element))}
+  parent.append(element);
+}
+function render(prefer='next'){
+  area.replaceChildren();area.classList.toggle('error',Boolean(failure));
+  if(failure){renderNode({kind:'Text',id:'error-title',role:'title',value:'This presentation cannot be shown'},area);renderNode({kind:'Text',id:'error-message',role:'body',value:failure},area)}
+  else if(pages.length&&texts(pages[page].root).length)renderNode(pages[page].root,area);
+  else renderNode({kind:'Text',id:'empty',role:'body',value:pages.length?'No items':'No presentation is currently available.'},area);
+  previous.disabled=page===0||!pages.length;next.disabled=page>=pages.length-1;
+  previous.hidden=next.hidden=counter.hidden=pages.length<=1;counter.textContent=pages.length?(page+1)+' / '+pages.length:'';
+  const target=prefer==='previous'&&!previous.disabled?previous:!next.disabled?next:!previous.disabled?previous:dismiss;target.focus();
+}
+function show(input){try{pages=paginate(parse(input));failure=''}catch(e){pages=[];failure=e.message}page=0;render()}
+function move(delta){const changed=Math.max(0,Math.min(pages.length-1,page+delta));if(changed!==page){page=changed;render(delta<0?'previous':'next')}}
+previous.onclick=()=>move(-1);next.onclick=()=>move(1);dismiss.onclick=()=>{pages=[];failure='';page=0;render('dismiss')};
+document.addEventListener('keydown',event=>{
+  if(event.key==='Escape'){event.preventDefault();dismiss.click();return}
+  if(['ArrowDown','ArrowRight','ArrowUp','ArrowLeft'].includes(event.key)){
+    event.preventDefault();const buttons=[previous,next,dismiss].filter(b=>!b.hidden&&!b.disabled),index=buttons.indexOf(document.activeElement),delta=['ArrowDown','ArrowRight'].includes(event.key)?1:-1;
+    buttons[(index+delta+buttons.length)%buttons.length]?.focus();
+  }
+});
+function resize(){const scale=Math.min(innerWidth/1920,innerHeight/1080),canvas=document.querySelector('#canvas');canvas.style.transform='scale('+scale+')';canvas.style.left=(innerWidth-1920*scale)/2+'px';canvas.style.top=(innerHeight-1080*scale)/2+'px'}
+addEventListener('resize',resize);resize();
+const fixtures=window.presentationFixtures||{},verification=document.querySelector('#verification');
+if(new URLSearchParams(location.search).has('verify')){
+  verification.hidden=false;
+  for(const [name,input]of Object.entries({...fixtures,malformed:{Template:'{',Document:'{}'},unsupported:{Template:fixtures.calendar1?.Template.replaceAll('"Text"','"Image"'),Document:fixtures.calendar1?.Document}})){
+    const button=document.createElement('button');button.textContent=name;button.onclick=()=>show(input);verification.append(button);
+  }
+}
+window.preview={parse,paginate,show,move,get current(){return pages[page]||null},get page(){return page},get count(){return pages.length}};show(fixtures.calendar1);
 </script></body></html>
