@@ -5,6 +5,20 @@ Gallery implement Pictures, Albums, Favorites, search, detail, info, slideshow,
 import and deletion confirmation. This ledger supersedes the August browser-only
 proposal. Requirements and architecture are in Markdown, not embedded in the sample.
 
+## Screen metadata failure isolation (2026-09-08)
+
+`ReadDisplay` now isolates optional SystemInfo screen metadata from drawable
+measurement. A false result, exception or non-positive value on either axis resets
+both metadata dimensions to zero; valid WindowSize/GetInsets can still determine
+the viewport. Invalid drawable geometry retains the existing false/old-frame policy.
+`PhotoGallery.App.Tests` passes and the Release build has zero warnings and errors.
+These are regression/compile results: the suite does not execute Information
+exceptions or directly test a valid window with unavailable screen metadata.
+Native display after SystemInfo exceptions or partial reads remains unverified,
+and the SystemInfo initial sizing requirement remains unmet. Earlier FHD/UHD/DCI
+evidence for `org.tizen.photogallery` retains its original payload/date scope and
+does not validate this change on target.
+
 ## Reference and adaptation
 
 Primary reference: Samsung Gallery; official [Gallery support guide](https://www.samsung.com/us/support/answer/ANS10002535/),

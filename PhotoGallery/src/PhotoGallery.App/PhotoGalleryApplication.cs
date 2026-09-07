@@ -89,8 +89,17 @@ internal sealed class PhotoGalleryApplication : NUIApplication
         int width = 0, height = 0;
         try
         {
-            Information.TryGetValue("http://tizen.org/feature/screen.width", out width);
-            Information.TryGetValue("http://tizen.org/feature/screen.height", out height);
+            var hasWidth = Information.TryGetValue("http://tizen.org/feature/screen.width", out width);
+            var hasHeight = Information.TryGetValue("http://tizen.org/feature/screen.height", out height);
+            if (!hasWidth || !hasHeight || width <= 0 || height <= 0) width = height = 0;
+        }
+        catch (Exception ex)
+        {
+            width = height = 0;
+            Tizen.Log.Warn("PhotoGallery", "Screen size unavailable: " + ex.GetType().Name);
+        }
+        try
+        {
             var size = Window.Default.WindowSize; var insets = Window.Default.GetInsets();
             if (!GalleryDisplayMetrics.TryCreate(size.Width,size.Height,width,height,insets.Start,insets.Top,insets.End,insets.Bottom,out display)) return false;
             if (_display != display)
