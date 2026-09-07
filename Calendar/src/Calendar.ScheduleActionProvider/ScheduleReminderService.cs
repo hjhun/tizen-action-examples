@@ -81,7 +81,7 @@ public sealed class ScheduleReminderService : TizenActionReminder.ServiceBase
             return Failure("Query Id and Category must not exceed 256 characters.");
         }
         if (!string.IsNullOrWhiteSpace(query.Category) &&
-            query.Category is not ("Reminder" or "Tizen.Action.Reminder" or "org.tizen.actionexamples.calendar"))
+            query.Category is not ("Reminder" or "Tizen.Action.Reminder" or "org.tizen.calendar"))
         {
             result = [];
             return Failure("Category must name Reminder, Tizen.Action.Reminder, or this app.");

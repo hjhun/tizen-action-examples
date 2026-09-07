@@ -17,7 +17,7 @@ All new example application manifests must use the following canonical identity 
 - `<name>` is the lower-case product/domain name shown in this dashboard; do not use `actionexample` or `actionexamples` in new IDs.
 - The example provider must not reuse a platform-owned `details.appid` from the Action catalog.
 
-Existing Calendar and Reminder manifests still use historical `org.tizen.actionexamples.*` identities. This dashboard records their intended canonical IDs but does **not** change any manifest as part of dashboard preparation. Identity migration is a separately reviewed compatibility/packaging task.
+Calendar and Reminder use canonical `org.tizen.calendar` and `org.tizen.reminder` package/application IDs. See the [identity migration record](../Calendar/docs/APP_ID_MIGRATION.md) for installation, data preservation and target verification.
 
 ## Completion Contract
 
@@ -36,14 +36,12 @@ Before checking an app complete, its autonomous Goal must establish and verify a
 ## Completed / Existing Reference Apps
 
 - [x] Calendar — P0 reference implementation
-  - Canonical package/app ID for future migration: `org.tizen.calendar`
-  - Current historical manifest identity: `org.tizen.actionexamples.calendar`
+  - Package/app ID: `org.tizen.calendar`
   - Scope evidenced in repository: Calendar CRUD, stable Entity identity/resolver, search, persistence/reminder reconciliation, NUI views, ViewAnnotation, and A2UI presentation.
   - Any new autonomous work must preserve the user-deleted `docs/specs/2026-08-08-calendar-navigation-search-view-design.md` unless the Goal explicitly adopts that change.
 
 - [x] Reminder — P0 reference implementation
-  - Canonical package/app ID for future migration: `org.tizen.reminder`
-  - Current historical manifest identity: `org.tizen.actionexamples.reminder`
+  - Package/app ID: `org.tizen.reminder`
   - Scope evidenced in repository: Schedule Action provider, reminder/reservation flows, persistence, NUI focused workspace, ViewAnnotation, and Common Emulator UI evidence.
 
 ## Ready Queue — P0 State, Entity, and Presentation Baseline

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns="http://tizen.org/ns/packages" api-version="10.0" package="org.tizen.actionexamples.calendar" version="0.1.0">
+<manifest xmlns="http://tizen.org/ns/packages" api-version="10.0" package="org.tizen.calendar" version="0.1.0">
   <profile name="common" />
   <privileges>
     <privilege>http://tizen.org/privilege/alarm.get</privilege>
@@ -8,7 +8,7 @@
     <privilege>http://tizen.org/privilege/datasharing</privilege>
     <privilege>http://tizen.org/privilege/appmanager.launch</privilege>
   </privileges>
-  <ui-application appid="org.tizen.actionexamples.calendar"
+  <ui-application appid="org.tizen.calendar"
                   exec="Calendar.App.dll"
                   type="dotnet"
                   multiple="false"

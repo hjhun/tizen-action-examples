@@ -4,6 +4,10 @@ Date: 2026-09-06. Canonical executable preview:
 [`refs/one-ui-sample.html`](../refs/one-ui-sample.html).
 Requirements and acceptance remain in Markdown. [Stage 1 results](STAGE1_VALIDATION.md).
 
+Current package/app ID: `org.tizen.calendar`; see the
+[2026-09-07 identity migration](APP_ID_MIGRATION.md). Earlier captures below were
+taken under the historical app ID recorded in their provenance.
+
 2026-09-07 follow-up: [live Action refresh validation](LIVE_REFRESH_VALIDATION.md).
 Installed editing/search hierarchy and reference geometry are unchanged. Action
 mutations now refresh visible data without replacing live input controls; native

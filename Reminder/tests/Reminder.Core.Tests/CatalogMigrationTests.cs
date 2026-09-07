@@ -12,7 +12,7 @@ internal static class CatalogMigrationTests
             Check(service.CreateReminder(ReminderItem.Create($"item-{i:D3}", $"Task {i}", null, "")).Success, "fixture creation");
         var query = ReminderContract.Query("item-104", "", "Reminder", 1);
         Check(service.SearchReminders(query).Single().Id == "item-104", "ID filter before limit");
-        foreach (var category in new[] { "", "Reminder", "Tizen.Action.Reminder", "org.tizen.actionexamples.reminder" })
+        foreach (var category in new[] { "", "Reminder", "Tizen.Action.Reminder", "org.tizen.reminder" })
             Check(service.SearchReminders(ReminderContract.Query("", "", category, 999)).Count == 100, "bounded domain query");
         Reject(() => ReminderContract.Query("", "", "Completed", 10));
         Reject(() => ReminderContract.Query(new string('x', 129), "", "", 1));

@@ -12,6 +12,9 @@ internal static class CatalogMigrationTests
         Check(CalendarSearchQueryAdapter.TryCreate(null, null, null, 1, true, true, true,
             out var byId, out _, id: "event-119", category: "Calendar"));
         Check(repository.Search(byId!).Single().Id == "event-119");
+        Check(CalendarSearchQueryAdapter.TryCreate(null, null, null, 1, true, true, true,
+            out var canonicalApp, out _, id: "event-119", category: "org.tizen.calendar"));
+        Check(repository.Search(canonicalApp!).Single().Id == "event-119");
         Check(CalendarSearchQueryAdapter.TryCreate("Studio", null, null, 200, true, true, true,
             out var bounded, out _));
         Check(repository.Search(bounded!).Count == 100);

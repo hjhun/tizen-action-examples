@@ -10,7 +10,7 @@ parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--output', required=True, type=Path, help='New directory for this isolated test run')
 args = parser.parse_args()
 args.output.mkdir(parents=True, exist_ok=False)
-calendar = 'org.tizen.actionexamples.calendar'
+calendar = 'org.tizen.calendar'
 display = 'org.tizen.displaypresentation'
 run_id = 'interop-' + uuid.uuid4().hex[:12]
 start = datetime.now(timezone.utc).replace(microsecond=0) + timedelta(days=30)

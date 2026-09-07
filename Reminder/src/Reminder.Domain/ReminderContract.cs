@@ -10,7 +10,7 @@ public static class ReminderContract
         if (id?.Length > 128 || keyword?.Length > 200 || category?.Length > 128)
             throw new ArgumentException("Query ID/category must be at most 128 characters and keyword at most 200.");
         if (!string.IsNullOrWhiteSpace(category) && category is not
-            ("Reminder" or "Tizen.Action.Reminder" or "org.tizen.actionexamples.reminder"))
+            ("Reminder" or "Tizen.Action.Reminder" or "org.tizen.reminder"))
             throw new ArgumentException("Category must identify Reminder or this app; it is not a smart-list filter.");
         return new(keyword ?? string.Empty, ReminderCategory.All, limit <= 0 ? 50 : Math.Min(limit, 100))
         { Id = id ?? string.Empty };

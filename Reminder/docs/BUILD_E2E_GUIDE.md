@@ -7,7 +7,7 @@ are recorded in [STAGE1_VALIDATION](../../Calendar/docs/STAGE1_VALIDATION.md).
 
 Use .NET SDK 8, Tizen Studio/signing tools, actionc and its action2tidl/tidlc
 backends, and the current `tizen-action/default-actions` catalog. App and package
-ID remain `org.tizen.actionexamples.reminder`. The manifest declares .NET API 14;
+ID are `org.tizen.reminder`. The manifest declares .NET API 14;
 projects reference `Tizen.NET 14.0.0.19326`.
 
 Generate complete Reminder (5 methods), ReminderCustom (6 methods), and View
@@ -23,7 +23,7 @@ bash Reminder/build.sh all
 bash Reminder/package.sh
 ```
 
-Package output is `Reminder/dist/org.tizen.actionexamples.reminder-0.1.0-api14.tpk`.
+Package output is `Reminder/dist/org.tizen.reminder-0.1.0-api14.tpk`.
 The packaging helper checks manifest, application payload, Custom action resources
 and TPK signatures. Its emulator signing fallback is for local Common Emulator
 validation. Product signing remains a separate deployment concern.
@@ -42,8 +42,8 @@ Host suites run from the Reminder directory (the contract suite resolves the sib
 Use an explicitly selected, authorized target and a matching Action runtime.
 
 ```sh
-sdb -s emulator-26111 install Reminder/dist/org.tizen.actionexamples.reminder-0.1.0-api14.tpk
-sdb -s emulator-26111 shell 'app_launcher -s org.tizen.actionexamples.reminder'
+sdb -s emulator-26111 install Reminder/dist/org.tizen.reminder-0.1.0-api14.tpk
+sdb -s emulator-26111 shell 'app_launcher -s org.tizen.reminder'
 python3 Reminder/tests/prepare_target_validation.py --output /tmp/reminder-scenarios
 sdb -s emulator-26111 push /tmp/reminder-scenarios/01_actions.json /tmp/reminder-actions.json
 sdb -s emulator-26111 shell 'action-tool run --json /tmp/reminder-actions.json' > /tmp/reminder-results.json

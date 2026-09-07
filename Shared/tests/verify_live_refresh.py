@@ -146,7 +146,7 @@ def related(app):
         capture('reminder-cancelled-'+kind)
 try:
     for app in (['calendar','reminder'] if a.app=='both' else [a.app]):
-        t.app='org.tizen.actionexamples.'+app;t.launch(restart=True)
+        t.app='org.tizen.'+app;t.launch(restart=True)
         if a.related_only:
             if app=='calendar':click('SearchControl')
             related(app)

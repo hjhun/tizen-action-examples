@@ -10,7 +10,7 @@ parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--output', required=True, type=Path)
 args = parser.parse_args()
 args.output.mkdir(parents=True, exist_ok=False)
-APP = 'org.tizen.actionexamples.reminder'
+APP = 'org.tizen.reminder'
 DISPLAY = 'org.tizen.displaypresentation'
 run = 'rem-e2e-' + uuid.uuid4().hex[:10]
 due = datetime.now(timezone.utc).replace(microsecond=0) + timedelta(days=30)

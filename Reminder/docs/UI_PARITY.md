@@ -6,6 +6,10 @@ The previous design-options HTML was removed. Requirements remain in
 [REQUIREMENTS_DRAFT](REQUIREMENTS_DRAFT.md); the preview is an executable UI model.
 See [stage 1 validation](../../Calendar/docs/STAGE1_VALIDATION.md).
 
+Current package/app ID: `org.tizen.reminder`; see the
+[2026-09-07 identity migration](../../Calendar/docs/APP_ID_MIGRATION.md).
+Earlier captures retain their historical app ID in the provenance below.
+
 2026-09-07 follow-up: [live Action refresh validation](../../Calendar/docs/LIVE_REFRESH_VALIDATION.md).
 Installed rows and saved details refresh while editor/search controls remain
 attached. Native Action changes, draft/focus preservation and reservation updates

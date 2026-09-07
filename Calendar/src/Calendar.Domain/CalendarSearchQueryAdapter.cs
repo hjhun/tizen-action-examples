@@ -30,7 +30,7 @@ public static class CalendarSearchQueryAdapter
             return false;
         }
         if (!string.IsNullOrWhiteSpace(category) &&
-            category is not ("Calendar" or "Tizen.Action.Calendar" or "org.tizen.actionexamples.calendar"))
+            category is not ("Calendar" or "Tizen.Action.Calendar" or "org.tizen.calendar"))
         {
             error = "Category must name Calendar, Tizen.Action.Calendar, or this app.";
             return false;

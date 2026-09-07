@@ -248,8 +248,8 @@ Host test는 Tizen-independent domain/adapter/use-case seam을 실행합니다. 
 
 ```bash
 : "${SERIAL:?Set SERIAL to the target device serial}"
-PACKAGE=dist/org.tizen.actionexamples.calendar-0.1.0-api14.tpk
-APPID=org.tizen.actionexamples.calendar
+PACKAGE=dist/org.tizen.calendar-0.1.0-api14.tpk
+APPID=org.tizen.calendar
 
 sdb devices
 sdb -s "$SERIAL" install "$PACKAGE"
@@ -262,6 +262,9 @@ raw DLL이 아니라 signed ZIP-based TPK를 설치합니다. `./package.sh`는 
 자세한 schema, code generation, packaging, provider discovery, Action/View E2E 절차는 [Tizen Action Framework 2.0 개발 가이드](docs/TIZEN_ACTION_FRAMEWORK_2_0_DEVELOPMENT_GUIDE.md)를 참고하십시오.
 
 ## Screenshot provenance
+
+현재 설치 ID는 `org.tizen.calendar`입니다. 2026-09-07의 ID 변경 및 새 ID 타깃 검증은
+[마이그레이션 기록](docs/APP_ID_MIGRATION.md)에 별도로 정리했습니다.
 
 README의 이미지는 2026-08-08에 다음 환경에서 fresh capture했습니다.
 

@@ -24,7 +24,7 @@ def main():
     args = parser.parse_args()
     if not 1 <= args.iterations <= 100:
         parser.error('--iterations must be between 1 and 100')
-    appid = 'org.tizen.actionexamples.' + args.app
+    appid = 'org.tizen.' + args.app
     checks = []
 
     def call(name, arguments, app=appid):

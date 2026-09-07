@@ -38,7 +38,7 @@ with ZipFile(packages[0]) as package:
     assert {'tizen-manifest.xml', 'author-signature.xml', 'signature1.xml'} <= names
     for schema in list((app / 'actions').glob('*.action')) + list((app / 'entities').glob('*.entity')):
         assert package.read('res/' + schema.name) == schema.read_bytes()
-target = app / 'dist/org.tizen.actionexamples.calendar-0.1.0-api14.tpk'
+target = app / 'dist/org.tizen.calendar-0.1.0-api14.tpk'
 target.parent.mkdir(exist_ok=True)
 shutil.copy2(packages[0], target)
 print(target)

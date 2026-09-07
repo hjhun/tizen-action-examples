@@ -3,7 +3,7 @@
 Tizen NUI/API 14 Reminder provider with smart lists, detail/editing, completion,
 delete confirmation, current ViewAnnotations and Presentation integration.
 
-- App ID: `org.tizen.actionexamples.reminder`
+- App ID: `org.tizen.reminder`
 - Standard Reminder: Add, Delete, Search, ToPresentation, Update
 - ReminderCustom: AddRecording, AddViewing, CancelRecording, CancelViewing, GetReminderByIds, GetReservations
 - View: FindById, GetAnnotatedViews, GetFocusedView, ToPresentation

@@ -162,7 +162,7 @@ git diff --check
 
 ```bash
 ./package.sh
-unzip -t dist/org.tizen.actionexamples.calendar-0.1.0-api14.tpk
+unzip -t dist/org.tizen.calendar-0.1.0-api14.tpk
 ```
 
 `package.sh`는 `tizen build-cs`로 build.info를 생성하고, 앱과 의존 DLL·manifest·res를 임시 stage에 배치합니다.
@@ -176,8 +176,8 @@ Common Emulator 시험용 서명 후 ZIP 구조, manifest, 두 signature, Custom
 
 ```bash
 : "${SERIAL:?Set SERIAL to the target device serial}"
-PACKAGE=dist/org.tizen.actionexamples.calendar-0.1.0-api14.tpk
-APPID=org.tizen.actionexamples.calendar
+PACKAGE=dist/org.tizen.calendar-0.1.0-api14.tpk
+APPID=org.tizen.calendar
 
 sdb devices
 sdb -s "$SERIAL" install "$PACKAGE"
