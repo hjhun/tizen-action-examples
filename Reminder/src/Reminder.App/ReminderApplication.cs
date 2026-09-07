@@ -33,6 +33,9 @@ internal sealed class ReminderApplication : NUIApplication
     private bool _paused;
     private ReminderDisplayMetrics? _display;
     private View? _canvas;
+    private readonly List<View> _inputFocusViews = [];
+    private View? _editorFocus;
+    private View? _resumeEditorFocus;
 
     protected override void OnCreate()
     {
@@ -58,6 +61,9 @@ internal sealed class ReminderApplication : NUIApplication
 
     protected override void OnPause()
     {
+        // A validation-only button click may leave the editor's key input focus intact.
+        var currentInput = CurrentEditorInput();
+        _resumeEditorFocus = currentInput ?? (IsCurrentEditorInput(_editorFocus) ? _editorFocus : null);
         _paused = true;
         _annotationTimer?.Stop();
         ReminderViewActionProviderHost.ClearPublishedViews();
@@ -70,10 +76,15 @@ internal sealed class ReminderApplication : NUIApplication
         _paused = false;
         OnWindowResized(this, EventArgs.Empty);
         RefreshFromService();
+        var restore = _resumeEditorFocus;
+        _resumeEditorFocus = null;
+        if (IsCurrentEditorInput(restore)) FocusManager.Instance.SetCurrentFocusView(restore);
+        QueueAnnotationRefresh();
     }
 
     protected override void OnTerminate()
     {
+        ReleaseInputFocusTracking();
         if (_service is not null && _changes is not null) _service.Changed -= _changes.Request;
         _changes?.Dispose();
         Window.Default.InsetsChanged -= OnWindowResized;
@@ -184,6 +195,7 @@ internal sealed class ReminderApplication : NUIApplication
             // Keep the editor's focus order inside the form; arrows within text remain native.
             if (key is "Tab" || current is not (TextField or TextEditor) && key is "Up" or "Down" or "Left" or "Right")
             {
+                ClearEditorFocus();
                 var order = new[] { "ReminderEditorTitle", "ReminderEditorDue", "ReminderEditorNote", "ReminderEditorCancel", "ReminderEditorSave" };
                 var index = Array.IndexOf(order, name);
                 var delta = key is "Up" or "Left" ? -1 : 1;
@@ -267,6 +279,36 @@ internal sealed class ReminderApplication : NUIApplication
 
     private void OnFocusChanged(object? sender, FocusManager.FocusChangedEventArgs args) => QueueAnnotationRefresh();
 
+    private bool IsCurrentEditorInput(View? view) => view is not null && _editing && !_confirmDelete &&
+        _activeRoot is not null && _activeRoot == _canvas &&
+        NuiViewAnnotations.Descendants(_activeRoot).Any(x => x.View == view) &&
+        view.IsEnabled && view.Focusable && view.Visibility &&
+        view.Name is "ReminderEditorTitle" or "ReminderEditorDue" or "ReminderEditorNote";
+
+    private View? CurrentEditorInput() =>
+        _inputFocusViews.FirstOrDefault(view => IsCurrentEditorInput(view) && view.KeyInputFocus);
+
+    private void RememberInputFocus(object? sender, EventArgs args)
+    {
+        if (_paused || _refreshing) return;
+        _editorFocus = sender is View view && IsCurrentEditorInput(view) ? view : null;
+    }
+
+    private void TrackInputFocus(View view)
+    {
+        view.FocusGained += RememberInputFocus;
+        _inputFocusViews.Add(view);
+    }
+
+    private void ClearEditorFocus() { _editorFocus = null; _resumeEditorFocus = null; }
+
+    private void ReleaseInputFocusTracking()
+    {
+        ClearEditorFocus();
+        foreach (var view in _inputFocusViews) view.FocusGained -= RememberInputFocus;
+        _inputFocusViews.Clear();
+    }
+
     private bool TryReadDisplay(out ReminderDisplayMetrics display)
     {
         display = default;
@@ -305,6 +347,7 @@ internal sealed class ReminderApplication : NUIApplication
 
         if (!TryReadDisplay(out var display)) return;
 
+        ReleaseInputFocusTracking();
         _activeRoot = null;
         ReminderViewActionProviderHost.ClearPublishedViews();
         if (_root is not null)
@@ -501,6 +544,7 @@ internal sealed class ReminderApplication : NUIApplication
         title.Name = "ReminderEditorTitle";
         due.Name = "ReminderEditorDue";
         note.Name = "ReminderEditorNote";
+        TrackInputFocus(note);
         var validation = Label(string.Empty, "#B3261E", 24f, 42, 550, 688, 54);
         panel.Add(title); panel.Add(due); panel.Add(note); panel.Add(validation);
         var cancel = Button("Cancel", 278, 655, 210, 72, () => { _editing = false; _newItem = false; Render(); });
@@ -677,18 +721,27 @@ internal sealed class ReminderApplication : NUIApplication
     private static View Surface(float x, float y, float w, float h, string color, float radius) => new()
     { Position = P(x, y), Size = S(w, h), BackgroundColor = new Color(color), CornerRadius = radius, FocusableChildren = true };
 
-    private static NuiButton Button(string text, float x, float y, float w, float h, Action action)
+    private NuiButton Button(string text, float x, float y, float w, float h, Action action)
     {
         var button = new NuiButton { Text = text, Position = P(x, y), Size = S(w, h), Focusable = true, BackgroundColor = Color.White, TextColor = new Color("#292531"), CornerRadius = 12 };
         button.TextLabel.PixelSize = 28;
         button.FocusGained += (_, _) => { button.BorderlineWidth = 4; button.BorderlineColor = new Color("#6B42B8"); button.Scale = new Vector3(1.02f, 1.02f, 1); };
         button.FocusLost += (_, _) => { button.BorderlineWidth = 0; button.Scale = Vector3.One; };
-        button.Clicked += (_, _) => action();
+        button.Clicked += (_, _) =>
+        {
+            ClearEditorFocus();
+            action();
+            if (!_paused) _editorFocus = CurrentEditorInput();
+        };
         return button;
     }
 
-    private static TextField Field(string text, string placeholder, float x, float y, float w, float h) => new()
-    { Text = text, PlaceholderText = placeholder, EnableEditing = true, Focusable = true, PixelSize = 28, Position = P(x, y), Size = S(w, h), BackgroundColor = new Color("#FFFFFF") };
+    private TextField Field(string text, string placeholder, float x, float y, float w, float h)
+    {
+        var field = new TextField { Text = text, PlaceholderText = placeholder, EnableEditing = true, Focusable = true, PixelSize = 28, Position = P(x, y), Size = S(w, h), BackgroundColor = new Color("#FFFFFF") };
+        TrackInputFocus(field);
+        return field;
+    }
 
     private static TextLabel Label(string text, string color, float pixelSize, float x, float y, float w, float h, HorizontalAlignment alignment = HorizontalAlignment.Begin) => new()
     { Text = text, TextColor = new Color(color), PixelSize = pixelSize, Position = P(x, y), Size = S(w, h), HorizontalAlignment = alignment, VerticalAlignment = VerticalAlignment.Center, MultiLine = true };

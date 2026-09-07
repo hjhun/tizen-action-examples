@@ -36,6 +36,34 @@ caret/IME focus, modal focus and measured annotations remain unverified for this
 change. Native high-resolution coverage and SystemInfo initial sizing remain open.
 Earlier UI evidence retains its original validation scope.
 
+## Editor focus resume regression (2026-09-08)
+
+The earlier compositor-debug iconify case retained the invalid draft but moved
+focus from Due to SearchApply and closed the IME. The app now remembers the live
+editor input, including input still focused after invalid Save, and consumes that
+candidate once on resume only if the same actor remains in the active editor.
+Explicit navigation and editor/root teardown clear stale candidates.
+
+`Reminder.Core.Tests` passes; Release build has zero warnings/errors. These prove
+host regression/compilation, not NUI lifecycle RED/GREEN. The tested source was
+unchanged when recording this result. Tested `org.tizen.reminder` TPK SHA256:
+`633cdd5689868ad53de8741e2def0e36dc3f7e233a423b19af2319d91810a18c`.
+
+On FHD Common `tc-0905-actionagent` / `emulator-26101`, invalid Save followed by
+one Reminder-window iconify, without re-clicking Due, cleared published views;
+foreground return kept PID/starttime and restored Due focus, draft, validation
+and visible IME. Actual Action focus/bounds and Aurum frames agree. Explicit Note
+selection then remained selected across read-only queries and observation waits.
+The unsaved draft was cancelled, the sole new fixture was deleted and its absence
+confirmed by Search/resolver. Existing desired-state JSON, including handles,
+remained byte-identical; the modified app was left running without a test draft.
+
+This is limited to that compositor-debug path. Direct OnPause trace, ordinary
+Home, the exact skipped-event/no-followup-resize branch, native actor identity,
+caret index, modal/stale fallback and selection after serviceChanged refresh
+remain unverified. High-resolution and SystemInfo initial-sizing gates stay open;
+the historical captures below are not validation of this payload.
+
 ## Reference and adaptation
 
 The [official Samsung Reminder guide](https://www.samsung.com/us/support/answer/ANS10003651/)
