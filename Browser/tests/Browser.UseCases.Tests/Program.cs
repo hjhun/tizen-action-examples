@@ -3,6 +3,22 @@ using Browser.Persistence;
 using Browser.UseCases;
 using System.Diagnostics;
 
+// The provider observes the same immutable workspace used by UI mutations.
+var queryTabs = new BrowserTabCoordinator(BrowserTabWorkspace.Create("query-first"));
+var queryState = new BrowserAgentStateRegistry();
+var sharedQuery = new BrowserPageQueryService(queryState, queryTabs);
+var oldTabs = sharedQuery.GetTabsSnapshot()!;
+queryTabs.OpenTabs();
+if (new BrowserPageQueryService(queryState).GetTabsSnapshot() is not null ||
+    !queryTabs.TryCreateTab(out var createdQueryTab) ||
+    sharedQuery.GetTabsSnapshot()!.Tabs.Count != 2 || oldTabs.Tabs.Count != 1 ||
+    sharedQuery.GetTabsSnapshot()!.SelectedTabId != createdQueryTab)
+    throw new InvalidOperationException("Query must preserve immutable ordered snapshots and observe UI tab updates.");
+var hiddenResolution = sharedQuery.ResolveByIds(["query-first", createdQueryTab, "query-first"]);
+if (hiddenResolution.Pages.Count != 0 || !hiddenResolution.UnresolvedIds.SequenceEqual(new[] { "query-first", createdQueryTab, "query-first" }))
+    throw new InvalidOperationException("Tab metadata must not resolve hidden pages as visible entities.");
+Console.WriteLine("PASS: shared tab-query snapshots remain immutable; hidden resolver order/duplicates preserved.");
+
 var page = BrowserPage.Create(
     id: "page-first",
     url: "https://www.example.com/first",

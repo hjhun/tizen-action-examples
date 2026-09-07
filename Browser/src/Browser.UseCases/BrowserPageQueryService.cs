@@ -9,11 +9,15 @@ namespace Browser.UseCases;
 public sealed class BrowserPageQueryService
 {
     private readonly BrowserAgentStateRegistry _agentState;
+    private readonly BrowserTabCoordinator? _tabs;
 
-    public BrowserPageQueryService(BrowserAgentStateRegistry agentState)
+    public BrowserPageQueryService(BrowserAgentStateRegistry agentState, BrowserTabCoordinator? tabs = null)
     {
+        _tabs = tabs;
         _agentState = agentState ?? throw new ArgumentNullException(nameof(agentState));
     }
+
+    public BrowserTabWorkspace? GetTabsSnapshot() => _tabs?.Current;
 
     public BrowserAgentSurface CurrentSurface => _agentState.Current.Surface;
 

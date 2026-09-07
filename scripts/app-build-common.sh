@@ -38,35 +38,6 @@ require_command() {
     }
 }
 
-apply_tidlc_compatibility() {
-    local generated_file="$1"
-    python3 - "$generated_file" <<'PY'
-from pathlib import Path
-import sys
-
-path = Path(sys.argv[1])
-text = path.read_text()
-direct = "has = HasPrivilegeLocal(b.Sender, item);"
-legacy_commented = "//has = HasPrivilegeLocal(b.Sender, item);"
-spaced_commented = "// has = HasPrivilegeLocal(b.Sender, item);"
-if text.count(legacy_commented) == 1:
-    text = text.replace(legacy_commented, "// has = HasPrivilegeLocal(b.Sender, item);\n" +
-                        "                        // Disabled for compatibility with runtimes that omit StubBase.HasPrivilegeLocal.\n" +
-                        "                        has = false;", 1)
-elif text.count(spaced_commented) == 1 and text.count("has = false;") >= 1:
-    pass
-elif text.count(direct) == 1:
-    start = text.rfind("\n", 0, text.index(direct)) + 1
-    indent = text[start:text.index(direct)]
-    text = text.replace(direct, "// has = HasPrivilegeLocal(b.Sender, item);\n" +
-                        f"{indent}// Disabled for compatibility with runtimes that omit StubBase.HasPrivilegeLocal.\n" +
-                        f"{indent}has = false;", 1)
-else:
-    raise SystemExit(f"{path}: unsupported HasPrivilegeLocal generation shape")
-path.write_text(text)
-PY
-}
-
 generate_bindings() {
     require_command "$ACTIONC_BIN"
 
@@ -89,7 +60,6 @@ generate_bindings() {
             echo "actionc did not create expected binding: $generated_file" >&2
             exit 3
         }
-        apply_tidlc_compatibility "$generated_file"
         if [[ "$generated_file" != "$target_file" ]]; then
             mv "$generated_file" "$target_file"
         fi

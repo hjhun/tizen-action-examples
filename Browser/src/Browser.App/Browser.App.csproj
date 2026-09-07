@@ -12,5 +12,6 @@
     <ProjectReference Include="../Browser.UseCases/Browser.UseCases.csproj" />
     <ProjectReference Include="../Browser.ActionProvider/Browser.ActionProvider.csproj" />
     <ProjectReference Include="../Browser.ViewActionProvider/Browser.ViewActionProvider.csproj" />
+    <Content Include="../../actions/*.action" Link="res/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

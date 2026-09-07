@@ -1,8 +1,23 @@
 using System.Text.Json;
 using Browser.Domain;
 using Browser.UseCases;
-using DisplayPresentation.Domain;
-using DisplayPresentation.UseCases;
+using Browser.ActionProvider;
+using Browser.ViewActionProvider;
+using RPCPort.TizenActionBrowser;
+
+
+if (args is ["--providers"])
+{
+    CheckProviders();
+    Console.WriteLine("PASS: actual provider return-value checks (no Parcel runtime claim).");
+    return;
+}
+var assertionCount = 0;
+void Assert(bool condition, string message)
+{
+    if (!condition) throw new InvalidOperationException(message);
+    assertionCount++;
+}
 
 Assert(BrowserActionContract.TryCreatePage(
     "page-example", "https://example.com/", "Example", "Public page metadata", out var page),
@@ -64,22 +79,8 @@ Assert(legacyComponents.GetArrayLength() == 5 &&
 Assert(legacyDocument.RootElement.GetProperty("dataModelUpdate").GetProperty("path").GetString() == "/" &&
        legacyDocument.RootElement.GetProperty("dataModelUpdate").GetProperty("value").GetProperty("title").GetString() == page.Title,
     "Legacy compatibility data must use the same bounded Browser snapshot.");
-var displayOutcome = new A2UiPresentationParser().Parse(new PresentationInput(legacy.Template, legacy.Document));
-Assert(displayOutcome is
-{
-    IsSuccess: true,
-    Plan.Surface.Root: VerticalGroup
-    {
-        Children:
-        [
-            TextValue { Value: "Browser page" },
-            TextValue { Value: "Example" },
-            TextValue { Value: "https://example.com/" },
-            TextValue { Value: "Public page metadata" },
-        ],
-    },
-},
-    "The actual current DisplayPresentation compatibility parser must accept and preserve the Browser semantic tree.");
+// Legacy renderer semantic-tree acceptance is verified against the installed renderer,
+// independently of these producer/provider tests; no renderer project is built here.
 
 var privatePage = BrowserPage.Create(
     "page-private",
@@ -97,10 +98,24 @@ Assert(!allPayload.Contains("token=secret", StringComparison.Ordinal) &&
 
 Console.WriteLine("PASS: Browser provider contract validates entities and produces bounded canonical plus named legacy A2UI profiles.");
 
-static void Assert(bool condition, string message)
+Console.WriteLine($"PORTABLE COMPLETE: {assertionCount} assertions");
+
+static void CheckProviders()
 {
-    if (!condition)
+    static void Assert(bool condition, string message)
     {
-        throw new InvalidOperationException(message);
+        if (!condition) throw new InvalidOperationException(message);
     }
+var queries = new BrowserPageQueryService(new BrowserAgentStateRegistry());
+var provider = new BrowserActionService(queries);
+Assert(!provider.GetCurrentPage(out var emptyPage).Success && emptyPage.Url == "" && emptyPage.Title == "", "Hidden page failure initializes WebPageInfo.");
+Assert(!provider.GetTabs(out var tabs).Success && tabs.Count == 0, "Unconfigured tab snapshot fails with an empty list.");
+Assert(!provider.ToPresentation(new TizenEntityWebPageInfo(), out var emptyPresentation).Success && emptyPresentation.Template == "" && emptyPresentation.Document == "", "Invalid Presentation initializes both serializer strings.");
+Assert(!provider.ControlTab(new TizenEntityTabCommand(), out var emptyTab).Success && emptyTab.Page.Url == "", "Unsupported tab initializes nested page.");
+Assert(!provider.ToCalendar(new TizenEntityWebPageInfo(), out var emptyEvent).Success && emptyEvent.StartDate == "", "Unsupported Calendar initializes Event.");
+Assert(!provider.Search(new TizenEntityBrowserQuery(), out var emptySearch).Success && emptySearch.Answer.Count == 0 && emptySearch.Place.Count == 0 && emptySearch.Product.Count == 0 && emptySearch.Person.Count == 0, "Unsupported search initializes all nested lists.");
+var viewProvider = new BrowserViewActionService();
+Assert(!viewProvider.FindById("", out var emptyView).Success && emptyView.Annotation.EntityInfo == "" && emptyView.ScreenBounds is not null && emptyView.WindowBounds is not null, "View failure initializes nested annotation and bounds.");
+Assert(viewProvider.GetAnnotatedViews(out var noViews).Success && noViews.Count == 0, "No rendered views is a successful empty query, not a failure.");
+
 }

@@ -13,7 +13,7 @@ using Tizen.Applications.RPCPort;
 
 namespace RPCPort
 {
-    namespace TizenActionView
+    namespace BrowserCustomActions
     {
         internal class LocalExecution
         {
@@ -87,134 +87,6 @@ namespace RPCPort
 
 
         
-        public class TizenEntityPresentation
-        {
-            
-
-
-            public string Document;
-            public string Template;
-
-            public TizenEntityPresentation()
-            {
-            }
-
-            public string ToJson()
-            {
-                string json_str = "{\"TizenEntityPresentation\":{";
-                json_str += "\"Document\":";
-                AppendToJson(ref json_str, Document);
-        json_str += ",";        json_str += "\"Template\":";
-                AppendToJson(ref json_str, Template);
-                json_str += "}}";
-                return json_str;
-            }
-
-            private static string JsonEscape(string str)
-            {
-                if (str == null) return "";
-                var sb = new System.Text.StringBuilder(str.Length);
-                foreach (char c in str)
-                {
-                    switch (c)
-                    {
-                        case '\\': sb.Append("\\\\"); break;
-                        case '"': sb.Append("\\\""); break;
-                        case '\b': sb.Append("\\b"); break;
-                        case '\f': sb.Append("\\f"); break;
-                        case '\n': sb.Append("\\n"); break;
-                        case '\r': sb.Append("\\r"); break;
-                        case '\t': sb.Append("\\t"); break;
-                        default:
-                            if (c < 0x20)
-                                sb.Append("\\u").Append(((int)c).ToString("x4"));
-                            else
-                                sb.Append(c);
-                            break;
-                    }
-                }
-                return sb.ToString();
-            }
-
-            private static void AppendToJson(ref string json_str, object val)
-            {
-                if (val == null)
-                {
-                    json_str += "null";
-                    return;
-                }
-                var type = val.GetType();
-                if (type.IsEnum)
-                {
-                    json_str += ((int)val).ToString();
-                }
-                else if (val is bool b)
-                {
-                    json_str += b ? "true" : "false";
-                }
-                else if (val is string s)
-                {
-                    json_str += "\"" + JsonEscape(s) + "\"";
-                }
-                else if (val is float f)
-                {
-                    json_str += f.ToString(System.Globalization.CultureInfo.InvariantCulture);
-                }
-                else if (val is double d)
-                {
-                    json_str += d.ToString(System.Globalization.CultureInfo.InvariantCulture);
-                }
-                else if (val is sbyte || val is byte || val is short || val is ushort || val is int || val is uint || val is long || val is ulong)
-                {
-                    json_str += val.ToString();
-                }
-                else
-                {
-                    var method = type.GetMethod("ToJson");
-                    if (method != null)
-                    {
-                        json_str += method.Invoke(val, null);
-                    }
-                    else if (val is System.Collections.IDictionary dict)
-                    {
-                        json_str += "{";
-                        bool first = true;
-                        foreach (System.Collections.DictionaryEntry entry in dict)
-                        {
-                            if (!first) json_str += ",";
-                            string key_str = "";
-                            AppendToJson(ref key_str, entry.Key);
-                            if (!key_str.StartsWith("\""))
-                            {
-                                key_str = "\"" + key_str + "\"";
-                            }
-                            json_str += key_str + ":";
-                            AppendToJson(ref json_str, entry.Value);
-                            first = false;
-                        }
-                        json_str += "}";
-                    }
-                    else if (val is System.Collections.IEnumerable enumerable)
-                    {
-                        json_str += "[";
-                        bool first = true;
-                        foreach (var item in enumerable)
-                        {
-                            if (!first) json_str += ",";
-                            AppendToJson(ref json_str, item);
-                            first = false;
-                        }
-                        json_str += "]";
-                    }
-                    else
-                    {
-                        json_str += "null";
-                    }
-                }
-            }
-
-        }
-
         public class TizenEntityStatus
         {
             
@@ -471,443 +343,32 @@ namespace RPCPort
 
         }
 
-        public class ScreenBounds
+        public class TizenEntityWebPageInfo: TizenEntity
         {
             
 
 
-            public double X;
-            public double Y;
-            public double Width;
-            public double Height;
+            public string Url;
+            public string Title;
+            public string Details;
 
-            public ScreenBounds()
+            public TizenEntityWebPageInfo()
             {
             }
 
             public string ToJson()
             {
-                string json_str = "{\"ScreenBounds\":{";
-                json_str += "\"X\":";
-                AppendToJson(ref json_str, X);
-        json_str += ",";        json_str += "\"Y\":";
-                AppendToJson(ref json_str, Y);
-        json_str += ",";        json_str += "\"Width\":";
-                AppendToJson(ref json_str, Width);
-        json_str += ",";        json_str += "\"Height\":";
-                AppendToJson(ref json_str, Height);
-                json_str += "}}";
-                return json_str;
-            }
-
-            private static string JsonEscape(string str)
-            {
-                if (str == null) return "";
-                var sb = new System.Text.StringBuilder(str.Length);
-                foreach (char c in str)
-                {
-                    switch (c)
-                    {
-                        case '\\': sb.Append("\\\\"); break;
-                        case '"': sb.Append("\\\""); break;
-                        case '\b': sb.Append("\\b"); break;
-                        case '\f': sb.Append("\\f"); break;
-                        case '\n': sb.Append("\\n"); break;
-                        case '\r': sb.Append("\\r"); break;
-                        case '\t': sb.Append("\\t"); break;
-                        default:
-                            if (c < 0x20)
-                                sb.Append("\\u").Append(((int)c).ToString("x4"));
-                            else
-                                sb.Append(c);
-                            break;
-                    }
-                }
-                return sb.ToString();
-            }
-
-            private static void AppendToJson(ref string json_str, object val)
-            {
-                if (val == null)
-                {
-                    json_str += "null";
-                    return;
-                }
-                var type = val.GetType();
-                if (type.IsEnum)
-                {
-                    json_str += ((int)val).ToString();
-                }
-                else if (val is bool b)
-                {
-                    json_str += b ? "true" : "false";
-                }
-                else if (val is string s)
-                {
-                    json_str += "\"" + JsonEscape(s) + "\"";
-                }
-                else if (val is float f)
-                {
-                    json_str += f.ToString(System.Globalization.CultureInfo.InvariantCulture);
-                }
-                else if (val is double d)
-                {
-                    json_str += d.ToString(System.Globalization.CultureInfo.InvariantCulture);
-                }
-                else if (val is sbyte || val is byte || val is short || val is ushort || val is int || val is uint || val is long || val is ulong)
-                {
-                    json_str += val.ToString();
-                }
-                else
-                {
-                    var method = type.GetMethod("ToJson");
-                    if (method != null)
-                    {
-                        json_str += method.Invoke(val, null);
-                    }
-                    else if (val is System.Collections.IDictionary dict)
-                    {
-                        json_str += "{";
-                        bool first = true;
-                        foreach (System.Collections.DictionaryEntry entry in dict)
-                        {
-                            if (!first) json_str += ",";
-                            string key_str = "";
-                            AppendToJson(ref key_str, entry.Key);
-                            if (!key_str.StartsWith("\""))
-                            {
-                                key_str = "\"" + key_str + "\"";
-                            }
-                            json_str += key_str + ":";
-                            AppendToJson(ref json_str, entry.Value);
-                            first = false;
-                        }
-                        json_str += "}";
-                    }
-                    else if (val is System.Collections.IEnumerable enumerable)
-                    {
-                        json_str += "[";
-                        bool first = true;
-                        foreach (var item in enumerable)
-                        {
-                            if (!first) json_str += ",";
-                            AppendToJson(ref json_str, item);
-                            first = false;
-                        }
-                        json_str += "]";
-                    }
-                    else
-                    {
-                        json_str += "null";
-                    }
-                }
-            }
-
-        }
-
-        public class WindowBounds
-        {
-            
-
-
-            public double X;
-            public double Y;
-            public double Width;
-            public double Height;
-
-            public WindowBounds()
-            {
-            }
-
-            public string ToJson()
-            {
-                string json_str = "{\"WindowBounds\":{";
-                json_str += "\"X\":";
-                AppendToJson(ref json_str, X);
-        json_str += ",";        json_str += "\"Y\":";
-                AppendToJson(ref json_str, Y);
-        json_str += ",";        json_str += "\"Width\":";
-                AppendToJson(ref json_str, Width);
-        json_str += ",";        json_str += "\"Height\":";
-                AppendToJson(ref json_str, Height);
-                json_str += "}}";
-                return json_str;
-            }
-
-            private static string JsonEscape(string str)
-            {
-                if (str == null) return "";
-                var sb = new System.Text.StringBuilder(str.Length);
-                foreach (char c in str)
-                {
-                    switch (c)
-                    {
-                        case '\\': sb.Append("\\\\"); break;
-                        case '"': sb.Append("\\\""); break;
-                        case '\b': sb.Append("\\b"); break;
-                        case '\f': sb.Append("\\f"); break;
-                        case '\n': sb.Append("\\n"); break;
-                        case '\r': sb.Append("\\r"); break;
-                        case '\t': sb.Append("\\t"); break;
-                        default:
-                            if (c < 0x20)
-                                sb.Append("\\u").Append(((int)c).ToString("x4"));
-                            else
-                                sb.Append(c);
-                            break;
-                    }
-                }
-                return sb.ToString();
-            }
-
-            private static void AppendToJson(ref string json_str, object val)
-            {
-                if (val == null)
-                {
-                    json_str += "null";
-                    return;
-                }
-                var type = val.GetType();
-                if (type.IsEnum)
-                {
-                    json_str += ((int)val).ToString();
-                }
-                else if (val is bool b)
-                {
-                    json_str += b ? "true" : "false";
-                }
-                else if (val is string s)
-                {
-                    json_str += "\"" + JsonEscape(s) + "\"";
-                }
-                else if (val is float f)
-                {
-                    json_str += f.ToString(System.Globalization.CultureInfo.InvariantCulture);
-                }
-                else if (val is double d)
-                {
-                    json_str += d.ToString(System.Globalization.CultureInfo.InvariantCulture);
-                }
-                else if (val is sbyte || val is byte || val is short || val is ushort || val is int || val is uint || val is long || val is ulong)
-                {
-                    json_str += val.ToString();
-                }
-                else
-                {
-                    var method = type.GetMethod("ToJson");
-                    if (method != null)
-                    {
-                        json_str += method.Invoke(val, null);
-                    }
-                    else if (val is System.Collections.IDictionary dict)
-                    {
-                        json_str += "{";
-                        bool first = true;
-                        foreach (System.Collections.DictionaryEntry entry in dict)
-                        {
-                            if (!first) json_str += ",";
-                            string key_str = "";
-                            AppendToJson(ref key_str, entry.Key);
-                            if (!key_str.StartsWith("\""))
-                            {
-                                key_str = "\"" + key_str + "\"";
-                            }
-                            json_str += key_str + ":";
-                            AppendToJson(ref json_str, entry.Value);
-                            first = false;
-                        }
-                        json_str += "}";
-                    }
-                    else if (val is System.Collections.IEnumerable enumerable)
-                    {
-                        json_str += "[";
-                        bool first = true;
-                        foreach (var item in enumerable)
-                        {
-                            if (!first) json_str += ",";
-                            AppendToJson(ref json_str, item);
-                            first = false;
-                        }
-                        json_str += "]";
-                    }
-                    else
-                    {
-                        json_str += "null";
-                    }
-                }
-            }
-
-        }
-
-        public class Annotation
-        {
-            
-
-
-            public string EntityId;
-            public string EntityType;
-            public string EntityInfo;
-
-            public Annotation()
-            {
-            }
-
-            public string ToJson()
-            {
-                string json_str = "{\"Annotation\":{";
-                json_str += "\"EntityId\":";
-                AppendToJson(ref json_str, EntityId);
-        json_str += ",";        json_str += "\"EntityType\":";
-                AppendToJson(ref json_str, EntityType);
-        json_str += ",";        json_str += "\"EntityInfo\":";
-                AppendToJson(ref json_str, EntityInfo);
-                json_str += "}}";
-                return json_str;
-            }
-
-            private static string JsonEscape(string str)
-            {
-                if (str == null) return "";
-                var sb = new System.Text.StringBuilder(str.Length);
-                foreach (char c in str)
-                {
-                    switch (c)
-                    {
-                        case '\\': sb.Append("\\\\"); break;
-                        case '"': sb.Append("\\\""); break;
-                        case '\b': sb.Append("\\b"); break;
-                        case '\f': sb.Append("\\f"); break;
-                        case '\n': sb.Append("\\n"); break;
-                        case '\r': sb.Append("\\r"); break;
-                        case '\t': sb.Append("\\t"); break;
-                        default:
-                            if (c < 0x20)
-                                sb.Append("\\u").Append(((int)c).ToString("x4"));
-                            else
-                                sb.Append(c);
-                            break;
-                    }
-                }
-                return sb.ToString();
-            }
-
-            private static void AppendToJson(ref string json_str, object val)
-            {
-                if (val == null)
-                {
-                    json_str += "null";
-                    return;
-                }
-                var type = val.GetType();
-                if (type.IsEnum)
-                {
-                    json_str += ((int)val).ToString();
-                }
-                else if (val is bool b)
-                {
-                    json_str += b ? "true" : "false";
-                }
-                else if (val is string s)
-                {
-                    json_str += "\"" + JsonEscape(s) + "\"";
-                }
-                else if (val is float f)
-                {
-                    json_str += f.ToString(System.Globalization.CultureInfo.InvariantCulture);
-                }
-                else if (val is double d)
-                {
-                    json_str += d.ToString(System.Globalization.CultureInfo.InvariantCulture);
-                }
-                else if (val is sbyte || val is byte || val is short || val is ushort || val is int || val is uint || val is long || val is ulong)
-                {
-                    json_str += val.ToString();
-                }
-                else
-                {
-                    var method = type.GetMethod("ToJson");
-                    if (method != null)
-                    {
-                        json_str += method.Invoke(val, null);
-                    }
-                    else if (val is System.Collections.IDictionary dict)
-                    {
-                        json_str += "{";
-                        bool first = true;
-                        foreach (System.Collections.DictionaryEntry entry in dict)
-                        {
-                            if (!first) json_str += ",";
-                            string key_str = "";
-                            AppendToJson(ref key_str, entry.Key);
-                            if (!key_str.StartsWith("\""))
-                            {
-                                key_str = "\"" + key_str + "\"";
-                            }
-                            json_str += key_str + ":";
-                            AppendToJson(ref json_str, entry.Value);
-                            first = false;
-                        }
-                        json_str += "}";
-                    }
-                    else if (val is System.Collections.IEnumerable enumerable)
-                    {
-                        json_str += "[";
-                        bool first = true;
-                        foreach (var item in enumerable)
-                        {
-                            if (!first) json_str += ",";
-                            AppendToJson(ref json_str, item);
-                            first = false;
-                        }
-                        json_str += "]";
-                    }
-                    else
-                    {
-                        json_str += "null";
-                    }
-                }
-            }
-
-        }
-
-        public class TizenEntityView: TizenEntity
-        {
-            
-
-
-            public string Type;
-            public string Description;
-            public ScreenBounds ScreenBounds;
-            public WindowBounds WindowBounds;
-            public bool IsFocused;
-            public bool IsEnabled;
-            public Annotation Annotation;
-
-            public TizenEntityView()
-            {
-            }
-
-            public string ToJson()
-            {
-                string json_str = "{\"TizenEntityView\":{";
+                string json_str = "{\"TizenEntityWebPageInfo\":{";
                 json_str += "\"Id\":";
                 AppendToJson(ref json_str, Id);
         json_str += ",";        json_str += "\"Extra\":";
                 AppendToJson(ref json_str, Extra);
-        json_str += ",";        json_str += "\"Type\":";
-                AppendToJson(ref json_str, Type);
-        json_str += ",";        json_str += "\"Description\":";
-                AppendToJson(ref json_str, Description);
-        json_str += ",";        json_str += "\"ScreenBounds\":";
-                AppendToJson(ref json_str, ScreenBounds);
-        json_str += ",";        json_str += "\"WindowBounds\":";
-                AppendToJson(ref json_str, WindowBounds);
-        json_str += ",";        json_str += "\"IsFocused\":";
-                AppendToJson(ref json_str, IsFocused);
-        json_str += ",";        json_str += "\"IsEnabled\":";
-                AppendToJson(ref json_str, IsEnabled);
-        json_str += ",";        json_str += "\"Annotation\":";
-                AppendToJson(ref json_str, Annotation);
+        json_str += ",";        json_str += "\"Url\":";
+                AppendToJson(ref json_str, Url);
+        json_str += ",";        json_str += "\"Title\":";
+                AppendToJson(ref json_str, Title);
+        json_str += ",";        json_str += "\"Details\":";
+                AppendToJson(ref json_str, Details);
                 json_str += "}}";
                 return json_str;
             }
@@ -1021,7 +482,7 @@ namespace RPCPort
 
         namespace Stub
         {
-            public class TizenActionView : StubBase
+            public class TizenActionBrowserCustom : StubBase
             {
                 
 
@@ -1029,7 +490,7 @@ namespace RPCPort
                 private Type _serviceType;
                 private static readonly string _tidlVersion = "2.10.2";
                 private Dictionary<MethodId, List<string>> _privilege_map = new Dictionary<MethodId, List<string>>();
-                private static TizenActionView _instance;
+                private static TizenActionBrowserCustom _instance;
                 private bool _isListen = false;
                 private SynchronizationContext _async_context = TizenSynchronizationContext.Current;
 
@@ -1094,13 +555,7 @@ namespace RPCPort
                     /// </summary>
                     public abstract void OnTerminate();
 
-                    public abstract TizenEntityStatus FindById(string id, out TizenEntityView view);
-
-                    public abstract TizenEntityStatus GetAnnotatedViews(out List<TizenEntityView> views);
-
-                    public abstract TizenEntityStatus GetFocusedView(out TizenEntityView view);
-
-                    public abstract TizenEntityStatus ToPresentation(TizenEntityView view, out TizenEntityPresentation result);
+                    public abstract TizenEntityStatus GetPageByIds(List<string> ids, out List<TizenEntityWebPageInfo> result, out List<string> unresolvedIds);
 
                 }
 
@@ -1187,9 +642,9 @@ namespace RPCPort
                     }
 
                     
-                    internal void Read(int name, out List<TizenEntityView> value)
+                    internal void Read(int name, out List<TizenEntityWebPageInfo> value)
                     {
-                        value = new List<TizenEntityView>();
+                        value = new List<TizenEntityWebPageInfo>();
                         if (map.ContainsKey(name) == false)
                         {
                             Tizen.Log.Error("RPC_PORT", "Not exist key " + name);
@@ -1197,84 +652,22 @@ namespace RPCPort
                         }
 
                         Unit unit = map[name];
-                        if (unit.type != -1094159920 /*array_TizenEntityView*/)
+                        if (unit.type != 1347447238 /*array_TizenEntityWebPageInfo*/)
                         {
-                            Tizen.Log.Error("RPC_PORT", "type is not array_TizenEntityView : " + unit.type);
+                            Tizen.Log.Error("RPC_PORT", "type is not array_TizenEntityWebPageInfo : " + unit.type);
                             return;
                         }
-                        TizenActionView.Deserialize(unit.parcel, value);
+                        TizenActionBrowserCustom.Deserialize(unit.parcel, value);
                     }
 
-                    internal void Write(int name, List<TizenEntityView> value)
+                    internal void Write(int name, List<TizenEntityWebPageInfo> value)
                     {
                         Unit unit = new Unit();
                         unit.name = name;
-                        unit.type = -1094159920; /*array_TizenEntityView*/
+                        unit.type = 1347447238; /*array_TizenEntityWebPageInfo*/
                         unit.cmds.Add((parcel) =>
                         {
-                            TizenActionView.Serialize(parcel, value);
-                        });
-
-                        map[name] = unit;
-                    }
-
-                    internal void Read(int name, out TizenEntityView value)
-                    {
-                        value = new TizenEntityView();
-                        if (map.ContainsKey(name) == false)
-                        {
-                            Tizen.Log.Error("RPC_PORT", "Not exist key " + name);
-                            return;
-                        }
-
-                        Unit unit = map[name];
-                        if (unit.type != -1014526171 /*TizenEntity::TizenEntityView*/)
-                        {
-                            Tizen.Log.Error("RPC_PORT", "type is not TizenEntity::TizenEntityView : " + unit.type);
-                            return;
-                        }
-                        TizenActionView.Deserialize(unit.parcel, value);
-                    }
-
-                    internal void Write(int name, TizenEntityView value)
-                    {
-                        Unit unit = new Unit();
-                        unit.name = name;
-                        unit.type = -1014526171; /*TizenEntity::TizenEntityView*/
-                        unit.cmds.Add((parcel) =>
-                        {
-                            TizenActionView.Serialize(parcel, value);
-                        });
-
-                        map[name] = unit;
-                    }
-
-                    internal void Read(int name, out TizenEntityPresentation value)
-                    {
-                        value = new TizenEntityPresentation();
-                        if (map.ContainsKey(name) == false)
-                        {
-                            Tizen.Log.Error("RPC_PORT", "Not exist key " + name);
-                            return;
-                        }
-
-                        Unit unit = map[name];
-                        if (unit.type != 1161731883 /*TizenEntityPresentation*/)
-                        {
-                            Tizen.Log.Error("RPC_PORT", "type is not TizenEntityPresentation : " + unit.type);
-                            return;
-                        }
-                        TizenActionView.Deserialize(unit.parcel, value);
-                    }
-
-                    internal void Write(int name, TizenEntityPresentation value)
-                    {
-                        Unit unit = new Unit();
-                        unit.name = name;
-                        unit.type = 1161731883; /*TizenEntityPresentation*/
-                        unit.cmds.Add((parcel) =>
-                        {
-                            TizenActionView.Serialize(parcel, value);
+                            TizenActionBrowserCustom.Serialize(parcel, value);
                         });
 
                         map[name] = unit;
@@ -1295,7 +688,7 @@ namespace RPCPort
                             Tizen.Log.Error("RPC_PORT", "type is not TizenEntityStatus : " + unit.type);
                             return;
                         }
-                        TizenActionView.Deserialize(unit.parcel, value);
+                        TizenActionBrowserCustom.Deserialize(unit.parcel, value);
                     }
 
                     internal void Write(int name, TizenEntityStatus value)
@@ -1305,7 +698,7 @@ namespace RPCPort
                         unit.type = -1652879165; /*TizenEntityStatus*/
                         unit.cmds.Add((parcel) =>
                         {
-                            TizenActionView.Serialize(parcel, value);
+                            TizenActionBrowserCustom.Serialize(parcel, value);
                         });
 
                         map[name] = unit;
@@ -1337,6 +730,37 @@ namespace RPCPort
                         unit.cmds.Add((parcel) =>
                         {
                             parcel.WriteString(value);
+                        });
+
+                        map[name] = unit;
+                    }
+
+                    internal void Read(int name, out List<string> value)
+                    {
+                        value = new List<string>();
+                        if (map.ContainsKey(name) == false)
+                        {
+                            Tizen.Log.Error("RPC_PORT", "Not exist key " + name);
+                            return;
+                        }
+
+                        Unit unit = map[name];
+                        if (unit.type != -1266858825 /*array_string*/)
+                        {
+                            Tizen.Log.Error("RPC_PORT", "type is not array_string : " + unit.type);
+                            return;
+                        }
+                        TizenActionBrowserCustom.Deserialize(unit.parcel, value);
+                    }
+
+                    internal void Write(int name, List<string> value)
+                    {
+                        Unit unit = new Unit();
+                        unit.name = name;
+                        unit.type = -1266858825; /*array_string*/
+                        unit.cmds.Add((parcel) =>
+                        {
+                            TizenActionBrowserCustom.Serialize(parcel, value);
                         });
 
                         map[name] = unit;
@@ -1450,7 +874,7 @@ namespace RPCPort
                             Tizen.Log.Error("RPC_PORT", "type is not remote_exception : " + unit.type);
                             return;
                         }
-                        TizenActionView.Deserialize(unit.parcel, value);
+                        TizenActionBrowserCustom.Deserialize(unit.parcel, value);
                     }
 
                     internal void Write(int name, RemoteException value)
@@ -1460,7 +884,7 @@ namespace RPCPort
                         unit.type = -1223777386; /*remote_exception*/
                         unit.cmds.Add((parcel) =>
                         {
-                            TizenActionView.Serialize(parcel, value);
+                            TizenActionBrowserCustom.Serialize(parcel, value);
                         });
 
                         map[name] = unit;
@@ -1516,27 +940,10 @@ namespace RPCPort
                 {
                     __Result = 0,
                     __Callback = 1,
-                    FindById = 2,
-                    GetAnnotatedViews = 3,
-                    GetFocusedView = 4,
-                    ToPresentation = 5,
+                    GetPageByIds = 2,
                 }
 
                 
-                private static void Serialize(Parcel h, TizenEntityPresentation param)
-                {
-                    h.WriteString(param.Document);
-                    h.WriteString(param.Template);
-                }
-
-                private static void Deserialize(Parcel h, TizenEntityPresentation param)
-                {
-                    var Document = h.ReadString();
-                    param.Document = Document;
-                    var Template = h.ReadString();
-                    param.Template = Template;
-                }
-
                 private static void Serialize(Parcel h, TizenEntityStatus param)
                 {
                     h.WriteBool(param.Success);
@@ -1565,96 +972,27 @@ namespace RPCPort
                     param.Extra = Extra;
                 }
 
-                private static void Serialize(Parcel h, ScreenBounds param)
-                {
-                    h.WriteDouble(param.X);
-                    h.WriteDouble(param.Y);
-                    h.WriteDouble(param.Width);
-                    h.WriteDouble(param.Height);
-                }
-
-                private static void Deserialize(Parcel h, ScreenBounds param)
-                {
-                    var X = h.ReadDouble();
-                    param.X = X;
-                    var Y = h.ReadDouble();
-                    param.Y = Y;
-                    var Width = h.ReadDouble();
-                    param.Width = Width;
-                    var Height = h.ReadDouble();
-                    param.Height = Height;
-                }
-
-                private static void Serialize(Parcel h, WindowBounds param)
-                {
-                    h.WriteDouble(param.X);
-                    h.WriteDouble(param.Y);
-                    h.WriteDouble(param.Width);
-                    h.WriteDouble(param.Height);
-                }
-
-                private static void Deserialize(Parcel h, WindowBounds param)
-                {
-                    var X = h.ReadDouble();
-                    param.X = X;
-                    var Y = h.ReadDouble();
-                    param.Y = Y;
-                    var Width = h.ReadDouble();
-                    param.Width = Width;
-                    var Height = h.ReadDouble();
-                    param.Height = Height;
-                }
-
-                private static void Serialize(Parcel h, Annotation param)
-                {
-                    h.WriteString(param.EntityId);
-                    h.WriteString(param.EntityType);
-                    h.WriteString(param.EntityInfo);
-                }
-
-                private static void Deserialize(Parcel h, Annotation param)
-                {
-                    var EntityId = h.ReadString();
-                    param.EntityId = EntityId;
-                    var EntityType = h.ReadString();
-                    param.EntityType = EntityType;
-                    var EntityInfo = h.ReadString();
-                    param.EntityInfo = EntityInfo;
-                }
-
-                private static void Serialize(Parcel h, TizenEntityView param)
+                private static void Serialize(Parcel h, TizenEntityWebPageInfo param)
                 {
                     Serialize(h, (TizenEntity)param);
-                    h.WriteString(param.Type);
-                    h.WriteString(param.Description);
-                    Serialize(h, param.ScreenBounds);
-                    Serialize(h, param.WindowBounds);
-                    h.WriteBool(param.IsFocused);
-                    h.WriteBool(param.IsEnabled);
-                    Serialize(h, param.Annotation);
+                    h.WriteString(param.Url);
+                    h.WriteString(param.Title);
+                    h.WriteString(param.Details);
                 }
 
-                private static void Deserialize(Parcel h, TizenEntityView param)
+                private static void Deserialize(Parcel h, TizenEntityWebPageInfo param)
                 {
                     Deserialize(h, (TizenEntity)param);
-                    var Type = h.ReadString();
-                    param.Type = Type;
-                    var Description = h.ReadString();
-                    param.Description = Description;
-                    param.ScreenBounds = new ScreenBounds();
-                    Deserialize(h, param.ScreenBounds);
-                    param.WindowBounds = new WindowBounds();
-                    Deserialize(h, param.WindowBounds);
-                    var IsFocused = h.ReadBool();
-                    param.IsFocused = IsFocused;
-                    var IsEnabled = h.ReadBool();
-                    param.IsEnabled = IsEnabled;
-                    param.Annotation = new Annotation();
-                    Deserialize(h, param.Annotation);
+                    var Url = h.ReadString();
+                    param.Url = Url;
+                    var Title = h.ReadString();
+                    param.Title = Title;
+                    var Details = h.ReadString();
+                    param.Details = Details;
                 }
 
                 
-                private static void Serialize(Parcel h, List<TizenEntityView> param)
+                private static void Serialize(Parcel h, List<TizenEntityWebPageInfo> param)
                 {
                     h.WriteArrayCount(param.Count);
                     foreach (var i in param)
@@ -1663,13 +1001,32 @@ namespace RPCPort
                     }
                 }
 
-                private static void Deserialize(Parcel h, List<TizenEntityView> param)
+                private static void Deserialize(Parcel h, List<TizenEntityWebPageInfo> param)
                 {
                     int l = h.ReadArrayCount();
                     for (int i = 0; i < l; i++)
                     {
-                        var k = new TizenEntityView();
+                        var k = new TizenEntityWebPageInfo();
                         Deserialize(h, k);
+                        param.Add(k);
+                    }
+                }
+
+                private static void Serialize(Parcel h, List<string> param)
+                {
+                    h.WriteArrayCount(param.Count);
+                    foreach (var i in param)
+                    {
+                        h.WriteString(i);
+                    }
+                }
+
+                private static void Deserialize(Parcel h, List<string> param)
+                {
+                    int l = h.ReadArrayCount();
+                    for (int i = 0; i < l; i++)
+                    {
+                        var k = h.ReadString();
                         param.Add(k);
                     }
                 }
@@ -1729,7 +1086,7 @@ namespace RPCPort
                     {
                         _async_context.Post((data) =>
                         {
-                            ((TizenActionView)data).OnReceivedEvent(instance, null, p);
+                            ((TizenActionBrowserCustom)data).OnReceivedEvent(instance, null, p);
                         }, this);
                     }
                     else
@@ -1774,9 +1131,9 @@ namespace RPCPort
 
                         switch ((MethodId)cmd)
                         {
-                            case MethodId.FindById:
+                            case MethodId.GetPageByIds:
                             {
-                                map.Read(3355 /*id*/, out string param1);
+                                map.Read(104120 /*ids*/, out List<string> param1);
                                 UnitMap result_map = new UnitMap();
                                 if (b._is_app && CheckPrivilege((MethodId)cmd, b) == false)
                                 {
@@ -1785,109 +1142,10 @@ namespace RPCPort
                                 } else {
                                     try
                                     {
-                                        var retVal = b.FindById(param1, out TizenEntityView param2);
-                                        result_map.Write(1497479973 /*[RESULT]*/, retVal);
-                                        result_map.Write(3619493 /*view*/, param2);
-                                    } catch (RemoteException ex)
-                                    {
-                                        result_map.Write(-1571313492 /*[REMOTE_EXCEPTION]*/, ex);
-                                    }
-                                }
-
-                                ParcelHeader header = p.GetHeader();
-                                ParcelHeader resultHeader = result.GetHeader();
-                                resultHeader.SetTag(_tidlVersion + ":2:13");
-                                resultHeader.SetSequenceNumber(header.GetSequenceNumber());
-                                int ret_cmd = (int)MethodId.__Result;
-                                result_map.Write(1355467489 /*[METHOD]*/, ret_cmd);
-                                result_map.Serialize(result);
-
-                                if (b._lem != null)
-                                    b._lem.SendResult(result);
-                                else
-                                    result.Send(port);
-                                break;
-                            }
-                            case MethodId.GetAnnotatedViews:
-                            {
-                                UnitMap result_map = new UnitMap();
-                                if (b._is_app && CheckPrivilege((MethodId)cmd, b) == false)
-                                {
-                                    RemoteException ex = new RemoteException("Permission denied", (int)Tizen.Internals.Errors.ErrorCode.PermissionDenied);
-                                    result_map.Write(-1571313492 /*[REMOTE_EXCEPTION]*/, ex);
-                                } else {
-                                    try
-                                    {
-                                        var retVal = b.GetAnnotatedViews(out List<TizenEntityView> param1);
-                                        result_map.Write(1497479973 /*[RESULT]*/, retVal);
-                                        result_map.Write(112204398 /*views*/, param1);
-                                    } catch (RemoteException ex)
-                                    {
-                                        result_map.Write(-1571313492 /*[REMOTE_EXCEPTION]*/, ex);
-                                    }
-                                }
-
-                                ParcelHeader header = p.GetHeader();
-                                ParcelHeader resultHeader = result.GetHeader();
-                                resultHeader.SetTag(_tidlVersion + ":2:13");
-                                resultHeader.SetSequenceNumber(header.GetSequenceNumber());
-                                int ret_cmd = (int)MethodId.__Result;
-                                result_map.Write(1355467489 /*[METHOD]*/, ret_cmd);
-                                result_map.Serialize(result);
-
-                                if (b._lem != null)
-                                    b._lem.SendResult(result);
-                                else
-                                    result.Send(port);
-                                break;
-                            }
-                            case MethodId.GetFocusedView:
-                            {
-                                UnitMap result_map = new UnitMap();
-                                if (b._is_app && CheckPrivilege((MethodId)cmd, b) == false)
-                                {
-                                    RemoteException ex = new RemoteException("Permission denied", (int)Tizen.Internals.Errors.ErrorCode.PermissionDenied);
-                                    result_map.Write(-1571313492 /*[REMOTE_EXCEPTION]*/, ex);
-                                } else {
-                                    try
-                                    {
-                                        var retVal = b.GetFocusedView(out TizenEntityView param1);
-                                        result_map.Write(1497479973 /*[RESULT]*/, retVal);
-                                        result_map.Write(3619493 /*view*/, param1);
-                                    } catch (RemoteException ex)
-                                    {
-                                        result_map.Write(-1571313492 /*[REMOTE_EXCEPTION]*/, ex);
-                                    }
-                                }
-
-                                ParcelHeader header = p.GetHeader();
-                                ParcelHeader resultHeader = result.GetHeader();
-                                resultHeader.SetTag(_tidlVersion + ":2:13");
-                                resultHeader.SetSequenceNumber(header.GetSequenceNumber());
-                                int ret_cmd = (int)MethodId.__Result;
-                                result_map.Write(1355467489 /*[METHOD]*/, ret_cmd);
-                                result_map.Serialize(result);
-
-                                if (b._lem != null)
-                                    b._lem.SendResult(result);
-                                else
-                                    result.Send(port);
-                                break;
-                            }
-                            case MethodId.ToPresentation:
-                            {
-                                map.Read(3619493 /*view*/, out TizenEntityView param1);
-                                UnitMap result_map = new UnitMap();
-                                if (b._is_app && CheckPrivilege((MethodId)cmd, b) == false)
-                                {
-                                    RemoteException ex = new RemoteException("Permission denied", (int)Tizen.Internals.Errors.ErrorCode.PermissionDenied);
-                                    result_map.Write(-1571313492 /*[REMOTE_EXCEPTION]*/, ex);
-                                } else {
-                                    try
-                                    {
-                                        var retVal = b.ToPresentation(param1, out TizenEntityPresentation param2);
+                                        var retVal = b.GetPageByIds(param1, out List<TizenEntityWebPageInfo> param2, out List<string> param3);
                                         result_map.Write(1497479973 /*[RESULT]*/, retVal);
                                         result_map.Write(-934426595 /*result*/, param2);
+                                        result_map.Write(-995932313 /*unresolvedIds*/, param3);
                                     } catch (RemoteException ex)
                                     {
                                         result_map.Write(-1571313492 /*[REMOTE_EXCEPTION]*/, ex);
@@ -1977,7 +1235,7 @@ namespace RPCPort
                     {
                         _async_context.Post((data) =>
                         {
-                            ((TizenActionView)data).OnDisconnectedEvent(sender, instance);
+                            ((TizenActionBrowserCustom)data).OnDisconnectedEvent(sender, instance);
                         }, this);
                     }
                     else
@@ -1986,7 +1244,7 @@ namespace RPCPort
                     }
                 }
 
-                internal static TizenActionView GetInstance()
+                internal static TizenActionBrowserCustom GetInstance()
                 {
                     return _instance;
                 }
@@ -1996,7 +1254,7 @@ namespace RPCPort
                     return _isListen;
                 }
 
-                public TizenActionView() : base("TizenActionView")
+                public TizenActionBrowserCustom() : base("TizenActionBrowserCustom")
                 {
                     _instance = this;
 

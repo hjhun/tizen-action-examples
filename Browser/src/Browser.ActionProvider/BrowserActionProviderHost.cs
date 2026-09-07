@@ -12,12 +12,16 @@ namespace Browser.ActionProvider;
 public static class BrowserActionProviderHost
 {
     private static TizenActionBrowser? _stub;
+    private static RPCPort.BrowserCustomActions.Stub.TizenActionBrowserCustom? _custom;
 
     public static void Start(BrowserPageQueryService queries, IBrowserActionNavigation navigation)
     {
         ArgumentNullException.ThrowIfNull(queries);
         ArgumentNullException.ThrowIfNull(navigation);
         BrowserActionProviderState.Configure(queries, navigation);
+
+        _custom ??= new RPCPort.BrowserCustomActions.Stub.TizenActionBrowserCustom();
+        if (!_custom.GetListenStatus()) _custom.Listen(typeof(BrowserCustomActionService));
 
         _stub ??= new TizenActionBrowser();
         if (!_stub.GetListenStatus())

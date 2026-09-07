@@ -1,0 +1,47 @@
+{
+  "version": "v2",
+  "name": "App_Tizen.Action.BrowserCustom_GetPageByIds",
+  "type": "tidl",
+  "category": "Tizen.Action.BrowserCustom",
+  "description": "Resolve only the currently visible normal Browser page by stable tab ID, preserving request order, duplicates and unresolved IDs.",
+  "allowedBackground": "false",
+  "autoDispose": "false",
+  "requiredPrivileges": [],
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "ids": {
+        "type": "array",
+        "description": "One to 50 nonblank stable page IDs of at most 256 characters; preserve order and duplicates.",
+        "items": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "return": {
+        "type": "Tizen.Entity.Status"
+      },
+      "result": {
+        "type": "array",
+        "description": "Current visible WebPageInfo snapshots in request order, including duplicates.",
+        "items": {
+          "type": "Tizen.Entity.WebPageInfo"
+        }
+      },
+      "unresolvedIds": {
+        "type": "array",
+        "description": "IDs not resolved to the current visible page, in request order including duplicates.",
+        "items": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "details": {
+    "appid": "org.tizen.browser"
+  }
+}

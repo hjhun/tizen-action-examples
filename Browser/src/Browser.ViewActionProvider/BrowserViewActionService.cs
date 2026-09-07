@@ -2,7 +2,7 @@ using Browser.Domain;
 using Browser.UseCases;
 using RPCPort.TizenActionView;
 using RPCPort.TizenActionView.Stub;
-using BrowserEntity = RPCPort.TizenActionBrowser.TizenEntityBrowser;
+using BrowserEntity = RPCPort.TizenActionBrowser.TizenEntityWebPageInfo;
 
 namespace Browser.ViewActionProvider;
 
@@ -96,7 +96,7 @@ public sealed class BrowserViewActionService : TizenActionView.ServiceBase
 
 internal static class BrowserViewProviderState
 {
-    internal const string BrowserEntityType = "Tizen.Entity.Browser";
+    internal const string BrowserEntityType = "Tizen.Entity.WebPageInfo";
     private static readonly BrowserVisibleViewRegistry Registry = new();
 
     internal static void PublishVisiblePage(BrowserPageViewSnapshot? snapshot)

@@ -95,7 +95,7 @@ internal sealed class BrowserApplication : NUIApplication
         _tabsCoordinator.StateChanged += OnTabStateChanged;
         _agentState = new BrowserAgentStateRegistry();
         PublishAgentState();
-        _queries = new BrowserPageQueryService(_agentState);
+        _queries = new BrowserPageQueryService(_agentState, _tabsCoordinator);
 
         BrowserActionProviderHost.Start(_queries, new NuiNavigationBridge(this, _uiContext));
         BrowserViewActionProviderHost.Start();

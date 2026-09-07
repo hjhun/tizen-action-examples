@@ -6,6 +6,18 @@
 
 이 문서는 Stage 0의 관찰 가능한 제품 계약이다. Samsung Browser의 주소/탐색/탭 정신 모델을 Tizen D-pad, 키보드, 포인터, 터치에 맞게 번역한다. Secret mode, 계정, 동기화, 다운로드, 확장, Galaxy AI, 북마크/방문 기록 UI는 이번 범위 밖이며 화면·저장·Action에 노출하지 않는다.
 
+## P1 ABI 이행 상태 (2026-09-08)
+
+현재 설치·광고 계약은 [ACTION_CONTRACT_VALIDATION.md](ACTION_CONTRACT_VALIDATION.md)를 따른다.
+Browser18/View4 전체 원본을 생성하되 GetCurrentPage/GetTabs/ToPresentation,
+View4, app-owned BrowserCustom_GetPageByIds만 광고한다(8개).
+아래 Stage 0 표의 GetCurrent/Go/GetBrowserByIds 및 Tizen.Entity.Browser 명칭은 이전 계약이다.
+현재 조회·annotation Entity는 Tizen.Entity.WebPageInfo이며 View 단일 결과 wire는 `view`이다.
+기존 UI 탐색/탭 기능은 유지하지만 구 Go 광고 제거에 따른 Action 탐색의 일시적 축소를 승인받았다.
+표준 OpenPage로의 기능 이행은 P2 필수 후속 항목이며 P1이 Browser 전체 개발 완료는 아니다.
+ToCalendar를 포함한 미광고 15개는 중간 단계의 bounded failure만 반환하며 제품 지원으로 세지 않는다.
+Canonical A2UI·고해상도·전체 UI acceptance는 이번 P1 target 검증에 포함되지 않는다.
+
 ## 기능 요구사항
 
 | ID | 우선순위 | 시나리오·사전조건 | 상태 전이 | 출력·오류 | Action / Entity / View / A2UI 영향 | 개인정보 보호 | 측정 가능한 수용 기준 |

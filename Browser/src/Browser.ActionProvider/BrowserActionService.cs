@@ -13,17 +13,15 @@ public sealed class BrowserActionService : TizenActionBrowser.ServiceBase
 {
 
     private readonly BrowserPageQueryService _queries;
-    private readonly IBrowserActionNavigation _navigation;
 
     public BrowserActionService()
-        : this(BrowserActionProviderState.Queries, BrowserActionProviderState.Navigation)
+        : this(BrowserActionProviderState.Queries)
     {
     }
 
-    public BrowserActionService(BrowserPageQueryService queries, IBrowserActionNavigation navigation)
+    public BrowserActionService(BrowserPageQueryService queries)
     {
         _queries = queries ?? throw new ArgumentNullException(nameof(queries));
-        _navigation = navigation ?? throw new ArgumentNullException(nameof(navigation));
     }
 
     public override void OnCreate()
@@ -34,30 +32,14 @@ public sealed class BrowserActionService : TizenActionBrowser.ServiceBase
     {
     }
 
-    public override TizenEntityStatus GetCurrent(out TizenEntityBrowser result)
+    public override TizenEntityStatus GetCurrentPage(out TizenEntityWebPageInfo result)
     {
         var snapshot = _queries.GetCurrentSnapshot();
         result = snapshot.Page is null ? EmptyBrowser() : ToEntity(snapshot.Page);
         return snapshot.Page is null ? Failure(CurrentFailureReason(snapshot.Surface)) : Success();
     }
 
-    public override TizenEntityStatus Go(TizenEntityBrowser browser)
-    {
-        if (!TryToPage(browser, out var page))
-        {
-            return Failure("invalid_input");
-        }
-
-        return _navigation.RequestNavigation(page) ? Success() : Failure("unavailable");
-    }
-
-    public override TizenEntityStatus ToCalendar(TizenEntityBrowser browser, out TizenEntityCalendar result)
-    {
-        result = EmptyCalendar();
-        return TryToPage(browser, out _) ? Failure("unavailable") : Failure("invalid_input");
-    }
-
-    public override TizenEntityStatus ToPresentation(TizenEntityBrowser browser, out TizenEntityPresentation result)
+    public override TizenEntityStatus ToPresentation(TizenEntityWebPageInfo browser, out TizenEntityPresentation result)
     {
         result = EmptyPresentation();
         if (!TryToPage(browser, out var requested))
@@ -87,31 +69,70 @@ public sealed class BrowserActionService : TizenActionBrowser.ServiceBase
         return Success();
     }
 
-    public override TizenEntityStatus GetBrowserByIds(
-        List<string> ids,
-        out List<TizenEntityBrowser> result,
-        out List<string> unresolvedIds)
+    public override TizenEntityStatus GetTabs(out List<TizenEntityTab> result)
     {
-        result = new List<TizenEntityBrowser>();
-        unresolvedIds = new List<string>();
-        if (!BrowserActionContract.HasValidResolverIds(ids))
+        result = new();
+        var workspace = _queries.GetTabsSnapshot();
+        if (workspace is null) return Failure("unavailable: tabs_not_ready");
+        result = workspace.Tabs.Select((tab, index) => new TizenEntityTab
         {
-            return Failure("invalid_input");
-        }
-
-        var resolution = _queries.ResolveByIds(ids);
-        result = resolution.Pages.Select(ToEntity).ToList();
-        unresolvedIds = resolution.UnresolvedIds.ToList();
+            Id = tab.Id, Extra = string.Empty, Ordinal = index + 1,
+            Focused = tab.Id == workspace.SelectedTabId, Secret = false,
+            Page = tab.Page is { } page ? ToEntity(page) : new TizenEntityWebPageInfo
+            { Id = tab.Id, Extra = string.Empty, Url = string.Empty, Title = "New tab", Details = string.Empty }
+        }).ToList();
         return Success();
     }
 
-    private static bool TryToPage(TizenEntityBrowser? entity, out BrowserPage page)
+    // P1 intermediate contract: these complete-category slots are not advertised.
+    private static TizenEntityStatus NotEnabled() => Failure("unavailable: capability_not_enabled");
+    public override TizenEntityStatus ControlMedia(TizenEntityBrowserMediaCommand input) => NotEnabled();
+    public override TizenEntityStatus Engage(TizenEntityEngageCommand input) => NotEnabled();
+    public override TizenEntityStatus Exit() => NotEnabled();
+    public override TizenEntityStatus GoToScreen(TizenEntityBrowserScreen input) => NotEnabled();
+    public override TizenEntityStatus Navigate(TizenEntityNavigationCommand input) => NotEnabled();
+    public override TizenEntityStatus OpenPage(TizenEntityWebPageInfo input) => NotEnabled();
+    public override TizenEntityStatus SelectItem(TizenEntityBrowserSelection input) => NotEnabled();
+    public override TizenEntityStatus SetMediaOption(TizenEntityBrowserMediaOption input) => NotEnabled();
+    public override TizenEntityStatus SetScreenOption(TizenEntityBrowserScreenOption input) => NotEnabled();
+    public override TizenEntityStatus ControlTab(TizenEntityTabCommand input, out TizenEntityTab result)
+    {
+        result = new() { Id = "", Extra = "", Page = EmptyBrowser() };
+        return NotEnabled();
+    }
+    public override TizenEntityStatus GetMedia(out TizenEntityBrowserMedia result)
+    {
+        result = new() { Id = "", Extra = "", Title = "" };
+        return NotEnabled();
+    }
+    public override TizenEntityStatus Search(TizenEntityBrowserQuery input, out TizenEntityBrowserSearchResult result)
+    {
+        result = new() { Id = "", Extra = "", Answer = new(), Place = new(), Product = new(), Person = new() };
+        return NotEnabled();
+    }
+    public override TizenEntityStatus SearchPageList(TizenEntityQuery input, out List<TizenEntityPageListItem> result)
+    {
+        result = new();
+        return NotEnabled();
+    }
+    public override TizenEntityStatus ToCalendar(TizenEntityWebPageInfo input, out TizenEntityCalendarEvent result)
+    {
+        result = EmptyCalendar();
+        return NotEnabled();
+    }
+    public override TizenEntityStatus UpdatePageList(TizenEntityPageListCommand input, out TizenEntityPageListItem result)
+    {
+        result = new() { Id = "", Extra = "", List = "", Date = "", Page = EmptyBrowser() };
+        return NotEnabled();
+    }
+
+    private static bool TryToPage(TizenEntityWebPageInfo? entity, out BrowserPage page)
     {
         return BrowserActionContract.TryCreatePage(
             entity?.Id, entity?.Url, entity?.Title, entity?.Details, out page);
     }
 
-    private static TizenEntityBrowser ToEntity(BrowserPage page) => new()
+    private static TizenEntityWebPageInfo ToEntity(BrowserPage page) => new()
     {
         Id = page.Id,
         Extra = string.Empty,
@@ -120,7 +141,7 @@ public sealed class BrowserActionService : TizenActionBrowser.ServiceBase
         Details = page.Details
     };
 
-    private static TizenEntityBrowser EmptyBrowser() => new()
+    private static TizenEntityWebPageInfo EmptyBrowser() => new()
     {
         Id = string.Empty,
         Extra = string.Empty,
@@ -129,7 +150,7 @@ public sealed class BrowserActionService : TizenActionBrowser.ServiceBase
         Details = string.Empty
     };
 
-    private static TizenEntityCalendar EmptyCalendar() => new()
+    private static TizenEntityCalendarEvent EmptyCalendar() => new()
     {
         Id = string.Empty,
         Extra = string.Empty,
