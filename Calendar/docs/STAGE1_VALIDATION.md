@@ -4,6 +4,26 @@
 전체 Action category, ViewAnnotation 수명, 현재 Presentation, 해상도 대응.
 PhotoGallery는 이 보고서 검토 후 별도 착수 승인을 받는다.
 
+## 현재 host geometry 보강 상태 (2026-09-08)
+
+`dotnet run --project Calendar/tests/Calendar.App.Tests/Calendar.App.Tests.csproj`는
+exit 0, `DISPLAY_METRICS_PASS checks=118`, `Calendar.App.Tests: PASS`를 기록했다.
+[DisplayMetricsTests](../tests/Calendar.App.Tests/DisplayMetricsTests.cs)는 잘못된
+window/screen 입력, 비유한 float geometry, inset 소진 및 FHD 1920×1080 /
+UHD 3840×2160 / DCI 4K 4096×2160 / 8K UHD 7680×4320의 비대칭 inset 수치와
+drawable containment를 검사한다. 경계의 0.002 physical-pixel tolerance는
+약 0.00003px float rounding을 허용하는 신규 assertion 교정이며,
+생산 결함 수정이나 운영 코드의 TDD red/green이 아니다. 생산 scaling 계산,
+Window sizing 및 Shared 변경은 없다.
+
+현재 `org.tizen.calendar` 설치본의 UHD/DCI/8K native 검증은 미완료다.
+별도 FHD VM에서 관측한 native mode 1920×1080과 SystemInfo HAL feature
+1280×720의 불일치는 앱 UI 검증이 아니다. 해당 VM의 owner discovery가
+즉시 `-111`로 실패하여 native Action/UI gate를 중단했으며 원인은 미확정이다.
+SystemInfo를 초기 window sizing에 반영해야 하는 요구도 미충족으로 남는다.
+이 절은 host 검증 보강만 기록한다. 아래 2026-09-06의 별도 환경·설치본에 대한
+과거 검증 기록을 현재 앱의 고해상도 지원 완료 근거로 확대하지 않는다.
+
 ## 판정과 환경
 
 | 검증 계층 | 결과 |
