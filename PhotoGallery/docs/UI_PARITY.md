@@ -94,3 +94,38 @@ RPCs. Aurum accessibility tree was empty; actual View bounds and inspected nativ
 frames supplied the coordinate fallback. Browser captures use Chromium through
 agent-browser. Original test PNGs are in `../tests/fixtures/`. Pre-existing August
 `html-*.png` captures are historical and not current parity evidence.
+
+## 2026-09-08: Stable delete confirmation target
+
+Opening Delete on photo A now fixes the confirmation target to A's stable ID.
+External Show B changes the viewer without rebinding the dialog, Confirm or
+annotation context. Metadata for A may refresh; missing or non-owned A fails
+explicitly without deleting a replacement. Closing or successfully confirming
+clears the pending session; service ownership/path guards remain in force.
+
+Host tests execute `PhotoDeleteConfirmation` with the real
+`GalleryLibraryService` and recording media adapter: selection changes, external
+deletion, metadata refresh, invalid/non-owned targets and independent sessions.
+The initial RED was a missing-type compile failure, not execution of the old UI
+bug. UseCases and App suites passed; Release built with zero warnings/errors.
+
+On `tc-0905-actionagent` / `emulator-26101`, `org.tizen.photogallery` 0.1.0,
+FHD Common Emulator, actual Action/Aurum checks verified A1 dialog → Show B →
+Confirm deletes only A1; external deletion of A2 → Confirm shows an explicit
+missing-target error while B survives; Cancel/Info/Import close → new C dialog
+uses C. Screenshots, pending annotation IDs/focus and subsequent Search/resolver
+results were reviewed. Missing-A Confirm is a **UI failure**, not a typed
+DeletePhoto RPC failure test. Busy-frame timing, full UI acceptance and other
+resolutions were not verified by this run; historical evidence above retains
+its original payload/date scope.
+
+Validated TPK SHA256:
+`4943286305d5ea3a572ed8952db8c1ee895b220ca26dd0e8837da8f8852d87b6`.
+All four imported fixtures were deleted and their IDs resolved as missing.
+The four source PNGs remain under
+`/opt/usr/home/owner/media/Images/p5-delete-confirm-b1f27883317b41a3be1e8a7fc769c84b`.
+The pre-existing app-owned regular file returned to its original hash; no new
+dump was observed. The updated installation remains stopped, with owner mode
+and the test forward restored. Exact restoration of the previous signed binary
+is not guaranteed. SystemInfo initial sizing, 8K native and other open runtime
+and UI gates remain unverified.

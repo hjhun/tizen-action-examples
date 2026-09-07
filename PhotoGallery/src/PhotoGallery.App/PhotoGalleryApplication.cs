@@ -23,6 +23,7 @@ internal sealed class PhotoGalleryApplication : NUIApplication
     private bool _paused, _busy, _searching;
     private string _tab = "Pictures", _album = "", _query = "", _error = "", _modal = "", _returnFocus = "", _importPath = "";
     private int _page;
+    private PhotoDeleteConfirmation? _deleteConfirmation;
     private string _pendingFocus = "";
     private string _queryDraft = "";
     private readonly List<(View View, string PhotoId)> _photos = [];
@@ -217,7 +218,7 @@ internal sealed class PhotoGalleryApplication : NUIApplication
             ("ViewerFavorite",p.Favorite?"♥ Favorite":"♡ Favorite",()=>RunCommand(()=>_service!.SetFavoriteAsync(p.Id,!p.Favorite,CancellationToken.None))),
             ("ViewerInfo","Info",()=>OpenModal("info","ViewerInfo")),
             ("ViewerSlideshow",_service!.Slideshow?"Stop":"Slideshow",()=>{if(_service.Slideshow)_service.StopSlideshow();else _service.StartSlideshow();}),
-            ("ViewerDelete","Delete",()=>OpenModal("delete","ViewerDelete")),
+            ("ViewerDelete","Delete",()=>OpenModal("delete","ViewerDelete",p.Id)),
         };
         for(var i=0;i<entries.Length;i++)
         {
@@ -226,16 +227,22 @@ internal sealed class PhotoGalleryApplication : NUIApplication
         }
         if(_error.Length>0)root.Add(Label(_error,25,234,985,1450,65,"#ffb5b5"));
     }
-    private void OpenModal(string modal,string returnFocus)
-    { _modal=modal;_error="";_returnFocus=returnFocus;_slides?.Stop();Render(); }
+    private void OpenModal(string modal,string returnFocus,string? deleteTargetId = null)
+    { _deleteConfirmation=modal=="delete"?new PhotoDeleteConfirmation(deleteTargetId??""):null; _modal=modal;_error="";_returnFocus=returnFocus;_slides?.Stop();Render(); }
     private void CloseModal()
-    { _modal="";_error="";Render();Focus(_returnFocus); }
+    { _modal="";_deleteConfirmation=null;_error="";Render();Focus(_returnFocus); }
     private void DrawModal(View root)
     {
         foreach(var v in _controls){v.Focusable=false;v.FocusableChildren=false;}
         root.Add(Surface("ModalShade",0,0,1920,1080,"#00000088"));
         var panel=Surface("Modal",520,240,880,570,"#ffffff",28);root.Add(panel);_activeRoot=panel;
-        var p=CurrentPhoto;
+        var confirmation = _deleteConfirmation;
+        var p=_modal=="delete"?null:CurrentPhoto;
+        if (_modal=="delete")
+        {
+            try { p=confirmation?.Resolve(_service!.Snapshot) ?? throw new InvalidOperationException("No photo is selected for deletion. Cancel this confirmation."); }
+            catch (InvalidOperationException ex) { _error=ex.Message; }
+        }
         panel.Add(Label(_modal=="delete"?"Delete photo?":_modal=="info"?"Details":"Import a photo",44,44,32,792,86));
         var body=_modal=="delete"?$"{p?.Title}\nThis removes the copy imported into Gallery.":_modal=="info"?$"{p?.Title}\nAlbum: {p?.Album}\nDate: {p?.CapturedAt:yyyy-MM-dd}\nFavorite: {(p?.Favorite==true?"Yes":"No")}\n{(p?.Owned==true?"Imported photo":"Device library photo")}":"Enter the path of a JPEG or PNG image.\nGallery keeps the original photo.";
         var message=Label(body,28,44,120,792,_modal=="info"?275:160);message.VerticalAlignment=VerticalAlignment.Top;panel.Add(message);
@@ -247,7 +254,12 @@ internal sealed class PhotoGalleryApplication : NUIApplication
         if(_error.Length>0)panel.Add(Label(_error,24,44,350,792,98,"#bd2424"));
         AddButton(panel,"ModalCancel",_modal=="info"?"Close":"Cancel",456,466,180,64,CloseModal);
         if(_modal=="delete")
-            AddButton(panel,"ModalConfirm",_busy?"Deleting…":"Delete",656,466,180,64,()=>RunCommand(()=>_service!.DeleteAsync(p?.Id??"",CancellationToken.None),()=>{_modal="";_service!.CloseViewer();})).TextColor=new Color("#c62222");
+            AddButton(panel,"ModalConfirm",_busy?"Deleting…":"Delete",656,466,180,64,()=>RunCommand(()=>
+            {
+                if (confirmation is null) throw new InvalidOperationException("No photo is selected for deletion.");
+                var target=confirmation.Resolve(_service!.Snapshot);
+                return _service.DeleteAsync(target.Id,CancellationToken.None);
+            },()=>{_modal="";_deleteConfirmation=null;_service!.CloseViewer();})).TextColor=new Color("#c62222");
         if(_modal=="import")
             AddButton(panel,"ModalConfirm",_busy?"Importing…":"Import",656,466,180,64,()=>RunCommand(()=>_service!.ImportAsync(_importPath,"",CancellationToken.None),()=>{_modal="";_tab="Pictures";_album="";_query="";_page=0;_importPath="";}));
     }
@@ -300,8 +312,9 @@ internal sealed class PhotoGalleryApplication : NUIApplication
         if(_paused||_activeRoot is null||_service is null)return;
         var current=CurrentPhoto;
         var screen=_modal.Length>0?_modal:current is not null?"detail":_searching?"search":_tab.ToLowerInvariant();
-        var pageId="gallery:"+screen+(current is null?"":":"+current.Id);
-        var page=new {screen,tab=_tab,album=_album,query=_query,page=_page+1,loading=_busy,error=_error,photoId=current?.Id??"",slideshow=_service.Slideshow};
+        var photoId=_modal=="delete"?_deleteConfirmation?.TargetId??"":current?.Id??"";
+        var pageId="gallery:"+screen+(photoId.Length==0?"":":"+photoId);
+        var page=new {screen,tab=_tab,album=_album,query=_query,page=_page+1,loading=_busy,error=_error,photoId,slideshow=_service.Slideshow};
         var snapshots=new List<CurrentViewSnapshot>();var captured=new HashSet<View>();var focused=NuiViewAnnotations.Focused(_activeRoot);
         void Capture(View v,CurrentViewSnapshot s){var measured=NuiViewAnnotations.Measure(v,_activeRoot,focused,s);if(measured is not null){snapshots.Add(measured);captured.Add(v);}}
         CurrentViewSnapshot Context(string id,string description,object state)
