@@ -4,6 +4,8 @@
 
 ## 문서 목록
 
+- [Presentation RPC null 문자열 회귀 검증](PRESENTATION_RPC_REGRESSION.md)
+
 - [2026-09-06 .NET/API 14/페이지별 annotation 변경](2026-09-06-dotnet-update.md) · [English](2026-09-06-dotnet-update_Eng.md)
 
 - [Tizen Action Framework 2.0 개발 가이드](TIZEN_ACTION_FRAMEWORK_2_0_DEVELOPMENT_GUIDE.md)
