@@ -29,6 +29,8 @@ public sealed class CalendarCommandService
     private readonly ICalendarPersistence _persistence;
     private readonly IReminderAlarmScheduler _alarms;
 
+    public event Action? Changed;
+
     public CalendarCommandService(
         CalendarEventRepository events,
         CalendarReminderRepository reminders,
@@ -97,7 +99,7 @@ public sealed class CalendarCommandService
                     desiredReminders));
                 _events.ReplaceAll(desiredEvents);
                 _reminders.ReplaceAll(desiredReminders);
-                return CalendarCommandResult.Succeeded();
+                return Committed();
             }
             catch (Exception exception)
             {
@@ -148,7 +150,7 @@ public sealed class CalendarCommandService
                 _persistence.Save(reconciled);
                 _events.ReplaceAll(reconciled.Events);
                 _reminders.ReplaceAll(reconciled.Reminders);
-                return CalendarCommandResult.Succeeded();
+                return Committed();
             }
             catch (Exception exception)
             {
@@ -235,7 +237,7 @@ public sealed class CalendarCommandService
 
                 _events.ReplaceAll(desiredEvents);
                 _reminders.ReplaceAll(desiredReminders);
-                return CalendarCommandResult.Succeeded();
+                return Committed();
             }
             catch (Exception exception)
             {
@@ -295,7 +297,7 @@ public sealed class CalendarCommandService
 
             _events.ReplaceAll(desiredEvents);
             _reminders.ReplaceAll(desiredReminders);
-            return CalendarCommandResult.Succeeded();
+            return Committed();
         }
     }
 
@@ -326,7 +328,7 @@ public sealed class CalendarCommandService
                     _events.Snapshot(),
                     desiredReminders));
                 _reminders.ReplaceAll(desiredReminders);
-                return CalendarCommandResult.Succeeded();
+                return Committed();
             }
             catch (Exception exception)
             {
@@ -376,7 +378,7 @@ public sealed class CalendarCommandService
                 }
 
                 _reminders.ReplaceAll(desiredReminders);
-                return CalendarCommandResult.Succeeded();
+                return Committed();
             }
             catch (Exception exception)
             {
@@ -442,8 +444,18 @@ public sealed class CalendarCommandService
             }
 
             _reminders.ReplaceAll(desiredReminders);
-            return CalendarCommandResult.Succeeded();
+            return Committed();
         }
+    }
+
+    private CalendarCommandResult Committed()
+    {
+        // Persistence and both shared repositories are already current. A failed
+        // presentation observer cannot undo the committed mutation or its alarms.
+        if (Changed is { } observers)
+            foreach (Action observer in observers.GetInvocationList())
+                try { observer(); } catch { /* Observers own their UI lifecycle. */ }
+        return CalendarCommandResult.Succeeded();
     }
 
     private static IReadOnlyList<int> NormalizeOffsets(IEnumerable<int> reminderOffsets)

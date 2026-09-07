@@ -1,3 +1,4 @@
+using ActionExamples.Ui;
 using Calendar.ActionProvider;
 using ActionExamples.ViewAnnotations;
 using Calendar.Domain;
@@ -21,6 +22,8 @@ internal sealed class CalendarApplication : NUIApplication
     private CalendarDisplayMetrics? _display;
     private Tizen.NUI.Timer? _annotationTimer;
     private bool _paused;
+    private bool _refreshing;
+    private UiChangeDispatcher? _changes;
     private bool _renderPending;
     private View? _activeSurfaceRoot;
 
@@ -46,6 +49,9 @@ internal sealed class CalendarApplication : NUIApplication
             persistence,
             new TizenReminderAlarmScheduler());
         _commands.Restore();
+        _changes = new UiChangeDispatcher(
+            SynchronizationContext.Current ?? new Tizen.Applications.TizenSynchronizationContext(), RefreshFromCommands);
+        _commands.Changed += _changes.Request;
         CalendarActionProviderHost.Start(_repository, _commands);
         ScheduleReminderActionProviderHost.Start(_reminderRepository, _commands);
         CalendarViewActionProviderHost.Start();
@@ -66,11 +72,14 @@ internal sealed class CalendarApplication : NUIApplication
     {
         base.OnResume();
         _paused = false;
-        Render();
+        RefreshFromCommands();
     }
 
     protected override void OnTerminate()
     {
+        _paused = true;
+        if (_commands is not null && _changes is not null) _commands.Changed -= _changes.Request;
+        _changes?.Dispose();
         FocusManager.Instance.FocusChanged -= OnFocusChanged;
         Window.Default.InsetsChanged -= OnWindowResized;
         Window.Default.Resized -= OnWindowResized;
@@ -739,20 +748,9 @@ internal sealed class CalendarApplication : NUIApplication
         }
     }
 
-    private void Render()
+    private void RefreshAppliedSearch()
     {
-        if (_paused) return;
-        if (_interaction is null || _repository is null)
-        {
-            return;
-        }
-        if (!TryReadDisplay(out var display))
-        {
-            _renderPending = true;
-            return;
-        }
-        _renderPending = false;
-
+        if (_interaction is null || _repository is null) return;
         if (_interaction.Surface == CalendarSurface.Search &&
             _interaction.Search is { HasApplied: true } appliedSearch &&
             appliedSearch.AppliedRepositoryVersion != _repository.Version)
@@ -767,6 +765,63 @@ internal sealed class CalendarApplication : NUIApplication
                         : null,
             };
         }
+    }
+
+    private void RefreshFromCommands()
+    {
+        if (_paused || _interaction is null || _repository is null) return;
+        if (_root is null || _activeSurfaceRoot is null) { Render(); return; }
+        var focused = NuiViewAnnotations.Focused(_activeSurfaceRoot);
+        var focusKey = NuiViewAnnotations.Descendants(_activeSurfaceRoot).FirstOrDefault(x => x.View == focused).Key;
+        _refreshing = true;
+        try
+        {
+            if (_interaction.Surface is CalendarSurface.EventEditor or CalendarSurface.ReminderEditor or CalendarSurface.Search)
+            {
+                if (!TryReadDisplay(out var display)) { _renderPending = true; return; }
+                RefreshAppliedSearch();
+                // Keep editor/search actors attached: their closures, invalid text,
+                // cursor, selection and native IME focus are the live user draft.
+                using var replacement = CalendarMonthView.Create(display, _interaction.Calendar, _repository, _today,
+                    Dispatch, () => { OpenNewEvent(); Render(); }, () => { OpenReminderList(); Render(); }, OpenSearch, out _);
+                var canvas = replacement.FindChildByName("CalendarDesignCanvas");
+                replacement.Remove(canvas);
+                var previous = _root.FindChildByName("CalendarDesignCanvas");
+                _root.Remove(previous); previous.Dispose();
+                canvas.Sensitive = false; canvas.FocusableChildren = false;
+                _root.Add(canvas);
+                _activeSurfaceRoot.RaiseToTop();
+                if (_interaction.Surface == CalendarSurface.Search)
+                    CalendarOverlayView.RefreshSearchResults(_activeSurfaceRoot, _interaction.Search!, _repository, OpenSearchResult);
+            }
+            else Render();
+
+            // Resolve a stable actor path, not its previous list index. Retained
+            // input actors need no focus call (which would disturb their IME).
+            var target = NuiViewAnnotations.Descendants(_activeSurfaceRoot!).FirstOrDefault(x => x.Key == focusKey).View;
+            if (target is not null && target != focused && target.Focusable && target.IsEnabled)
+                FocusManager.Instance.SetCurrentFocusView(target);
+            else if (target is null && _interaction.Surface == CalendarSurface.Search)
+                FocusManager.Instance.SetCurrentFocusView(_activeSurfaceRoot!.FindChildByName("CalendarSearchKeyword"));
+        }
+        finally { _refreshing = false; QueueAnnotationRefresh(); }
+    }
+
+    private void Render()
+    {
+        if (_paused) return;
+        if (_interaction is null || _repository is null)
+        {
+            return;
+        }
+        if (!TryReadDisplay(out var display))
+        {
+            _renderPending = true;
+            return;
+        }
+        _renderPending = false;
+
+        RefreshAppliedSearch();
 
         _activeSurfaceRoot = null;
         CalendarViewActionProviderHost.ClearPublishedViews();
@@ -859,7 +914,7 @@ internal sealed class CalendarApplication : NUIApplication
     private void QueueAnnotationRefresh()
     {
         _annotationTimer?.Stop();
-        if (_paused || _activeSurfaceRoot is not { } surface) return;
+        if (_paused || _refreshing || _activeSurfaceRoot is not { } surface) return;
         // Focus and text changes already describe a live tree. Replace its snapshot
         // atomically now, then measure again after DALi commits the next layout.
         // Only Render/OnPause invalidate a removed or hidden tree.
@@ -869,7 +924,7 @@ internal sealed class CalendarApplication : NUIApplication
 
     private bool OnAnnotationTimer(object? sender, Tizen.NUI.Timer.TickEventArgs args)
     {
-        if (!_paused && _activeSurfaceRoot is { } surface) PublishMeasuredViews(surface);
+        if (!_paused && !_refreshing && _activeSurfaceRoot is { } surface) PublishMeasuredViews(surface);
         return false;
     }
 

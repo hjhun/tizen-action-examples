@@ -4,6 +4,15 @@ Date: 2026-09-06. Canonical executable preview:
 [`refs/one-ui-sample.html`](../refs/one-ui-sample.html).
 Requirements and acceptance remain in Markdown. [Stage 1 results](STAGE1_VALIDATION.md).
 
+2026-09-07 follow-up: [live Action refresh validation](LIVE_REFRESH_VALIDATION.md).
+Installed editing/search hierarchy and reference geometry are unchanged. Action
+mutations now refresh visible data without replacing live input controls; native
+keyboard drafts, focus and resume behavior were exercised through Aurum. The HTML
+preview has no native Action event source, so it does not prove this lifecycle.
+The [current-title presentation capture](images/calendar-live-refresh-display.png)
+shows an updated fixture from the installed Calendar View provider in the
+installed DisplayPresentation app.
+
 ## Reference and adaptation
 
 The existing Samsung Calendar-inspired Month/Week/Day/Agenda hierarchy, day-detail

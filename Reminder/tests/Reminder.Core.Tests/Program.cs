@@ -9,6 +9,7 @@ static void Assert(bool condition, string message)
 }
 
 var now = new DateTimeOffset(2026, 8, 9, 10, 0, 0, TimeSpan.Zero);
+ChangeNotificationTests.Run();
 SearchStateTests.Run();
 CatalogMigrationTests.Run();
 var store = new MemoryScheduleStore();

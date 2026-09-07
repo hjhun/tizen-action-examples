@@ -10,6 +10,8 @@ static void Assert(bool condition, string message)
     }
 }
 
+ChangeNotificationTests.Run();
+
 var events = new CalendarEventRepository([]);
 var reminders = new CalendarReminderRepository([]);
 var persistence = new RecordingPersistence();

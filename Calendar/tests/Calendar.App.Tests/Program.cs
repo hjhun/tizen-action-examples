@@ -3,6 +3,7 @@ using Calendar.Domain;
 
 using System.Text.Json;
 
+UiChangeDispatcherTests.Run();
 DisplayMetricsTests.Run();
 PageAnnotationTests.Run();
 

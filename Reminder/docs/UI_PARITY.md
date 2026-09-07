@@ -6,6 +6,19 @@ The previous design-options HTML was removed. Requirements remain in
 [REQUIREMENTS_DRAFT](REQUIREMENTS_DRAFT.md); the preview is an executable UI model.
 See [stage 1 validation](../../Calendar/docs/STAGE1_VALIDATION.md).
 
+2026-09-07 follow-up: [live Action refresh validation](../../Calendar/docs/LIVE_REFRESH_VALIDATION.md).
+Installed rows and saved details refresh while editor/search controls remain
+attached. Native Action changes, draft/focus preservation and reservation updates
+are verified separately from the browser's local fixture behavior. The existing
+three-pane geometry and visual styling are unchanged.
+The [live draft capture](images/reminder-live-refresh-draft.png) shows the changed
+saved row alongside retained `q` title text and an unfinished invalid due-time
+value. The keyboard consumes the bottom inset; the whole canvas scales once.
+The [deleted-item editor](images/reminder-live-refresh-deleted-editor.png) retains
+input after Save reports the external deletion. The
+[reservation cancellation capture](images/reminder-live-refresh-focus.png)
+shows cleared detail/list data and focus restored to the visible Search action.
+
 ## Reference and adaptation
 
 The [official Samsung Reminder guide](https://www.samsung.com/us/support/answer/ANS10003651/)

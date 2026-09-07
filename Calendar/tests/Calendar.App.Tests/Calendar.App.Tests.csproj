@@ -6,6 +6,7 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="../../../Shared/Ui/UiChangeDispatcher.cs" Link="UiChangeDispatcher.cs" />
     <ProjectReference Include="../../src/Calendar.Domain/Calendar.Domain.csproj" />
     <Compile Include="../../src/Calendar.App/CalendarUiState.cs" Link="CalendarUiState.cs" />
     <Compile Include="../../src/Calendar.App/CalendarUiCommand.cs" Link="CalendarUiCommand.cs" />

@@ -1,3 +1,4 @@
+using ActionExamples.Ui;
 using System.Globalization;
 using ActionExamples.ViewAnnotations;
 using Reminder.Domain;
@@ -26,7 +27,8 @@ internal sealed class ReminderApplication : NUIApplication
     private ReminderSearchState _search = new();
     private IReadOnlyList<string> _renderedItemIds = [];
     private string _timeFilter = "All";
-    private SynchronizationContext? _uiContext;
+    private UiChangeDispatcher? _changes;
+    private bool _refreshing;
     private Tizen.NUI.Timer? _annotationTimer;
     private bool _paused;
     private ReminderDisplayMetrics? _display;
@@ -37,12 +39,13 @@ internal sealed class ReminderApplication : NUIApplication
         base.OnCreate();
         _annotationTimer = new Tizen.NUI.Timer(50);
         _annotationTimer.Tick += (_, _) => { PublishAnnotations(); return false; };
-        _uiContext = SynchronizationContext.Current;
+        _changes = new UiChangeDispatcher(
+            SynchronizationContext.Current ?? new Tizen.Applications.TizenSynchronizationContext(), RefreshFromService);
         var dataPath = Tizen.Applications.Application.Current.DirectoryInfo.Data;
         _service = new ScheduleService(
             new JsonScheduleStore(System.IO.Path.Combine(dataPath, "reminder-data.json")),
             new DeterministicReservationSimulator());
-        _service.Changed += OnServiceChanged;
+        _service.Changed += _changes.Request;
         ReminderScheduleActionProviderHost.Start(_service);
         ReminderViewActionProviderHost.Start();
         Window.Default.KeyEvent += OnKeyEvent;
@@ -65,12 +68,13 @@ internal sealed class ReminderApplication : NUIApplication
     {
         base.OnResume();
         _paused = false;
-        Render();
+        RefreshFromService();
     }
 
     protected override void OnTerminate()
     {
-        if (_service is not null) _service.Changed -= OnServiceChanged;
+        if (_service is not null && _changes is not null) _service.Changed -= _changes.Request;
+        _changes?.Dispose();
         Window.Default.InsetsChanged -= OnWindowResized;
         Window.Default.Resized -= OnWindowResized;
         Window.Default.Moved -= OnWindowMoved;
@@ -98,10 +102,50 @@ internal sealed class ReminderApplication : NUIApplication
         QueueAnnotationRefresh();
     }
 
-    private void OnServiceChanged()
+    private void RefreshFromService()
     {
-        if (_uiContext is null) return;
-        _uiContext.Post(_ => Render(), null);
+        if (_paused || _service is null) return;
+        if (_root is null || _canvas is null || _activeRoot is null) { Render(); return; }
+        var focused = NuiViewAnnotations.Focused(_activeRoot);
+        var focusKey = NuiViewAnnotations.Descendants(_activeRoot).FirstOrDefault(x => x.View == focused).Key;
+        var oldIndex = focused is null ? -1 : _renderedItemIds.ToList().FindIndex(id => focused.Name == $"ReminderEntity-{id}");
+        _refreshing = true;
+        try
+        {
+            if (!_editing && _selectedId is { } id && !_service.Snapshot.Reminders.Any(x => x.Id == id) &&
+                !_service.Snapshot.Reservations.Any(x => x.Id == id))
+            { _selectedId = null; _confirmDelete = false; }
+            if (_confirmDelete || _activeRoot != _canvas) Render();
+            else
+            {
+                // Replace data rows, keeping the live search field and editor
+                // attached so drafts, invalid dates, caret and IME focus survive.
+                var list = _canvas.FindChildByName("ReminderListPane");
+                var rows = list.FindChildByName("ReminderListItems");
+                list.Remove(rows); rows.Dispose();
+                var items = GetCurrentItems();
+                ((TextLabel)list.FindChildByName("ReminderListCount")).Text = $"{items.Count} items";
+                AddListItems(list, items);
+                NuiViewAnnotations.Observe(list.FindChildByName("ReminderListItems"), QueueAnnotationRefresh);
+                if (!_editing)
+                {
+                    var detail = _canvas.FindChildByName("ReminderDetailPane");
+                    _canvas.Remove(detail); detail.Dispose();
+                    AddDetail(_canvas);
+                    NuiViewAnnotations.Observe(_canvas.FindChildByName("ReminderDetailPane"), QueueAnnotationRefresh);
+                }
+            }
+            var target = NuiViewAnnotations.Descendants(_activeRoot!).FirstOrDefault(x => x.Key == focusKey).View;
+            if (target is not null && target != focused && target.Focusable && target.IsEnabled)
+                FocusManager.Instance.SetCurrentFocusView(target);
+            else if (target is null)
+            {
+                if (oldIndex >= 0 && _renderedItemIds.Count > 0)
+                    FocusByName($"ReminderEntity-{_renderedItemIds[Math.Min(oldIndex, _renderedItemIds.Count - 1)]}");
+                else FocusByName("ReminderSearchApply");
+            }
+        }
+        finally { _refreshing = false; QueueAnnotationRefresh(); }
     }
 
     private void OnKeyEvent(object? sender, Window.KeyEventArgs args)
@@ -339,7 +383,8 @@ internal sealed class ReminderApplication : NUIApplication
         panel.Name = "ReminderListPane";
         var items = GetCurrentItems();
         panel.Add(Label(_section, "#272330", 49.6f, 34, 25, 430, 65));
-        panel.Add(Label($"{items.Count} items", "#777181", 24f, 565, 39, 100, 40));
+        var count = Label($"{items.Count} items", "#777181", 24f, 565, 39, 100, 40);
+        count.Name = "ReminderListCount"; panel.Add(count);
         var search = Field(_search.DraftKeyword, "Search title or note", 32, 88, 460, 62);
         search.Name = "ReminderSearch";
         search.AccessibilityName = "Search reminders";
@@ -349,7 +394,6 @@ internal sealed class ReminderApplication : NUIApplication
         applySearch.Name = "ReminderSearchApply";
         applySearch.AccessibilityName = "Apply reminder search";
         panel.Add(applySearch);
-        var listTop = 174;
         if (_section != "Reservations")
         {
             for (var filterIndex = 0; filterIndex < TimeFilters.Length; filterIndex++)
@@ -363,15 +407,23 @@ internal sealed class ReminderApplication : NUIApplication
                 chip.TextColor = new Color(filter == _timeFilter ? "#FFFFFF" : "#40394E");
                 panel.Add(chip);
             }
-            listTop = 228;
         }
         root.Add(panel);
 
+        AddListItems(panel, items);
+    }
+
+    private void AddListItems(View panel, IReadOnlyList<ListItem> items)
+    {
+        var listTop = _section == "Reservations" ? 174 : 228;
+        var rows = new View { Name = "ReminderListItems", Position = P(0, listTop),
+            Size = S(700, 850 - listTop), FocusableChildren = true };
+        panel.Add(rows);
         _renderedItemIds = items.Take(6).Select(item => item.Id).ToArray();
         if (items.Count == 0)
         {
-            panel.Add(Label("Nothing here yet", "#40394E", 40f, 80, 280, 540, 70, HorizontalAlignment.Center));
-            panel.Add(Label(_section == "Reservations" ? "Add a deterministic viewing or recording simulation." : "Choose Add reminder to create your first item.", "#777181", 25.6f, 80, 360, 540, 100, HorizontalAlignment.Center));
+            rows.Add(Label("Nothing here yet", "#40394E", 40f, 80, 280 - listTop, 540, 70, HorizontalAlignment.Center));
+            rows.Add(Label(_section == "Reservations" ? "Add a deterministic viewing or recording simulation." : "Choose Add reminder to create your first item.", "#777181", 25.6f, 80, 360 - listTop, 540, 100, HorizontalAlignment.Center));
             return;
         }
 
@@ -379,12 +431,12 @@ internal sealed class ReminderApplication : NUIApplication
         {
             var item = items[index];
             var isSelected = item.Id == _selectedId;
-            var button = Button(item.Primary + "  ·  " + item.Secondary, 32, listTop + index * 96, 636, 80, () => SelectItem(item.Id));
+            var button = Button(item.Primary + "  ·  " + item.Secondary, 32, index * 96, 636, 80, () => SelectItem(item.Id));
             button.Name = $"ReminderEntity-{item.Id}";
             button.AccessibilityName = item.Primary + ", " + item.Secondary;
             button.BackgroundColor = new Color(isSelected ? "#E6DDF8" : "#F7F6FB");
             button.TextColor = new Color("#292531");
-            panel.Add(button);
+            rows.Add(button);
         }
     }
 
@@ -573,7 +625,7 @@ internal sealed class ReminderApplication : NUIApplication
     private void QueueAnnotationRefresh()
     {
         _annotationTimer?.Stop();
-        if (_paused || _activeRoot is null) return;
+        if (_paused || _refreshing || _activeRoot is null) return;
         // Update live focus/text immediately; the next layout replaces the same
         // snapshot atomically. Render/OnPause clear removed or hidden trees.
         PublishAnnotations();
@@ -582,7 +634,7 @@ internal sealed class ReminderApplication : NUIApplication
 
     private void PublishAnnotations()
     {
-        if (_paused || _activeRoot is null || _service is null) return;
+        if (_paused || _refreshing || _activeRoot is null || _service is null) return;
         var context = ReminderAnnotationPage.Create(_section, _editing, _newItem, _selectedId, _search.AppliedKeyword, _timeFilter, _confirmDelete);
         var pageId = context.Id;
         var page = context.State;

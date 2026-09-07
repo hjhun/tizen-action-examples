@@ -330,11 +330,13 @@ internal static class CalendarOverlayView
                 () => edit(reminder.Id));
             card.Name = $"CalendarReminder-{reminder.Id}";
             pane.Add(card);
-            pane.Add(CreateButton(
+            var toggle = CreateButton(
                 reminder.IsCompleted ? "Reopen" : "Done",
                 new Position(608.0f * scale, top),
                 new Size(90.0f * scale, 82.0f * scale),
-                () => toggleCompletion(reminder.Id)));
+                () => toggleCompletion(reminder.Id));
+            toggle.Name = $"CalendarReminderToggle-{reminder.Id}";
+            pane.Add(toggle);
         }
     }
 
@@ -560,21 +562,35 @@ internal static class CalendarOverlayView
                 apply(working);
             }));
 
+        RefreshSearchResults(pane, search, repository, openResult);
+    }
+
+    internal static void RefreshSearchResults(View root, CalendarSearchState search,
+        CalendarEventRepository repository, Action<string> openResult)
+    {
+        var pane = root.Name == "CalendarOverlayPane" ? root : root.FindChildByName("CalendarOverlayPane");
+        var old = pane.FindChildByName("CalendarSearchResults");
+        if (old is not null) { pane.Remove(old); old.Dispose(); }
+        var resultsPane = new View { Name = "CalendarSearchResults", Position = new Position(0, 560),
+            Size = new Size(760, 400), FocusableChildren = true };
+        pane.Add(resultsPane);
+        const float scale = 1;
+        var theme = CalendarTheme.Light;
         var results = repository.ResolveByIds(search.ResultEventIds).Events;
         if (search.ResultEventIds.Count > 0 && results.Count == 0)
         {
-            pane.Add(CalendarDateCellView.CreateLabel("Results changed. Search again.", theme.TextSecondary, 28f * scale,
-                new Position(48.0f * scale, 560.0f * scale), new Size(650.0f * scale, 50.0f * scale), HorizontalAlignment.Center));
+            resultsPane.Add(CalendarDateCellView.CreateLabel("Results changed. Search again.", theme.TextSecondary, 28f * scale,
+                new Position(48.0f * scale, 0.0f * scale), new Size(650.0f * scale, 50.0f * scale), HorizontalAlignment.Center));
         }
         else if (!search.HasApplied)
         {
-            pane.Add(CalendarDateCellView.CreateLabel("Enter filters and choose Search.", theme.TextSecondary, 28f * scale,
-                new Position(48.0f * scale, 560.0f * scale), new Size(650.0f * scale, 50.0f * scale), HorizontalAlignment.Center));
+            resultsPane.Add(CalendarDateCellView.CreateLabel("Enter filters and choose Search.", theme.TextSecondary, 28f * scale,
+                new Position(48.0f * scale, 0.0f * scale), new Size(650.0f * scale, 50.0f * scale), HorizontalAlignment.Center));
         }
         else if (search.ResultEventIds.Count == 0)
         {
-            pane.Add(CalendarDateCellView.CreateLabel("No matches. Try another date or keyword.", theme.TextSecondary, 28f * scale,
-                new Position(48.0f * scale, 560.0f * scale), new Size(650.0f * scale, 100.0f * scale), HorizontalAlignment.Center));
+            resultsPane.Add(CalendarDateCellView.CreateLabel("No matches. Try another date or keyword.", theme.TextSecondary, 28f * scale,
+                new Position(48.0f * scale, 0.0f * scale), new Size(650.0f * scale, 100.0f * scale), HorizontalAlignment.Center));
         }
         else
         {
@@ -583,12 +599,12 @@ internal static class CalendarOverlayView
                 var calendarEvent = results[index];
                 var resultButton = CreateButton(
                     $"{calendarEvent.Start:MMM d  HH:mm}   {calendarEvent.Title}",
-                    new Position(48.0f * scale, (560.0f + (index * 86.0f)) * scale),
+                    new Position(48.0f * scale, (index * 86.0f) * scale),
                     new Size(650.0f * scale, 70.0f * scale),
                     () => openResult(calendarEvent.Id));
                 resultButton.Name = $"CalendarEvent-{calendarEvent.Id}";
                 resultButton.AccessibilityName = $"{calendarEvent.Title}, {calendarEvent.Start:MMMM d HH:mm}, {calendarEvent.Location}";
-                pane.Add(resultButton);
+                resultsPane.Add(resultButton);
             }
         }
     }
@@ -636,6 +652,7 @@ internal static class CalendarOverlayView
     {
         var button = new NuiButton
         {
+            Name = "CalendarOverlayAction-" + text,
             Text = text,
             Position = position,
             Size = size,

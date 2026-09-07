@@ -219,7 +219,11 @@ public sealed class ScheduleService
     {
         _store.Save(desired);
         _snapshot = Copy(desired);
-        Changed?.Invoke();
+        // The state is committed. An observer failure must never cancel the
+        // resource we just persisted or report the successful mutation as failed.
+        if (Changed is { } observers)
+            foreach (Action observer in observers.GetInvocationList())
+                try { observer(); } catch { /* Observers own their UI lifecycle. */ }
     }
 
     private ScheduleDocument ReconcileResources(ScheduleDocument loaded)
