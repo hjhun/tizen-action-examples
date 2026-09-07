@@ -7,6 +7,19 @@ foreach (var (w,h,s,x) in new[] { (1920,1080,1f,0f), (3840,2160,2f,0f), (4096,21
  Check(d.Viewport.ContentHeight==h, "no duplicate scaling");
 }
 Check(!GalleryDisplayMetrics.TryCreate(0,0,7680,4320,0,0,0,0,out _), "screen cannot replace minimized window");
+foreach (var (w,h) in new[] { (1920,1080), (3840,2160), (4096,2160), (7680,4320) })
+{
+ Check(GalleryDisplayMetrics.TryCreate(w,h,w,h,40,20,100,70,out var expected), "reference drawable with insets");
+ foreach (var (sw,sh) in new[] { (0,0), (0,h), (w,0), (-1,h), (w,-1) })
+ {
+  Check(GalleryDisplayMetrics.TryCreate(w,h,sw,sh,40,20,100,70,out var actual), "optional screen metadata cannot suppress valid drawable");
+  Check(!actual.HasScreenSize && actual.ScreenWidth==0 && actual.ScreenHeight==0, "partial or invalid screen metadata normalizes both dimensions");
+  Check(actual.WindowWidth==w && actual.WindowHeight==h && actual.Viewport==expected.Viewport, "metadata failure preserves actual window and inset geometry");
+ }
+ Check(GalleryDisplayMetrics.TryCreate(w,h,1280,720,40,20,100,70,out var mismatched), "mismatched screen capability remains optional");
+ Check(mismatched.HasScreenSize && mismatched.ScreenWidth==1280 && mismatched.ScreenHeight==720 && mismatched.Viewport==expected.Viewport, "HAL capability must not shrink the drawable");
+ Check(!GalleryDisplayMetrics.TryCreate(w,h,0,0,w,0,0,0,out _), "missing metadata cannot validate exhausted drawable");
+}
 Check(!ProportionalViewport.TryCreate(1920,1080,float.NaN,0,0,0,out _), "reject invalid inset");
 var inset=ProportionalViewport.Create(1920,1080,100,20,100,20);
 Check(inset.OffsetX==100 && inset.OffsetY>=20, "safe area remains centered");
@@ -23,4 +36,4 @@ Check(asymmetric.OffsetX>=40 && asymmetric.OffsetY>=20 && asymmetric.OffsetX+asy
 Check(GalleryNavigation.Next(3,8,"Down",true)==7, "grid down preserves column");
 Check(GalleryNavigation.Next(7,8,"Right",true)==7, "grid boundary bounded");
 Check(GalleryNavigation.Next(0,2,"Left",false)==0, "modal focus trapped");
-Console.WriteLine("PhotoGallery.App.Tests PASS (FHD/UHD/DCI/8K, invalid window/insets, bounded focus)");
+Console.WriteLine("PhotoGallery.App.Tests PASS (FHD/UHD/DCI/8K, optional screen metadata, invalid window/insets, bounded focus)");

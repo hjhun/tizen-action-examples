@@ -12,12 +12,24 @@ measurement. A false result, exception or non-positive value on either axis rese
 both metadata dimensions to zero; valid WindowSize/GetInsets can still determine
 the viewport. Invalid drawable geometry retains the existing false/old-frame policy.
 `PhotoGallery.App.Tests` passes and the Release build has zero warnings and errors.
-These are regression/compile results: the suite does not execute Information
+These were regression/compile results: the suite at that stage did not execute Information
 exceptions or directly test a valid window with unavailable screen metadata.
 Native display after SystemInfo exceptions or partial reads remains unverified,
 and the SystemInfo initial sizing requirement remains unmet. Earlier FHD/UHD/DCI
 evidence for `org.tizen.photogallery` retains its original payload/date scope and
 does not validate this change on target.
+
+## Optional screen metadata host coverage (2026-09-08)
+
+The App suite now directly exercises the production `GalleryDisplayMetrics` seam
+with valid FHD/UHD/DCI 4K/8K windows and asymmetric insets: absent, partial and
+negative screen metadata normalize to zero without changing drawable geometry.
+A 1280×720 screen capability also leaves each actual window's geometry unchanged;
+missing metadata does not validate a drawable exhausted by insets. All 76 added
+assertions and the existing suite pass without a production change. This fills the
+portable coverage gap above, not a reproduced production failure or TDD RED/GREEN.
+Actual Information exceptions, native partial-read rendering and SystemInfo
+initial sizing remain unverified/unmet as previously recorded.
 
 ## Reference and adaptation
 
