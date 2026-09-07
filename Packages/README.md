@@ -1,70 +1,45 @@
 # Common Emulator TPK 배포 묶음
 
-- 빌드 날짜: 2026-09-07T13:25:14+09:00 (호스트 시간).
-- 빌드 소스 commit: `91293ea5a629a937983389ee41a7b8d6a3cb47c2`. 세 앱과 공유 소스는 이 commit의 변경 없는 상태에서 빌드했습니다.
-- 구성: Release, .NET 8 / `Tizen.NET 14.0.0.19326`.
-- 앱의 **.NET API 버전은 14**, manifest의 **최소 플랫폼 버전은 10.0**입니다. 서로 다른 버전 필드입니다.
-- 서명: 기존 패키징 스크립트의 Tizen Studio **Common Emulator 시험용 signer** (`tizen package`에서 `-s` 생략). 실제 TV/제품용 서명·배포 검증을 의미하지 않습니다.
+- 빌드 날짜: 2026-09-08T07:56:56+09:00.
+- 소스 기준 commit: `9a951b6dbdb1f91a46a08a21fbd0cb983e151e10`. Calendar/Reminder/PhotoGallery/Browser는 해당 committed source에서 빌드했습니다.
+- DisplayPresentation은 이 commit 위의 기존 **미커밋 작업본**에서 빌드했습니다. 소스 변경은 이번 배포 커밋에 포함하지 않으므로 이 commit만으로 renderer 산출물을 재현할 수 없습니다.
+- Release / .NET 8, dotnet API14. Manifest 최소 플랫폼 버전10.0과 구분합니다. NuGet 참조는 기존 버전을 유지했습니다.
+- 기존 Tizen Studio Common Emulator 시험용 signer 사용. TV/제품 배포 인증을 의미하지 않습니다.
 
-| 앱 | TPK 파일 | Package ID = App ID | 버전 | 크기(bytes) |
-|---|---|---|---|---:|
-| Calendar | [org.tizen.calendar-0.1.0-api14.tpk](org.tizen.calendar-0.1.0-api14.tpk) | `org.tizen.calendar` | 0.1.0 | 290279 |
-| Reminder | [org.tizen.reminder-0.1.0-api14.tpk](org.tizen.reminder-0.1.0-api14.tpk) | `org.tizen.reminder` | 0.1.0 | 218849 |
-| PhotoGallery | [org.tizen.photogallery-0.1.0-api14.tpk](org.tizen.photogallery-0.1.0-api14.tpk) | `org.tizen.photogallery` | 0.1.0 | 217237 |
+| 앱 | TPK | 크기(bytes) | DLL | 빌드 warnings/errors |
+|---|---|---:|---:|---|
+| Calendar | [org.tizen.calendar-0.1.0-api14.tpk](org.tizen.calendar-0.1.0-api14.tpk) | 290255 | 7 | 0/0 |
+| Reminder | [org.tizen.reminder-0.1.0-api14.tpk](org.tizen.reminder-0.1.0-api14.tpk) | 219734 | 6 | 0/0 |
+| PhotoGallery | [org.tizen.photogallery-0.1.0-api14.tpk](org.tizen.photogallery-0.1.0-api14.tpk) | 218071 | 6 | 0/0 |
+| Browser | [org.tizen.browser-0.1.0-api14.tpk](org.tizen.browser-0.1.0-api14.tpk) | 248934 | 6 | 227/0 |
+| DisplayPresentation | [org.tizen.displaypresentation-0.1.0-api14.tpk](org.tizen.displaypresentation-0.1.0-api14.tpk) | 166661 | 6 | 0/0 |
 
-SHA-256은 [SHA256SUMS](SHA256SUMS)에 기록했습니다. 사용자가 지정한 세 앱의 배포 TPK만 포함합니다.
+모두 package/app ID=`org.tizen.<소문자 앱명>`, version0.1.0입니다. [SHA256SUMS](SHA256SUMS)에 전체 SHA256을 기록했습니다. Music/Video는 디자인 참고 파일만 있으며 빌드 가능한 앱이 없어 포함하지 않았습니다.
 
-## 이번 산출물 검사
+## 검사 범위
 
-- 세 앱 Release 컴파일: 경고 0 / 오류 0; TPK 패키징 성공.
-- ZIP CRC, manifest 원본/ID/version/exec/type/API, 실행 DLL과 runtime metadata 검사 PASS.
-- fresh Release DLL 전체(Calendar 7 / Reminder 6 / PhotoGallery 6개) 및 app-owned Action/Entity 리소스(Calendar 3 / Reminder 6 / PhotoGallery 2개)가 ZIP 페이로드와 바이트 단위로 일치.
-- Author와 distributor 서명 6개: 모든 참조 digest 및 RSA-SHA512 서명 값의 **실제 암호학적 검증 PASS**. JDK XMLDSig로 선언된 C14N11 내부 참조도 검증했습니다. 참조 수는 앱별 author/distributor 순서로 26/27, 30/31, 22/23개입니다.
-- 페이로드 참조의 전체 포함 여부와 SHA-512 digest도 별도 확인했습니다. 이 검사는 내장 인증서 공개키 기준이며 기기 신뢰 체인·인증서 폐기 상태·제품 설치 가능성 검증을 대신하지 않습니다.
-- 복사 전후 TPK 바이트 및 배포 SHA-256 일치 PASS. 인증서 private key, 로컬 설정, 검증 로그는 포함하지 않았습니다.
+- 5개 앱 빌드·패키징 성공. Browser의 기존 generated nullable 등 경고227개는 보존했으며 generated 원본을 수정하지 않았습니다.
+- ZIP CRC, manifest source byte equality, 전체 Release DLL 및 app-owned schema resource byte equality 확인.
+- author/distributor 서명10개: JDK XMLDSig로 C14N11 내부 참조를 포함한 digest와 RSA-SHA512 signature 검증 PASS. 전체 payload coverage도 확인했습니다. 인증서 신뢰 체인/폐기 상태/제품 설치 검증은 아닙니다.
+- 이번 TPK는 target에 설치하거나 실행하지 않았습니다. 과거 source/native 검증과 새 패키지 검사를 구분합니다.
 
-**이번에 재빌드한 TPK 자체를 타깃에 재설치하거나 UI/Action을 재실행하지 않았습니다.** 기존 source/runtime 검증은 아래 문서를 참조하며 이번 패키징 검사와 구분합니다.
+## 현재 개발 한계
 
-- [Calendar/Reminder ID 변경 및 FHD 검증](../Calendar/docs/APP_ID_MIGRATION.md)
-- [Calendar/Reminder 해상도·플랫폼 제약](../Calendar/docs/STAGE1_VALIDATION.md)
-- [PhotoGallery UI/타깃 증거](../PhotoGallery/docs/UI_PARITY.md)
+- [Browser P1](../Browser/docs/UI_PARITY.md): 중간 ABI 이행이며 OpenPage 후속 구현은 native event 귀속/terminal 계약 블로커를 유지합니다.
+- [Reminder](../Reminder/docs/UI_PARITY.md): FHD compositor-debug iconify focus 사례까지만 검증됐습니다.
+- [PhotoGallery](../PhotoGallery/docs/UI_PARITY.md): stable delete target의 제한된 FHD fixture 검증을 포함합니다.
+- [Calendar](../Calendar/docs/STAGE1_VALIDATION.md): SystemInfo 초기 sizing, 현재 고해상도/native gate와 새 VM Action readiness 블로커를 유지합니다.
+- renderer canonical/overlay 및 각 앱 native8K 등 미검증 사항은 패키징 성공으로 해소되지 않습니다.
 
-## 재생성 및 체크섬 확인
+## 재생성 및 무결성 확인
 
-저장소 루트에서 실행합니다. 생성 Action 바인딩과 앱 소스는 수정하지 않습니다. 서명 시각 등으로 재생성된 TPK의 바이트/체크섬은 달라질 수 있습니다.
+저장소 루트에서 앱마다 기존 공용 패키징 경로를 실행합니다. 로컬 dist를 보존하려면 /tmp의 같은 앱 이름 디렉터리 아래 src를 해당 앱 src에 연결하여 동일 스크립트에 전달할 수 있습니다. 서명 시각 등으로 TPK hash가 달라질 수 있습니다.
 
 ```bash
-mkdir -p Packages
-for app in Calendar Reminder PhotoGallery; do
-    bash "$app/package.sh"
-    cp "$app/dist/org.tizen.${app,,}-0.1.0-api14.tpk" Packages/
+for app in Calendar Reminder PhotoGallery Browser DisplayPresentation; do
+    bash scripts/package-dotnet-app.sh "$app" || exit
+    cp "$app"/dist/*.tpk Packages/ || exit
 done
-(
-    cd Packages
-    sha256sum org.tizen.calendar-0.1.0-api14.tpk \
-        org.tizen.reminder-0.1.0-api14.tpk \
-        org.tizen.photogallery-0.1.0-api14.tpk > SHA256SUMS
-)
+(cd Packages && sha256sum *.tpk > SHA256SUMS)
+(cd Packages && sha256sum -c SHA256SUMS)
 ```
-
-받은 파일의 무결성만 확인하려면:
-
-```bash
-(
-    cd Packages
-    sha256sum -c SHA256SUMS
-)
-```
-
-## 설치
-
-설치할 Common Emulator의 serial을 `SERIAL`에 설정한 뒤 저장소 루트에서 실행합니다.
-
-```bash
-: "${SERIAL:?Set the Common Emulator serial}"
-tizen install -s "$SERIAL" -n Packages/org.tizen.calendar-0.1.0-api14.tpk
-tizen install -s "$SERIAL" -n Packages/org.tizen.reminder-0.1.0-api14.tpk
-tizen install -s "$SERIAL" -n Packages/org.tizen.photogallery-0.1.0-api14.tpk
-```
-
-구 `org.tizen.actionexamples.*` 패키지가 남아 있는 타깃의 데이터 보존/제거 절차는 위 ID 마이그레이션 기록을 참고하세요.
