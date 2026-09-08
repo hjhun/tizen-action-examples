@@ -248,6 +248,45 @@ has zero warnings/errors. Provider/NUI/native integration and full canonical
 support remain incomplete; binding/Markdown/theme/actions/transport/rendering are
 not added. Earlier C0–C3 and legacy/native records retain their dated scope.
 
+## 2026-09-08 — C5 ingress contract blocker and host incompatibility coverage
+
+This bounded review reuses pin `8ff4651232ab0e02b0123730b502711170637a3a`
+(2026-09-04; inspected 2026-09-08), not a fresh check of latest upstream.
+The generated [ServiceBase](../src/DisplayPresentation.ActionProvider/Generated/DisplayActions.cs)
+exposes public `Sender`/`Instance`, with connection-specific Service creation and
+`OnTerminate` on disconnect. These are real proxy-connection seams, not proof of
+the original agent's authentication behind a broker or reconnect/session continuity.
+The blocker is **unsettled transport and ownership contracts**, not missing identifiers.
+
+The current `Presentation_Show` / `Tizen.Entity.Presentation` Template/Document pair
+does not define canonical framing, ordered delivery, metadata/negotiation or the
+canonical application meaning of Status. The existing legacy provider remains
+unchanged. C0–C4 stay internal host instances; instance isolation is not authenticated
+transport isolation, and catalog recognition is not a capability advertisement.
+No wrapper, alias, fallback, router or new transport is introduced.
+
+[ProductProducerInteropTests](../tests/DisplayPresentation.UseCases.Tests/ProductProducerInteropTests.cs)
+passes the unchanged actual Browser `CreatePresentations` create message to C0 and
+the real registry: **Recognized/CreateSurface**, then **UnsupportedCatalog** for its
+`v0_9_1` catalog literal versus the registered `v0_9` literal. The nonempty LOCAL
+setup's complete public snapshot (IDs/version/catalog/Body/Data/Components) remains
+unchanged; subsequent producer component/data frames are not applied to bypass the
+failure. This is host incompatibility coverage, not a production fix, canonical
+success path or proof of the complete Browser canonical payload's validity.
+ProductProducerInteropTests now has **60 checks = earlier 54 + 6 new checks**; existing legacy checks
+are retained, and earlier 54-check records keep their historical scope. The full
+UseCases suite passes with unchanged production; no artificial RED, repeated App
+build, Packages or target execution is claimed. Evidence is preserved under
+`/tmp/p5-canonical-boundary/c5-interop/` (`review.diff`, `result.json`, `suite.stdout`).
+
+Product connection remains blocked pending five decisions for the platform-binding
+alternative B: (1) exact pair framing/order/metadata and legacy distinction;
+(2) trusted owner identity across broker/local execution/reconnect and delete/clear
+authority; (3) session lifetime, teardown and late-message semantics;
+(4) truthful negotiation of partial support and the catalog literal mismatch;
+(5) whether Status acknowledges state admission or display application.
+No external contact or provider/NUI/native implementation is part of this step.
+
 ## Wire envelope and safety boundary
 
 The current Tizen Presentation compatibility adapter requires `Template` to be one JSON object with legacy v0.8 `surfaceUpdate` and `Document` to be one JSON object with matching `dataModelUpdate`. Both are untrusted. This split pair is retained for existing producers but is **not** labeled v0.9.1. A future canonical adapter must explicitly negotiate version/catalog and process the matching v0.9.1 lifecycle (`createSurface`, `updateComponents`, `updateDataModel`, `deleteSurface`) or a separately declared candidate profile; message names from different versions may not be mixed. Every adapter performs JSON parsing, type checks, schema/profile validation, binding resolution, depth/count/string limits, lifecycle/order checks, and stale-request checks before the NUI renderer receives a semantic tree.

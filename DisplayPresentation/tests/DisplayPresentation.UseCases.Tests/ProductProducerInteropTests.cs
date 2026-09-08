@@ -1,3 +1,4 @@
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Browser.Domain;
@@ -59,6 +60,32 @@ internal static class ProductProducerInteropTests
         Check(!parser.Parse(new(profiles.Canonical.Messages[0], profiles.Canonical.Messages[2])).IsSuccess,
             "Legacy parser acceptance must not imply support for canonical lifecycle messages.");
 
+        // Unmodified production create only: envelope recognition is not catalog admission.
+        var createBytes = Encoding.UTF8.GetBytes(profiles.Canonical.Messages[0]);
+        var recognized = CanonicalA2UiMessageReader.Read(createBytes);
+        Check(recognized.Status == CanonicalEnvelopeReadStatus.Recognized &&
+            recognized.Envelope?.Kind == CanonicalA2UiMessageKind.CreateSurface,
+            "Browser create must be recognized by C0 independently of catalog support.");
+        var registry = new CanonicalSurfaceRegistry();
+        // LOCAL setup, not a rewritten producer or official success pairing.
+        var localCreate = JsonSerializer.Serialize(new { version = "v0.9.1", createSurface = new {
+            surfaceId = "kept", catalogId = CanonicalSurfaceRegistry.KnownCatalogId,
+            theme = new { label = "original" }, sendDataModel = true } });
+        Check(registry.Apply(Encoding.UTF8.GetBytes(localCreate)) == CanonicalSurfaceApplyStatus.Created,
+            "Local admitted surface must exist before the producer rejection.");
+        Check(registry.Apply(Encoding.UTF8.GetBytes("""
+            {"version":"v0.9.1","updateDataModel":{"surfaceId":"kept","value":{"saved":true}}}
+            """)) == CanonicalSurfaceApplyStatus.DataUpdated, "Local data setup must apply.");
+        Check(registry.Apply(Encoding.UTF8.GetBytes("""
+            {"version":"v0.9.1","updateComponents":{"surfaceId":"kept","components":[{"id":"root","component":"Text","text":"Kept literal"}]}}
+            """)) == CanonicalSurfaceApplyStatus.ComponentsUpdated, "Local component setup must apply.");
+        var beforeCreate = JsonSerializer.Serialize(registry.Snapshot());
+        Check(registry.Apply(createBytes) == CanonicalSurfaceApplyStatus.UnsupportedCatalog,
+            "Actual Browser create must fail exact catalog admission, not version recognition.");
+        Check(JsonSerializer.Serialize(registry.Snapshot()) == beforeCreate,
+            "Rejected producer create must preserve all IDs, versions, catalogs, bodies, data and components.");
+        // Do not apply the producer's subsequent component/data messages after failed create.
+
         foreach (var owned in new[] { false, true })
         foreach (var favorite in new[] { false, true })
         {
@@ -79,6 +106,6 @@ internal static class ProductProducerInteropTests
                 "Wrong-type bound values in a real producer document must be rejected.");
         }
 
-        Console.WriteLine($"ProductProducerInteropTests: PASS checks={checks} (Browser/PhotoGallery production builders, legacy host only)");
+        Console.WriteLine($"ProductProducerInteropTests: PASS checks={checks} (production builders: legacy host and Browser canonical admission mismatch only)");
     }
 }
