@@ -3,6 +3,35 @@
 Profile: [A2UI and One UI](A2UI_ONE_UI_PROFILE.md).
 Single executable preview: [one-ui-sample.html](../refs/one-ui-sample.html).
 
+## 2026-09-08 local canonical entry — preview only
+
+The existing HTML now offers an explicit idle-only `Local canonical example`
+button. Active legacy content or failure prevents entry; a click creates only a
+fixed, non-sensitive JS capture labeled as an internal verification example, not
+producer input. Chromium at 1920×1080 verified ready/waiting/failure, double-click
+single creation, Back/Escape and Dismiss return to idle, Dismiss focus, and new
+legacy success/error taking priority over local state. Existing Calendar paging
+Next/Previous still works. Without `?verify`, keyboard entry/exit works and fixture
+controls remain hidden; waiting/failure controls extend only the existing preview
+verification toolbar.
+
+The two body texts use **28 reference units as a LOCAL preview adaptation**.
+Browser rectangles and scroll/client sizes showed no box overflow in this short
+case. This is not C# registry execution, glyph-fit proof or NUI typography support.
+The recorded 65 main / 11 nonverify CLI commands are command counts, not assertion
+counts. Reviewed captures and execution records remain under
+`/tmp/p5-canonical-boundary/local-preview/`; they are review evidence, not installed
+app screenshots or new published screenshot assets.
+
+The corresponding App entry/canvas remains **unimplemented**, so these HTML states
+have **no installed-app parity yet**. P1a transformed-bounds support, P1b glyph-fit,
+native covered staging/readiness and C5 ingress/outbound remain undecided.
+Current-identity checks reject superseded state only at inspection time: native
+check-to-commit TOCTOU remains separate from later UI-Post legacy priority. JS event
+order proves neither native atomicity nor those platform contracts. Earlier native
+ledger results below retain their exact dated scope and are not changed by this
+preview-only result.
+
 ## 2026-09-06 evidence
 
 The preview fixtures are generated from actual Calendar domain producers, not

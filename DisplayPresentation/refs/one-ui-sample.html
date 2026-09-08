@@ -7,8 +7,10 @@
 .column{display:flex;flex-direction:column;gap:4px}.text{margin:0;flex:none;height:120px;overflow:hidden;font-size:28px;line-height:1.25;overflow-wrap:anywhere;display:flex;align-items:center;white-space:pre-wrap}.headline{font-size:44px;font-weight:600}.title{font-size:36px;font-weight:600}.label{font-size:24px;color:#6f7078}.supporting{font-size:26px;color:#6f7078}
 #navigation{position:absolute;left:132px;top:884px;width:1656px;height:76px;display:flex;align-items:center;gap:24px}button{height:68px;min-width:184px;padding:0 26px;border:1px solid #d8d8de;border-radius:12px;background:white;color:#1b1b20;font-family:inherit;font-size:28px;cursor:pointer}button:focus{outline:4px solid #1466c3;outline-offset:4px;background:#e8f1fb;transform:scale(1.02)}button:disabled{opacity:.4;cursor:default}#counter{min-width:180px;font-size:26px;color:#6f7078}#dismiss{margin-left:auto}
 #verification{position:fixed;right:12px;top:12px;z-index:2;display:flex;gap:8px}#verification button{font:14px Arial;height:34px;min-width:0;padding:0 10px}.error{border-color:#e9bbb6!important}.error .title{color:#b3261e}
+/* LOCAL preview adaptation: 28 reference units, not NUI typography/fit evidence. */
+.local-column{align-items:stretch;justify-content:flex-start}.local-column .text{font-size:28px;height:auto;min-height:120px;overflow:visible;flex-shrink:0}
 </style></head><body>
-<main id="canvas" aria-label="Presentation"><header>Presentation</header><section id="surface" aria-live="polite"></section><nav id="navigation" aria-label="Presentation pages"><button id="previous">Previous</button><span id="counter"></span><button id="next">Next</button><button id="dismiss">Dismiss</button></nav></main>
+<main id="canvas" aria-label="Presentation"><header>Presentation</header><section id="surface" aria-live="polite"></section><nav id="navigation" aria-label="Presentation pages"><button id="previous">Previous</button><span id="counter"></span><button id="next">Next</button><button id="local-entry" hidden>Local canonical example</button><button id="dismiss">Dismiss</button></nav></main>
 <nav id="verification" hidden aria-label="Verification fixtures"></nav><script src="fixtures.js"></script><script>
 'use strict';
 const LIMIT=65536,MAX_NODES=512,TEXTS_PER_PAGE=4,roles=new Set(['headline','title','body','label','supporting']);
@@ -75,7 +77,22 @@ function paginate(surface){
   return pages;
 }
 const area=document.querySelector('#surface'),previous=document.querySelector('#previous'),next=document.querySelector('#next'),dismiss=document.querySelector('#dismiss'),counter=document.querySelector('#counter');
-let pages=[],page=0,failure='';
+const localEntry=document.querySelector('#local-entry'),heading=document.querySelector('header');
+let pages=[],page=0,failure='',local=null,localSequence=0;
+const localStateButtons=[];
+// Preview-only LOCAL capture, not the C# registry, a provider or canonical input parser.
+// Created only by the visible idle entry button. No user data or persistence.
+function enterLocal(){
+  if(local||pages.length||failure)return;
+  const data={sample:{message:'Resolved local text'}};
+  local={sequence:++localSequence,state:'ready',capture:Object.freeze([
+    Object.freeze({sourceId:'literal',value:'Local canonical example'}),
+    Object.freeze({sourceId:'bound',bindingPath:'/sample/message',value:data.sample.message})
+  ])};render('dismiss');
+}
+function localState(state){if(local){local.state=state;render('dismiss')}}
+function exitLocal(){local=null;render('local-entry')}
+
 function renderNode(node,parent){
   const element=document.createElement(node.kind==='Text'?'p':'div');element.dataset.componentId=node.id;
   if(node.kind==='Text'){element.className='text '+node.role;element.textContent=node.value}
@@ -83,21 +100,36 @@ function renderNode(node,parent){
   parent.append(element);
 }
 function render(prefer='next'){
-  area.replaceChildren();area.classList.toggle('error',Boolean(failure));
+  area.replaceChildren();area.classList.toggle('error',Boolean(failure)||local?.state==='failure');
+  heading.textContent=local?'Internal verification example — not producer input':'Presentation';
+  localEntry.hidden=Boolean(local||pages.length||failure);
+  localStateButtons.forEach(button=>button.disabled=!local);
+  if(local){
+    if(local.state==='ready'){
+      const column=document.createElement('div');column.className='column local-column';column.dataset.sourceId='root';
+      local.capture.forEach((text,index)=>{const label=document.createElement('p');label.className='text';label.textContent=text.value;label.dataset.occurrence=String(index);column.append(label)});
+      area.append(column);
+    }else{
+      renderNode({kind:'Text',id:'local-status',role:'body',value:local.state==='waiting'?'Waiting for the local example.':'The local example cannot be displayed.'},area);
+      renderNode({kind:'Text',id:'local-note',role:'supporting',value:'Preview state only. Dismiss or Back returns to idle.'},area);
+    }
+    previous.hidden=next.hidden=counter.hidden=true;previous.disabled=next.disabled=true;counter.textContent='';dismiss.focus();return;
+  }
   if(failure){renderNode({kind:'Text',id:'error-title',role:'title',value:'This presentation cannot be shown'},area);renderNode({kind:'Text',id:'error-message',role:'body',value:failure},area)}
   else if(pages.length&&texts(pages[page].root).length)renderNode(pages[page].root,area);
   else renderNode({kind:'Text',id:'empty',role:'body',value:pages.length?'No items':'No presentation is currently available.'},area);
   previous.disabled=page===0||!pages.length;next.disabled=page>=pages.length-1;
   previous.hidden=next.hidden=counter.hidden=pages.length<=1;counter.textContent=pages.length?(page+1)+' / '+pages.length:'';
-  const target=prefer==='previous'&&!previous.disabled?previous:!next.disabled?next:!previous.disabled?previous:dismiss;target.focus();
+  const target=prefer==='local-entry'&&!localEntry.hidden?localEntry:prefer==='previous'&&!previous.disabled?previous:!next.disabled?next:!previous.disabled?previous:dismiss;target.focus();
 }
-function show(input){try{pages=paginate(parse(input));failure=''}catch(e){pages=[];failure=e.message}page=0;render()}
+// JS event order models legacy priority; it does not prove native check/commit atomicity.
+function show(input){local=null;try{pages=paginate(parse(input));failure=''}catch(e){pages=[];failure=e.message}page=0;render()}
 function move(delta){const changed=Math.max(0,Math.min(pages.length-1,page+delta));if(changed!==page){page=changed;render(delta<0?'previous':'next')}}
-previous.onclick=()=>move(-1);next.onclick=()=>move(1);dismiss.onclick=()=>{pages=[];failure='';page=0;render('dismiss')};
+previous.onclick=()=>move(-1);next.onclick=()=>move(1);dismiss.onclick=()=>{if(local){exitLocal();return}pages=[];failure='';page=0;render('dismiss')};localEntry.onclick=enterLocal;
 document.addEventListener('keydown',event=>{
-  if(event.key==='Escape'){event.preventDefault();dismiss.click();return}
+  if(event.key==='Escape'||event.key==='BrowserBack'){event.preventDefault();dismiss.click();return}
   if(['ArrowDown','ArrowRight','ArrowUp','ArrowLeft'].includes(event.key)){
-    event.preventDefault();const buttons=[previous,next,dismiss].filter(b=>!b.hidden&&!b.disabled),index=buttons.indexOf(document.activeElement),delta=['ArrowDown','ArrowRight'].includes(event.key)?1:-1;
+    event.preventDefault();const buttons=[previous,next,localEntry,dismiss].filter(b=>!b.hidden&&!b.disabled),index=buttons.indexOf(document.activeElement),delta=['ArrowDown','ArrowRight'].includes(event.key)?1:-1;
     buttons[(index+delta+buttons.length)%buttons.length]?.focus();
   }
 });
@@ -110,5 +142,12 @@ if(new URLSearchParams(location.search).has('verify')){
     const button=document.createElement('button');button.textContent=name;button.onclick=()=>show(input);verification.append(button);
   }
 }
-window.preview={parse,paginate,show,move,get current(){return pages[page]||null},get page(){return page},get count(){return pages.length}};show(fixtures.calendar1);
+if(!verification.hidden){
+  // Extend the existing ?verify fixture toolbar; never creates a local session.
+  for(const state of ['waiting','failure','ready']){
+    const button=document.createElement('button');button.textContent='Local '+state;
+    button.onclick=()=>localState(state);localStateButtons.push(button);verification.append(button);
+  }
+}
+window.preview={parse,paginate,show,move,get local(){return local?{sequence:local.sequence,state:local.state}:null},get current(){return pages[page]||null},get page(){return page},get count(){return pages.length}};show(fixtures.calendar1);
 </script></body></html>
