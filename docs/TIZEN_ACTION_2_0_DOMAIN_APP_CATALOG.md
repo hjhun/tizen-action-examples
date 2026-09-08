@@ -2,26 +2,74 @@
 
 ## 목적
 
-이 문서는 `tizen-action-examples`에서 구현할 예제 앱의 범위를 `appfw/tizen-action/default-actions`의 실제 Action/Entity 정의를 기준으로 정리한다. 현재 Calendar 초안이 있으므로, 이후 예제는 단순 UI 샘플이 아니라 **Action provider 발견 → typed RPC → 상태/후속 조회 → UI 또는 system adapter 검증**을 보이는 도메인 앱으로 만든다.
+이 문서는 `tizen-action-examples`에서 구현할 예제 앱의 범위를 `appfw/tizen-action/default-actions`의 실제 Action/Entity 정의를 기준으로 정리한다. 현재 사용 경로는 아래 최신 snapshot과 앱별 검증 기록이다. 예제는 단순 UI 샘플이 아니라 **Action provider 발견 → typed RPC → 상태/후속 조회 → UI 또는 system adapter 검증**을 보이는 도메인 앱으로 만든다.
 
-## 분석 기준
+## 현재 로컬 계약 snapshot (2026-09-08)
 
-- 기준 소스: `<tizen-action-repo>/default-actions`
-- 분석 대상: `actions/*.action`, `entities/*.entity`, `action.seq`
-- 발견 결과: 공개 도메인 Action category 21개, 도메인 Action 124개, 내부 View Action 4개, Entity schema 46개.
-- 각 `.action`의 `details.appid`는 현재 플랫폼/제품 provider의 식별자다. 예제 앱은 해당 appid를 재사용하지 않고 별도의 예제 appid와 provider metadata를 가져야 한다.
-- `action.seq`의 category 내 순서는 TIDL method ID이므로, 예제 provider 생성 시 해당 category 전체를 `actionc -a <category>`로 생성한다. 기존 순서를 변경하거나 일부 Action만 생성하여 ID를 다시 매기지 않는다.
+검토한 로컬 `appfw/tizen-action/default-actions` revision은
+`38219b1e1ba347cd92178e25f8c90eefc8040d33`이다. `action.seq`에는 **22개 category,
+193개 Action slot**이 있다(View 제외 21개 category/189개 Action + View 4개).
+`actions/*.action`은 193개, `entities/*.entity`는 **107개 schema 파일**이다.
+107은 검증된 Entity 구현 수가 아니며, 이 로컬 snapshot이 설치 target의 전체
+catalog와 동일하다고 확인한 것은 아니다.
 
-> Graphify 사전 점검: Graphify CLI의 `update`를 이 소스에 실행했으나, 현재 설치본은 `.action`/`.entity` 확장자를 코드 입력으로 인식하지 않아 그래프를 만들지 못했다. 따라서 아래 표는 원본 JSON schema와 `action.seq`를 직접 파싱하여 산출했다. Graphify 캐시는 저장소 외부에 둔다.
+아래는 현재 소스의 전체 category 생성 대상과 각 앱 manifest 광고를 분리한
+집계다. category 접두사는 `Tizen.Action.`이며, custom 광고는 앱 소유 계약이다.
+광고 수는 구현 완료 또는 target 성공/실패 검증 수가 아니다.
+
+| 앱 | 전체 생성 대상 default category/slot 수 | manifest default 광고 수 | custom 광고 수 | 앱 전체 광고 수 | 현재 근거 / 열린 gate |
+|---|---|---|---:|---:|---|
+| Calendar | Calendar 5 + Reminder 5 + View 4 = 14 | Calendar 5 + Reminder 5 + View 4 = 14 | 2 | 16 | [기존 수용·현재 geometry 상태](../Calendar/docs/STAGE1_VALIDATION.md): host 118 checks, 현재 ID UHD/DCI/8K native 및 SystemInfo 초기 sizing 미완료 |
+| Reminder | Reminder 5 + View 4 = 9 | Reminder 5 + View 4 = 9 | 6 | 15 | [현재 계약](../Reminder/README.md), [focus 회귀](../Reminder/docs/UI_PARITY.md): FHD iconify 사례 수용, 일반 Home·정확 geometry 분기·추가 focus/lifecycle 및 고해상도 gate 유지 |
+| Browser | Browser 18 + View 4 = 22 | Browser 3 + View 4 = 7 | 1 | 8 | [P1 계약](../Browser/docs/ACTION_CONTRACT_VALIDATION.md): Browser category 중 3개만 광고, 미광고 15개; OpenPage 후속 단계는 framework 이벤트 귀속/terminal 계약 블로커 |
+| PhotoGallery | Photo 8 + View 4 = 12 | Photo 8 + View 4 = 12 | 2 | 14 | [현재 검증](../PhotoGallery/docs/UI_PARITY.md): FHD fixture 삭제 대상 고정 수용, SystemInfo 예외 native·초기 sizing·8K 미완료 |
+| DisplayPresentation | Presentation 1 + View 4 = 5 | Presentation 1 + View 4 = 5 | 0 | 5 | [현재 검증](../DisplayPresentation/docs/UI_PARITY.md): legacy host producer 54 checks, canonical·overlay 미완료; 전체 native paging/focus/annotation 검증 아님 |
+
+Browser의 광고 3개는 `GetCurrentPage`, `GetTabs`, `ToPresentation`이다.
+여기에 View 4개와 `BrowserCustom_GetPageByIds` 1개가 더해져 총 8개이며,
+"Browser 18개 중 8개 구현"을 뜻하지 않는다. 현재 schema의 `GetCurrentPage`는
+`WebPageInfo`, `ToCalendar`는 `WebPageInfo` → `CalendarEvent`를 사용한다.
+`ToCalendar`는 P1에서 미광고이며, 구 `GetCurrent`/`Go`/`GetBrowserByIds`는 현재
+광고가 아니다. 기존 UI 탐색·탭은 보존되지만 표준 OpenPage 이행은 남아 있다.
+
+Reminder의 현재 표준 category는 `Reminder`이다. `ScheduleService`나 프로젝트
+디렉터리 이름은 현 플랫폼 Schedule category를 뜻하지 않는다. custom 예약은
+app-owned Common Emulator simulator 경계이며, Broadcast에 예약 기능 자체가
+없기 때문에 만든 계약이라고 설명하지 않는다.
+
+현재 infrastructure는 `Tizen.Action.Presentation`과 `Tizen.Action.View`다.
+renderer의 split Template/Document legacy v0.8 호환 및 host 검사 성공은 canonical
+A2UI version/catalog/lifecycle/action 또는 투명 overlay 지원을 증명하지 않는다.
+[Packages](../Packages/README.md)는 빌드·패키징 근거이고, 앱별 과거 native 증거는
+그 날짜/payload/시나리오 한정이다. 별도 VM의 Action discovery `-111` 원인은
+미확정이며 SystemInfo HAL 권위/초기 sizing 및 native8K 블로커도 유지한다.
 
 ## 구현 단위 원칙
 
 1. 아래의 **도메인 앱**은 원칙적으로 category당 하나의 독립 예제 프로젝트로 둔다. 한 앱이 여러 category의 일부 Action을 흉내 내는 방식은 provider discovery와 Entity 소유권을 흐린다.
-2. `Display`와 `Tizen.Action.View`는 일반 도메인 앱이 아니라 다른 앱을 지원하는 **공통 infrastructure fixture**로 둔다.
-3. 이미 Calendar 초안이 있는 경우에도 CRUD, stable-ID resolver, Search, Presentation, persistence/restart 및 알람 보상까지 검증될 때만 완료로 처리한다.
+2. `Tizen.Action.Presentation`과 `Tizen.Action.View`는 일반 도메인 앱이 아니라 다른 앱을 지원하는 **공통 infrastructure fixture**로 둔다.
+3. 기존 reference 앱도 CRUD, stable-ID resolver, Search, Presentation, persistence/restart 및 알람 보상까지 검증될 때만 완료로 처리한다.
 4. 플랫폼 전역 상태를 실제로 바꾸는 category는 예제에서 안전한 in-app simulator/repository를 사용하고, 실제 system adapter는 capability와 권한을 확인할 수 있는 target에서 별도 검증한다.
 
-## 필요한 도메인 앱 목록
+## Historical: 초기 카탈로그와 계획
+
+아래 분석 수치 **124/46**과 `Schedule`/`Display`, 구 Browser DTO 및 provider ID
+표는 이전 로컬 분석 기록으로 보존한다. 현재 명령·구현·광고 판단에는 위의
+**현재 로컬 계약 snapshot**을 사용한다. 당시 정확한 revision/검토 날짜는 이
+기록에 남아 있지 않으므로 새 날짜를 부여하지 않는다. 미착수 도메인 전체를
+이번에 재설계하지 않았으며, 착수 시 category/Entity/provider 계약을 다시 대조해야 한다.
+
+### 당시 분석 기준
+
+- 기준 소스: `<tizen-action-repo>/default-actions`
+- 분석 대상: `actions/*.action`, `entities/*.entity`, `action.seq`
+- 발견 결과: 공개 도메인 Action category 21개, 도메인 Action 124개, 내부 View Action 4개, Entity schema 46개.
+- 각 `.action`의 `details.appid`는 당시 플랫폼/제품 provider의 식별자다. 예제 앱은 해당 appid를 재사용하지 않고 별도의 예제 appid와 provider metadata를 가져야 한다.
+- `action.seq`의 category 내 순서는 TIDL method ID이므로, 예제 provider 생성 시 해당 category 전체를 `actionc -a <category>`로 생성한다. 기존 순서를 변경하거나 일부 Action만 생성하여 ID를 다시 매기지 않는다.
+
+> Graphify 사전 점검: Graphify CLI의 `update`를 이 소스에 실행했으나, 당시 설치본은 `.action`/`.entity` 확장자를 코드 입력으로 인식하지 않아 그래프를 만들지 못했다. 따라서 아래 표는 원본 JSON schema와 `action.seq`를 직접 파싱하여 산출했다. Graphify 캐시는 저장소 외부에 둔다.
+
+### 당시 도메인 앱 제안 목록
 
 | 순서 | 예제 앱/프로젝트 제안 | Action category | Action 수 | 주요 Entity | default-actions의 기존 provider appid | 예제 범위와 최소 완료 시나리오 | 권장 단계 |
 |---:|---|---|---:|---|---|---|---|
@@ -47,14 +95,14 @@
 | 20 | `VolumeControl` | `Tizen.Action.Volume` | 6 | `Volume`, `Status` | `org.tizen.volume-app` | get/set/raise/lower/mute/unmute; range·mute transition·idempotence 검증 | P3 |
 | 21 | `DisplayPresentation` | `Tizen.Action.Display` | 1 | `Presentation`, `Status` | `com.samsung.tv.bixbycapsuleviewer` | 다른 provider가 만든 Presentation을 화면에 표시하는 공통 renderer fixture | Infrastructure |
 
-## 공통 infrastructure fixture
+### 당시 infrastructure 제안 (구 Display 명칭)
 
 | 프로젝트 제안 | Action category | Action 수 | 역할 | 연결 대상 |
 |---|---|---:|---|---|
 | `ViewContextFixture` | `Tizen.Action.View` | 4 | focused/annotated view 조회, ID lookup, View→Presentation 변환을 제공하는 framework fixture | Agent-facing UI annotation, `DisplayPresentation`, 모든 NUI 도메인 앱 |
 | `DisplayPresentation` | `Tizen.Action.Display` | 1 | `Presentation` entity를 실제 화면 또는 deterministic test view로 출력 | `ToPresentation` Action을 가진 Calendar, Browser, Art, Health, Music, Photo, Video, Broadcast |
 
-## 단계별 구현 우선순위
+### 당시 단계별 구현 우선순위
 
 | 단계 | 목표 | 포함 앱 | 선택 근거 |
 |---|---|---|---|
