@@ -76,6 +76,8 @@ Earlier legacy/native evidence retains its recorded scope in [UI_PARITY.md](UI_P
 
 ## C1 host catalog admission and surface registry (2026-09-08)
 
+This records C1 at acceptance; its data-update rejection is extended by the C2 subset below.
+
 The independent [CanonicalSurfaceRegistry](../src/DisplayPresentation.UseCases/CanonicalSurfaceRegistry.cs)
 adds a local admission policy after C0: only the exact pre-registered literal
 `https://a2ui.org/specification/v0_9/catalogs/basic/catalog.json` is identified.
@@ -111,6 +113,50 @@ C1 is not complete canonical lifecycle support. Catalog/theme/component/data
 validation and application, transport, provider and native rendering remain
 unconnected; no renderer capability is advertised. Existing legacy behavior and
 its separately scoped native evidence in [UI_PARITY.md](UI_PARITY.md) are unchanged.
+
+## C2 host data-update subset (2026-09-08)
+
+[CanonicalDataModelUpdater](../src/DisplayPresentation.UseCases/CanonicalDataModelUpdater.cs)
+now applies `updateDataModel` to registry Data independently of the create Body.
+Uninitialized `JsonElement?` and explicit JSON null remain distinct. Omitted path
+or `/` replaces the whole root; existing object ancestors allow leaf upsert/delete.
+Values retain JSON types and number lexemes; replacement does not merge objects.
+Numeric/`01`/`-` object keys are literal, `/parent/` addresses an empty object key,
+and `~1`/`~0` are decoded once without percent decoding or trimming.
+
+Array traversal, inferred parent creation, root deletion and empty path remain
+`UnsupportedOperation`, not declarations of invalid canonical input. Array deletion
+is not approximated by shifting elements or assigning null in place of undefined.
+Missing object-leaf deletion yields `MissingPath` as a **local policy**.
+After C0 and surface-existence checks, precedence is path UTF8 bytes → token count
+→ full pointer syntax → supported operation/ancestors → candidate depth → encoded
+bytes. Relative/fragment paths and malformed `~` escapes yield `InvalidPath`;
+local limit failures yield `StateLimitExceeded`, including an overlong malformed path.
+
+Local limits are **1024 UTF8 path bytes / 32 tokens** and cumulative Data
+**64 KiB compact UTF8 / depth 32**, separate from C0 message bounds. Stored byte
+measurement uses `JavaScriptEncoder.Default`; escaping expansion counts. A bounded
+serialization sink rejects overflow without first constructing a full output string.
+The 16-surface cap bounds retained Data payload to 1 MiB, not total RAM: snapshots,
+create bodies and transient candidates are additional allocations.
+
+Cloned candidate validation and record swap occur under the C1 session lock.
+Failure preserves complete identity/Body/Data state; snapshots and session/surface
+ownership stay isolated. Concurrent separate-key updates lose no updates and
+same-key results reflect an atomic winner. Delete/recreate races follow lock order;
+there is no wire-generation protection against an update reaching a recreated ID.
+`DataUpdated` means registry application only.
+
+The unchanged pinned protocol whole-model, field-update and field-delete messages
+pass with explicitly **local** create/parent/leaf setup; this is not an official
+end-to-end pairing. Tests pass **174 C2 host checks**, including exact cumulative
+byte/depth boundaries, rejection recovery, ownership and concurrency; C1 75, C0 169,
+producer 54 and the full UseCases suite also pass. Release has zero warnings/errors.
+Initial RED was missing-API compilation failure. A fixture-extraction preparation
+error and its initial compile log are preserved separately, not behavior RED.
+Provider/native integration remains absent. Full canonical/catalog/component,
+binding/theme/actions/transport/renderer support and earlier legacy evidence are
+unchanged by this host subset.
 
 ## Wire envelope and safety boundary
 

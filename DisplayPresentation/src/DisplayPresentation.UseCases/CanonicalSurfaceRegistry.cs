@@ -6,13 +6,14 @@ public enum CanonicalSurfaceApplyStatus
 {
     Created, Deleted, InvalidEnvelope, UnsupportedVersion, UnsupportedCatalog,
     DuplicateSurface, MissingSurface, CapacityExceeded, UnsupportedOperation,
+    DataUpdated, InvalidPath, MissingPath, StateLimitExceeded,
 }
 
 /// <summary>Immutable registry metadata and opaque create body, not a rendered surface.</summary>
-public sealed record CanonicalSurfaceSnapshot(string SurfaceId, string Version, string CatalogId, JsonElement Body);
+public sealed record CanonicalSurfaceSnapshot(string SurfaceId, string Version, string CatalogId, JsonElement Body, JsonElement? Data = null);
 
 /// <summary>
-/// Session-owned, portable create/delete registry. Not connected to legacy rendering or providers.
+/// Session-owned, portable create/delete registry with a bounded data-update subset. Not connected to legacy rendering or providers.
 /// Catalog admission identifies one pre-registered literal; it does not validate catalog semantics.
 /// Theme/sendDataModel are preserved only. No fetching, aliases, or external catalog registration.
 /// </summary>
@@ -62,7 +63,15 @@ public sealed class CanonicalSurfaceRegistry
                 _surfaces.Remove(id);
                 return CanonicalSurfaceApplyStatus.Deleted;
             }
-            // Component/data updates are deliberately not applied, including to existing surfaces.
+            if (envelope.Kind == CanonicalA2UiMessageKind.UpdateDataModel)
+            {
+                var surface = _surfaces[id];
+                var status = CanonicalDataModelUpdater.Apply(surface.Data, body, out var data);
+                if (status == CanonicalSurfaceApplyStatus.DataUpdated)
+                    _surfaces[id] = surface with { Data = data };
+                return status;
+            }
+            // Component updates remain unsupported.
             return CanonicalSurfaceApplyStatus.UnsupportedOperation;
         }
     }
@@ -73,7 +82,7 @@ public sealed class CanonicalSurfaceRegistry
         {
             // Detached read-only collection, immutable records, cloned JSON ownership.
             return Array.AsReadOnly(_surfaces.Values.OrderBy(x => x.SurfaceId, StringComparer.Ordinal)
-                .Select(x => x with { Body = x.Body.Clone() }).ToArray());
+                .Select(x => x with { Body = x.Body.Clone(), Data = x.Data?.Clone() }).ToArray());
         }
     }
 
