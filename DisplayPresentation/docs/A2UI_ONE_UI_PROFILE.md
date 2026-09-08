@@ -74,6 +74,44 @@ to providers, manifest, Show, the legacy parser/serializer or NUI. Full schema,
 catalog/lifecycle validation, transport and canonical native rendering remain open.
 Earlier legacy/native evidence retains its recorded scope in [UI_PARITY.md](UI_PARITY.md).
 
+## C1 host catalog admission and surface registry (2026-09-08)
+
+The independent [CanonicalSurfaceRegistry](../src/DisplayPresentation.UseCases/CanonicalSurfaceRegistry.cs)
+adds a local admission policy after C0: only the exact pre-registered literal
+`https://a2ui.org/specification/v0_9/catalogs/basic/catalog.json` is identified.
+Wire `v0.9.1` and this catalog ID are independent values; no alias, normalization,
+URL fetch or external/inline catalog registration occurs. The definition hash
+recorded in source is provenance at the C0 pin above, not proof supplied by an
+incoming ID or evidence of full catalog validation.
+
+`Created`/`Deleted` mean registry application only. C0 `InvalidEnvelope` and
+`UnsupportedVersion` precede create catalog admission (`UnsupportedCatalog`), then
+locked existence/cap checks and mutation. Duplicate create yields `DuplicateSurface`;
+missing delete/update yields `MissingSurface`; updates to an existing surface yield
+`UnsupportedOperation`, never successful no-ops. Version/catalog stay fixed until
+delete/recreate, which admits a new record. Theme/sendDataModel are preserved only.
+
+The **local cap is 16** active surfaces per session instance. Failed applications
+preserve the full ID/version/catalog/body snapshot. Atomic admission prevents
+same-ID and capacity races; snapshots use immutable records, cloned JSON and a
+detached read-only collection. `Clear` affects only its owning registry instance.
+
+[CanonicalSurfaceRegistryTests](../tests/DisplayPresentation.UseCases.Tests/CanonicalSurfaceRegistryTests.cs)
+pass 75 host checks, including actual registry races, snapshot isolation and C0
+parse/Unicode rejection without state changes. Initial RED was missing-type
+compilation failure, not a reproduced behavior failure. The full UseCases suite
+(including C0 169 and producer 54 checks) and Release build pass with zero warnings/errors.
+The unchanged official protocol create yields `UnsupportedCatalog`; the official
+basic v0.9 fixture yields `UnsupportedVersion`. Positive creates are explicitly
+local schema-derived fixtures. Official delete succeeds after explicit local
+setup; this is not an official end-to-end pairing, and an official create success
+pairing remains unavailable under this admission policy.
+
+C1 is not complete canonical lifecycle support. Catalog/theme/component/data
+validation and application, transport, provider and native rendering remain
+unconnected; no renderer capability is advertised. Existing legacy behavior and
+its separately scoped native evidence in [UI_PARITY.md](UI_PARITY.md) are unchanged.
+
 ## Wire envelope and safety boundary
 
 The current Tizen Presentation compatibility adapter requires `Template` to be one JSON object with legacy v0.8 `surfaceUpdate` and `Document` to be one JSON object with matching `dataModelUpdate`. Both are untrusted. This split pair is retained for existing producers but is **not** labeled v0.9.1. A future canonical adapter must explicitly negotiate version/catalog and process the matching v0.9.1 lifecycle (`createSurface`, `updateComponents`, `updateDataModel`, `deleteSurface`) or a separately declared candidate profile; message names from different versions may not be mixed. Every adapter performs JSON parsing, type checks, schema/profile validation, binding resolution, depth/count/string limits, lifecycle/order checks, and stale-request checks before the NUI renderer receives a semantic tree.

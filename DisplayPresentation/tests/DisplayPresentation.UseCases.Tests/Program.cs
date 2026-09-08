@@ -12,6 +12,7 @@ var parser = new A2UiPresentationParser();
 ProducerInteropTests.Run();
 ProductProducerInteropTests.Run();
 CanonicalEnvelopeTests.Run();
+CanonicalSurfaceRegistryTests.Run();
 PagingTests.Run();
 LegacyBindingTests.Run();
 var valid = new PresentationInput(
