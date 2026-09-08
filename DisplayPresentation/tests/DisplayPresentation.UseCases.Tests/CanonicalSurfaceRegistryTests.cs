@@ -45,6 +45,7 @@ internal static class CanonicalSurfaceRegistryTests
         RunDataChecks();
         RunComponentChecks();
         RunProjectionChecks();
+        RunBindingChecks();
         int checks = 0;
         void Check(bool condition, string message)
         {
@@ -151,6 +152,153 @@ internal static class CanonicalSurfaceRegistryTests
                 x.Version == "v0.9.1" && x.CatalogId == CanonicalSurfaceRegistry.KnownCatalogId &&
                 x.Body.GetProperty("surfaceId").GetString() == x.SurfaceId), "Race records match successful admissions.");
         Console.WriteLine($"CanonicalSurfaceRegistryTests: {checks} checks PASS");
+    }
+
+    private static void RunBindingChecks()
+    {
+        // LOCAL schema-derived cases; no official or producer message is rewritten.
+        int checks = 0;
+        void Check(bool ok, string why) { if (!ok) throw new InvalidOperationException(why); checks++; }
+        string Bound(string id, string path) => JsonSerializer.Serialize(new { id, component = "Text", text = new { path } });
+        CanonicalSurfaceApplyStatus Apply(CanonicalSurfaceRegistry r, string message) => r.Apply(Encoding.UTF8.GetBytes(message));
+        CanonicalSurfaceRegistry Make(string path, string? data = null)
+        {
+            var r = new CanonicalSurfaceRegistry();
+            Check(Apply(r, Create("binding")) == CanonicalSurfaceApplyStatus.Created, "Binding local create.");
+            Check(Apply(r, ComponentMessage("binding", Bound("root", path))) == CanonicalSurfaceApplyStatus.ComponentsUpdated, "Exact binding admission.");
+            if (data is not null) Check(Apply(r, DataMessage("binding", null, data)) == CanonicalSurfaceApplyStatus.DataUpdated, "Binding local data.");
+            return r;
+        }
+        CanonicalProjectionResult Project(CanonicalSurfaceRegistry r, CanonicalProjectionStatus status)
+        {
+            var before = JsonSerializer.Serialize(r.Snapshot());
+            var result = r.Project("binding");
+            Check(result.Status == status, "Binding projection expected " + status + " got " + result.Status);
+            Check(JsonSerializer.Serialize(r.Snapshot()) == before, "Binding projection preserves entire state.");
+            if (status != CanonicalProjectionStatus.Projected && status != CanonicalProjectionStatus.PartialProjection)
+                Check(result.Root is null, "Binding failure returns no root.");
+            return result;
+        }
+        var r = Make("/name");
+        var pending = (CanonicalPendingBinding)Project(r, CanonicalProjectionStatus.PartialProjection).Root!;
+        Check(pending.BindingPath == "/name" && pending.Resolution == CanonicalBindingResolution.Uninitialized, "Uninitialized distinct pending.");
+        Apply(r, DataMessage("binding", null, "{}"));
+        Check(((CanonicalPendingBinding)Project(r, CanonicalProjectionStatus.PartialProjection).Root!).Resolution == CanonicalBindingResolution.Missing, "Missing distinct pending.");
+        Apply(r, DataMessage("binding", null, "{\"name\":\"\"}"));
+        var empty = (CanonicalProjectedBoundText)Project(r, CanonicalProjectionStatus.Projected).Root!;
+        Check(empty.Text == "" && empty.BindingPath == "/name" && empty.Resolution == CanonicalBindingResolution.Resolved, "Empty string resolves with exact provenance.");
+        foreach (var value in new[] { "null", "42", "true", "{}", "[]" })
+        {
+            Apply(r, DataMessage("binding", null, "{\"name\":" + value + "}"));
+            var rejected = Project(r, CanonicalProjectionStatus.UnsupportedBindingValue);
+            using var doc = JsonDocument.Parse(value);
+            Check(rejected.BindingValueKind == doc.RootElement.ValueKind, "Unsupported terminal kind diagnostic.");
+        }
+        Apply(r, DataMessage("binding", null, "{\"name\":\"fresh\"}"));
+        Check(((CanonicalProjectedBoundText)Project(r, CanonicalProjectionStatus.Projected).Root!).Text == "fresh" && empty.Text == "", "Data-only update and old projection ownership.");
+        var beforeRepeat = JsonSerializer.Serialize(r.Snapshot());
+        Check(Apply(r, ComponentMessage("binding", "{\"text\":{\"path\":\"/name\"},\"component\":\"Text\",\"id\":\"root\"}")) == CanonicalSurfaceApplyStatus.ComponentsUpdated, "Binding repeat ignores property order.");
+        Check(Apply(r, ComponentMessage("binding", Bound("root", "/other"))) == CanonicalSurfaceApplyStatus.UnsupportedComponentUpdate && JsonSerializer.Serialize(r.Snapshot()) == beforeRepeat, "Changed path rejected atomically.");
+        foreach (var shape in new[] { "{}", "{\"path\":null}", "{\"path\":1}", "{\"path\":\"/name\",\"extra\":true}" })
+            Check(Apply(r, ComponentMessage("binding", "{\"id\":\"bad\",\"component\":\"Text\",\"text\":" + shape + "}")) == CanonicalSurfaceApplyStatus.InvalidComponent, "Malformed binding shape.");
+        Check(Apply(r, ComponentMessage("binding", "{\"id\":\"fn\",\"component\":\"Text\",\"text\":{\"call\":\"f\"}}")) == CanonicalSurfaceApplyStatus.UnsupportedComponentForm, "Function recognized unsupported, not certified.");
+        foreach (var path in new[] { "", "/", "name", "#/name", "/array/0", "/scalar/x" })
+            Project(Make(path, "{\"array\":[],\"scalar\":null}"), CanonicalProjectionStatus.UnsupportedBindingPath);
+        foreach (var path in new[] { "/missing/~2", "/array/~", "relative~x" })
+            Project(Make(path, "{\"array\":[]}"), CanonicalProjectionStatus.InvalidBindingPath);
+        foreach (var path in new[] { "/01", "/-", "/a~1b", "/~01", "/%2F", "/parent/", "/ spaced " })
+        {
+            var resolved = (CanonicalProjectedBoundText)Project(Make(path, "{\"01\":\"ok\",\"-\":\"ok\",\"a/b\":\"ok\",\"~1\":\"ok\",\"%2F\":\"ok\",\"parent\":{\"\":\"ok\"},\" spaced \":\"ok\"}"), CanonicalProjectionStatus.Projected).Root!;
+            Check(resolved.Text == "ok" && resolved.BindingPath == path, "Literal keys/one escape pass/no trim or percent decode.");
+        }
+        var optional = Make("/name");
+        var optBefore = JsonSerializer.Serialize(optional.Snapshot());
+        Check(Apply(optional, ComponentMessage("binding", "{\"id\":\"root\",\"component\":\"Text\",\"text\":{\"path\":\"/name\"},\"variant\":\"body\"}")) == CanonicalSurfaceApplyStatus.UnsupportedComponentUpdate && JsonSerializer.Serialize(optional.Snapshot()) == optBefore, "Absent optional differs from explicit default for binding repeat.");
+        optional.Clear(); Apply(optional, Create("binding"));
+        Apply(optional, ComponentMessage("binding", "{\"id\":\"root\",\"component\":\"Text\",\"text\":{\"path\":\"/name\"},\"variant\":\"caption\"}"));
+        var optionalPending = (CanonicalPendingBinding)Project(optional, CanonicalProjectionStatus.PartialProjection).Root!;
+        Check(optionalPending.Variant == "caption", "Pending preserves variant.");
+        Apply(optional, DataMessage("binding", null, "{\"name\":\"visible\",\"private\":\"not-emitted\"}"));
+        var optResolved = Project(optional, CanonicalProjectionStatus.Projected);
+        Check(((CanonicalProjectedBoundText)optResolved.Root!).Variant == "caption" && !Encoding.UTF8.GetString(ProjectionBytes(optResolved)).Contains("not-emitted"), "Bound variant preserved, unreferenced data excluded.");
+        // Local limit precedence: bytes, tokens, whole escape syntax, supported path, lookup.
+        Project(Make("/" + new string('a', 1023)), CanonicalProjectionStatus.PartialProjection);
+        Project(Make("/" + new string('a', 1024)), CanonicalProjectionStatus.ProjectionLimitExceeded);
+        Project(Make("/" + new string('한', 341)), CanonicalProjectionStatus.PartialProjection);
+        Project(Make("/" + new string('한', 342) + "~x"), CanonicalProjectionStatus.ProjectionLimitExceeded);
+        Project(Make(string.Concat(Enumerable.Repeat("/a", 32))), CanonicalProjectionStatus.PartialProjection);
+        Project(Make(string.Concat(Enumerable.Repeat("/a", 33)) + "~x"), CanonicalProjectionStatus.ProjectionLimitExceeded);
+        Project(Make(string.Concat(Enumerable.Repeat("/a", 31)) + "/~x"), CanonicalProjectionStatus.InvalidBindingPath);
+        CanonicalSurfaceRegistry Repeated(int n, string? data)
+        {
+            var q = Make("/name", data);
+            q.Clear(); Apply(q, Create("binding"));
+            Check(Apply(q, ComponentMessage("binding", ColumnNode("root", Enumerable.Repeat("t", n).ToArray()), Bound("t", "/name"))) == CanonicalSurfaceApplyStatus.ComponentsUpdated, "Repeated binding setup.");
+            if(data is not null) Check(Apply(q, DataMessage("binding", null, data)) == CanonicalSurfaceApplyStatus.DataUpdated, "Repeated data setup.");
+            return q;
+        }
+        var slots = (CanonicalProjectedColumn)Project(Repeated(255, null), CanonicalProjectionStatus.PartialProjection).Root!;
+        Check(slots.Children.Count == 255 && slots.Children[254].OccurrencePath.SequenceEqual(new[] {254}), "Pending counts as distinct occurrence.");
+        Project(Repeated(255, "{\"name\":\"\"}"), CanonicalProjectionStatus.Projected);
+        Project(Repeated(256, null), CanonicalProjectionStatus.ProjectionLimitExceeded);
+        Project(Repeated(255, "{\"name\":\"" + new string('x', 1000) + "\"}"), CanonicalProjectionStatus.ProjectionLimitExceeded);
+        // Independent resource oracle counts bound provenance and terminal text, not base records.
+        var baseProjection = Project(Make("/name", "{\"name\":\"\"}"), CanonicalProjectionStatus.Projected);
+        int payload = 65536 - ProjectionBytes(baseProjection).Length;
+        var exact = Project(Make("/name", JsonSerializer.Serialize(new { name = new string('x', payload) })), CanonicalProjectionStatus.Projected);
+        Check(ProjectionBytes(exact).Length == 65536, "Exact bound projection byte cap including provenance.");
+        Project(Make("/name", JsonSerializer.Serialize(new { name = new string('x', payload + 1) })), CanonicalProjectionStatus.ProjectionLimitExceeded);
+        // Both pending and resolved bindings count at the same known graph depth boundary.
+        foreach (var count in new[] { 31, 32 })
+        {
+            var deep = new CanonicalSurfaceRegistry(); Apply(deep, Create("binding"));
+            var chain = Enumerable.Range(0, count).Select(i => ColumnNode(i == 0 ? "root" : "n" + i, "n" + (i + 1))).ToArray();
+            Check(Apply(deep, ComponentMessage("binding", chain)) == CanonicalSurfaceApplyStatus.ComponentsUpdated, "Depth chain setup.");
+            if (count == 31)
+            {
+                Check(Apply(deep, ComponentMessage("binding", Bound("n31", "/name"))) == CanonicalSurfaceApplyStatus.ComponentsUpdated, "Binding at depth32.");
+                Project(deep, CanonicalProjectionStatus.PartialProjection);
+                Apply(deep, DataMessage("binding", null, "{\"name\":\"leaf\"}"));
+                Project(deep, CanonicalProjectionStatus.Projected);
+            }
+            else Project(deep, CanonicalProjectionStatus.ProjectionLimitExceeded); // unresolved slot at33
+        }
+        var pendingBytes = new CanonicalSurfaceRegistry(); Apply(pendingBytes, Create("binding"));
+        Apply(pendingBytes, ComponentMessage("binding", ColumnNode("root", Enumerable.Repeat("t", 100).ToArray()), Bound("t", "/" + new string('x', 1023))));
+        Project(pendingBytes, CanonicalProjectionStatus.ProjectionLimitExceeded); // provenance alone, before emitted cap
+        var literal = new CanonicalSurfaceRegistry(); Apply(literal, Create("binding"));
+        Apply(literal, ComponentMessage("binding", TextNode("root", "/name")));
+        Check(((CanonicalProjectedText)Project(literal, CanonicalProjectionStatus.Projected).Root!).Text == "/name", "Literal pointer-looking text is not evaluated.");
+        var otherSession = Make("/name", "{\"name\":\"other\"}");
+        Apply(r, Create("second")); Apply(r, ComponentMessage("second", Bound("root", "/name")));
+        Apply(r, DataMessage("second", null, "{\"name\":\"second\"}"));
+        Check(((CanonicalProjectedBoundText)r.Project("second").Root!).Text == "second" && ((CanonicalProjectedBoundText)otherSession.Project("binding").Root!).Text == "other", "Two surfaces and sessions are independent.");
+        Apply(r, Delete("binding")); Apply(r, Create("binding"));
+        Apply(r, ComponentMessage("binding", Bound("root", "/name")));
+        Check(((CanonicalPendingBinding)Project(r, CanonicalProjectionStatus.PartialProjection).Root!).Resolution == CanonicalBindingResolution.Uninitialized && empty.Text == "", "Recreate resets data; old bound output survives.");
+        bool immutablePath = false;
+        try { ((IList<int>)slots.Children[254].OccurrencePath)[0] = 0; } catch (NotSupportedException) { immutablePath = true; }
+        Check(immutablePath, "Binding occurrence paths are immutable.");
+        var consistent = new CanonicalSurfaceRegistry(); Apply(consistent, Create("binding"));
+        Apply(consistent, ComponentMessage("binding", ColumnNode("root", "a", "b"), Bound("a", "/a"), Bound("b", "/b")));
+        Apply(consistent, DataMessage("binding", null, "{\"a\":\"0\",\"b\":\"0\"}"));
+        int capturedPairs = 0, appliedPairs = 0;
+        Parallel.Invoke(() => {
+                for(int i=0;i<100;i++)
+                {
+                    if (Apply(consistent, DataMessage("binding", null, JsonSerializer.Serialize(new { a=i.ToString(), b=i.ToString() }))) != CanonicalSurfaceApplyStatus.DataUpdated)
+                        throw new InvalidOperationException("Concurrent pair update rejected");
+                    appliedPairs++;
+                }
+            },
+            () => { for(int i=0;i<100;i++) { var c=(CanonicalProjectedColumn)consistent.Project("binding").Root!; if(((CanonicalProjectedBoundText)c.Children[0]).Text != ((CanonicalProjectedBoundText)c.Children[1]).Text) throw new InvalidOperationException("Mixed data capture"); capturedPairs++; } });
+        Check(capturedPairs == 100, "Concurrent whole-model field pairs stay capture-consistent.");
+        Check(appliedPairs == 100, "All writer updates applied; worker counters are checked only after join.");
+        var finalPair = (CanonicalProjectedColumn)consistent.Project("binding").Root!;
+        Check(((CanonicalProjectedBoundText)finalPair.Children[0]).Text == "99" &&
+            ((CanonicalProjectedBoundText)finalPair.Children[1]).Text == "99", "Final pair reflects the last applied update.");
+        Check(pending.Resolution == CanonicalBindingResolution.Uninitialized && empty.Text == "", "Old outputs survive updates.");
+        Console.WriteLine($"CanonicalTextBindingChecks: {checks} checks PASS");
     }
 
     private static void RunProjectionChecks()
@@ -298,9 +446,11 @@ internal static class CanonicalSurfaceRegistryTests
         object? Node(CanonicalProjectedNode? node)
         {
             if(node is null)return null;
-            var o=new Dictionary<string,object?> { ["kind"]=node switch { CanonicalProjectedText=>"Text",CanonicalProjectedColumn=>"Column",_=>"Unresolved" },
+            var o=new Dictionary<string,object?> { ["kind"]=node switch { CanonicalProjectedText=>"Text",CanonicalProjectedBoundText=>"Text",CanonicalPendingBinding=>"Text",CanonicalProjectedColumn=>"Column",_=>"Unresolved" },
                 ["sourceId"]=node.SourceId,["path"]=node.OccurrencePath };
             if(node is CanonicalProjectedText t){o["text"]=t.Text;if(t.Variant is not null)o["variant"]=t.Variant;}
+            if(node is CanonicalProjectedBoundText b){o["text"]=b.Text;if(b.Variant is not null)o["variant"]=b.Variant;o["bindingPath"]=b.BindingPath;o["resolution"]=b.Resolution.ToString();}
+            if(node is CanonicalPendingBinding pending){if(pending.Variant is not null)o["variant"]=pending.Variant;o["bindingPath"]=pending.BindingPath;o["resolution"]=pending.Resolution.ToString();}
             if(node is CanonicalProjectedColumn c){if(c.Justify is not null)o["justify"]=c.Justify;if(c.Align is not null)o["align"]=c.Align;o["children"]=c.Children.Select(Node).ToArray();}
             return o;
         }
@@ -378,7 +528,7 @@ internal static class CanonicalSurfaceRegistryTests
             Reject(CanonicalSurfaceApplyStatus.InvalidComponent, node);
         Reject(CanonicalSurfaceApplyStatus.UnsupportedComponent, "{\"id\":\"x\",\"component\":\"UnknownType\"}");
         foreach (var node in new[] { TextNode("x", "x", ",\"weight\":1"), TextNode("x", "x", ",\"accessibility\":{\"label\":\"name\"}"),
-            "{\"id\":\"x\",\"component\":\"Text\",\"text\":{\"path\":\"/name\"}}",
+            "{\"id\":\"x\",\"component\":\"Text\",\"text\":{\"call\":\"formatString\"}}",
             "{\"id\":\"x\",\"component\":\"Text\",\"text\":{\"call\":\"formatString\",\"args\":{},\"returnType\":\"string\"}}",
             "{\"id\":\"x\",\"component\":\"Column\",\"children\":{\"componentId\":\"t\",\"path\":\"/items\"}}" })
             Reject(CanonicalSurfaceApplyStatus.UnsupportedComponentForm, node);
@@ -467,7 +617,7 @@ internal static class CanonicalSurfaceRegistryTests
     private static string TextNode(string id, string text = "value", string optional = "") =>
         "{\"id\":"+JsonSerializer.Serialize(id)+",\"component\":\"Text\",\"text\":"+JsonSerializer.Serialize(text)+optional+"}";
     private static string ColumnNode(string id, params string[] children) => JsonSerializer.Serialize(new { id, component="Column", children });
-    private static string ComponentMessage(string id, string[] nodes) =>
+    private static string ComponentMessage(string id, params string[] nodes) =>
         "{\"version\":\"v0.9.1\",\"updateComponents\":{\"surfaceId\":"+JsonSerializer.Serialize(id)+",\"components\":["+string.Join(',',nodes)+"]}}";
 
     private static void RunDataChecks()

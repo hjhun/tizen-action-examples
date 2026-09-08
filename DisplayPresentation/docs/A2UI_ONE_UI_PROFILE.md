@@ -287,6 +287,51 @@ authority; (3) session lifetime, teardown and late-message semantics;
 (5) whether Status acknowledges state admission or display application.
 No external contact or provider/NUI/native implementation is part of this step.
 
+## Host Text path-binding subset (2026-09-08)
+
+This step extends the dated C3 literal admission and C4 Components-only projection
+above; those records retain their original scope. Using the same pinned catalog,
+Text accepts a literal or exact `{path:string}`. Exact repeat preserves optional
+presence and the path; changed existing IDs remain `UnsupportedComponentUpdate`.
+Malformed binding shape is invalid component input; FunctionCall/template forms
+remain unsupported without certifying their schema validity. Literal text is not
+interpolated, and no Markdown, functions or rendering behavior is added.
+
+Only nonempty absolute object paths are evaluated. Local precedence is **1024 UTF8
+bytes → 32 tokens → whole escape syntax → supported path subset → lookup**.
+Malformed escapes return `InvalidBindingPath`; empty, `/`, relative, array or
+nonobject traversal returns `UnsupportedBindingPath`. Decode `~1`/`~0` once without
+trim or percent decoding; numeric/`01`/`-` are object keys and `/parent/` can select
+an empty leaf key. Missing/uninitialized data produces a distinct pending-binding
+slot and `PartialProjection`, separate from a missing component edge. Terminal
+null, number, boolean, object and array return `UnsupportedBindingValue` with the
+observed JSON kind and `Root=null`; this is a **local unsupported subset**, not
+upstream-invalid data. An actual empty string resolves normally, with no null
+coercion. Path/limit failures likewise return no accepted root.
+
+Registry.Project clones Components and nullable Data together under one lock and
+resolves outside it. Results are capture-consistent, not latest-at-return; stored
+state and old projections remain unchanged. Bound output retains exact path,
+resolution status, optional variant and occurrence identity. Only referenced text
+is emitted, never whole Data/create Body or disconnected payload. Existing literal
+resource representation is unchanged; bound nodes add `bindingPath`/`resolution`,
+and pending nodes omit `text`. These fields and repeated resolved text/pending slots
+count toward local emitted256/depth32/compact Default UTF8 64KiB limits. This is
+resource-only accounting, not wire format or total RAM. No cache/subscription is added.
+
+[Registry tests](../tests/DisplayPresentation.UseCases.Tests/CanonicalSurfaceRegistryTests.cs)
+pass **250 Text binding host checks** using LOCAL fixtures, not rewritten official
+messages. The concurrent writer checks all 100 `DataUpdated` results and final
+`99/99`; 100 captures check pair consistency, without claiming all overlapped the
+writer. Initial compile failures mixed unimplemented APIs with test argument/oracle
+errors, not pure API RED or behavior RED; the first executable implementation passed.
+Existing C0 169/C1 75/C2 174/C3 144/C4 328, producer 60 and the full UseCases suite
+pass. The unchanged production SHA retains the prior App Release 0 warnings/errors;
+only UseCases was rerun for the writer assertion correction. Evidence remains in
+`/tmp/p5-canonical-boundary/binding-green-reviewed.txt` and `binding-release.txt`.
+C5 ingress and its five binding/ownership decisions remain open. Provider,
+transport, NUI/native and full canonical support are not established by this step.
+
 ## Wire envelope and safety boundary
 
 The current Tizen Presentation compatibility adapter requires `Template` to be one JSON object with legacy v0.8 `surfaceUpdate` and `Document` to be one JSON object with matching `dataModelUpdate`. Both are untrusted. This split pair is retained for existing producers but is **not** labeled v0.9.1. A future canonical adapter must explicitly negotiate version/catalog and process the matching v0.9.1 lifecycle (`createSurface`, `updateComponents`, `updateDataModel`, `deleteSurface`) or a separately declared candidate profile; message names from different versions may not be mixed. Every adapter performs JSON parsing, type checks, schema/profile validation, binding resolution, depth/count/string limits, lifecycle/order checks, and stale-request checks before the NUI renderer receives a semantic tree.

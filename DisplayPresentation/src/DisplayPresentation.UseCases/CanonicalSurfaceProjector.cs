@@ -1,10 +1,14 @@
+using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 
 namespace DisplayPresentation.UseCases;
 
-public enum CanonicalProjectionStatus { MissingSurface, WaitingForRoot, PartialProjection, Projected, ProjectionLimitExceeded }
-public sealed record CanonicalProjectionResult(CanonicalProjectionStatus Status, string SurfaceId, CanonicalProjectedNode? Root);
+public enum CanonicalProjectionStatus { MissingSurface, WaitingForRoot, PartialProjection, Projected, ProjectionLimitExceeded, UnsupportedBindingValue, UnsupportedBindingPath, InvalidBindingPath }
+public sealed record CanonicalProjectionResult(CanonicalProjectionStatus Status, string SurfaceId, CanonicalProjectedNode? Root)
+{
+    public JsonValueKind? BindingValueKind { get; init; }
+}
 public abstract record CanonicalProjectedNode(string SourceId, IReadOnlyList<int> OccurrencePath);
 public sealed record CanonicalProjectedText(string SourceId, IReadOnlyList<int> OccurrencePath, string Text, string? Variant)
     : CanonicalProjectedNode(SourceId, OccurrencePath);
@@ -13,13 +17,22 @@ public sealed record CanonicalProjectedColumn(string SourceId, IReadOnlyList<int
 public sealed record CanonicalUnresolvedChild(string SourceId, IReadOnlyList<int> OccurrencePath)
     : CanonicalProjectedNode(SourceId, OccurrencePath);
 
-/// <summary>Consumes only registry-captured C3 components. No legacy/NUI or arbitrary public snapshot input.</summary>
+public enum CanonicalBindingResolution { Resolved, Missing, Uninitialized }
+public sealed record CanonicalProjectedBoundText(string SourceId, IReadOnlyList<int> OccurrencePath,
+    string Text, string? Variant, string BindingPath) : CanonicalProjectedNode(SourceId, OccurrencePath)
+{
+    public CanonicalBindingResolution Resolution => CanonicalBindingResolution.Resolved;
+}
+public sealed record CanonicalPendingBinding(string SourceId, IReadOnlyList<int> OccurrencePath,
+    string? Variant, string BindingPath, CanonicalBindingResolution Resolution) : CanonicalProjectedNode(SourceId, OccurrencePath);
+
+/// <summary>Consumes atomically captured components and Data; emits only referenced text. No legacy/NUI or arbitrary public snapshot input.</summary>
 internal static class CanonicalSurfaceProjector
 {
     // Local output limits, counting repeated occurrences AND unresolved edge slots.
     private const int MaximumSlots = 256, MaximumDepth = 32, MaximumBytes = 65536;
 
-    internal static CanonicalProjectionResult Project(string surfaceId, IReadOnlyList<JsonElement>? components)
+    internal static CanonicalProjectionResult Project(string surfaceId, IReadOnlyList<JsonElement>? components, JsonElement? data)
     {
         var nodes = components?.ToDictionary(x => x.GetProperty("id").GetString()!, StringComparer.Ordinal);
         int emitted = 0;
@@ -78,12 +91,29 @@ internal static class CanonicalSurfaceProjector
                 }
                 else if (kind == "Text")
                 {
-                    var text = node.GetProperty("text").GetString()!;
+                    var input = node.GetProperty("text");
+                    string? bindingPath = input.ValueKind == JsonValueKind.Object ? input.GetProperty("path").GetString()! : null;
+                    var resolution = CanonicalBindingResolution.Resolved;
+                    var text = bindingPath is null ? input.GetString()! : Resolve(bindingPath, data, out resolution);
                     var variant = Optional(node, "variant");
-                    writer.WriteString("text", text);
+                    if (resolution == CanonicalBindingResolution.Resolved) writer.WriteString("text", text);
                     if (variant is not null) writer.WriteString("variant", variant);
+                    // Preserve literal resource format; bound nodes add exact provenance/status.
+                    // Pending text omits text but includes optional variant and both binding fields.
+                    if (bindingPath is not null)
+                    {
+                        writer.WriteString("bindingPath", bindingPath);
+                        writer.WriteString("resolution", resolution.ToString());
+                    }
                     writer.Flush(); // Count long/repeated encoded text before expanding further.
-                    result = new CanonicalProjectedText(id, path, text, variant);
+                    if (bindingPath is null) result = new CanonicalProjectedText(id, path, text, variant);
+                    else if (resolution == CanonicalBindingResolution.Resolved)
+                        result = new CanonicalProjectedBoundText(id, path, text, variant, bindingPath);
+                    else
+                    {
+                        partial = true;
+                        result = new CanonicalPendingBinding(id, path, variant, bindingPath, resolution);
+                    }
                 }
                 else
                 {
@@ -105,11 +135,49 @@ internal static class CanonicalSurfaceProjector
                 return result;
             }
         }
+        catch (BindingException e)
+        {
+            return new(e.Status, surfaceId, null) { BindingValueKind = e.Kind };
+        }
         catch (ProjectionLimitException)
         {
-            // PartialProjection means missing edges only, never truncation. No accepted root.
+            // PartialProjection means missing edges/bindings only, never truncation. No accepted root.
             return new(CanonicalProjectionStatus.ProjectionLimitExceeded, surfaceId, null);
         }
+    }
+
+    private static string Resolve(string path, JsonElement? data, out CanonicalBindingResolution resolution)
+    {
+        // Local precedence: UTF8 bytes -> token count -> entire escape syntax -> supported
+        // absolute subset -> lookup. Missing data cannot hide malformed trailing escapes.
+        if (Encoding.UTF8.GetByteCount(path) > 1024) throw new ProjectionLimitException();
+        var tokens = path.Split('/');
+        if (tokens.Length - (path.StartsWith('/') ? 1 : 0) > 32) throw new ProjectionLimitException();
+        for (int i = 0; i < path.Length; i++)
+            if (path[i] == '~' && (++i == path.Length || path[i] is not ('0' or '1')))
+                throw new BindingException(CanonicalProjectionStatus.InvalidBindingPath);
+        if (!path.StartsWith('/') || path.Length == 1)
+            throw new BindingException(CanonicalProjectionStatus.UnsupportedBindingPath);
+        resolution = data.HasValue ? CanonicalBindingResolution.Missing : CanonicalBindingResolution.Uninitialized;
+        if (!data.HasValue) return "";
+        var current = data.Value;
+        foreach (var token in tokens.Skip(1))
+        {
+            if (current.ValueKind != JsonValueKind.Object)
+                throw new BindingException(CanonicalProjectionStatus.UnsupportedBindingPath);
+            var key = token.Replace("~1", "/").Replace("~0", "~");
+            if (!current.TryGetProperty(key, out current)) return "";
+        }
+        if (current.ValueKind != JsonValueKind.String)
+            throw new BindingException(CanonicalProjectionStatus.UnsupportedBindingValue, current.ValueKind);
+        resolution = CanonicalBindingResolution.Resolved;
+        return current.GetString()!;
+    }
+
+    private sealed class BindingException(CanonicalProjectionStatus status, JsonValueKind? kind = null) : Exception
+    {
+        internal CanonicalProjectionStatus Status => status;
+        internal JsonValueKind? Kind => kind;
     }
 
     private static string? Optional(JsonElement node, string key) => node.TryGetProperty(key, out var v) ? v.GetString() : null;

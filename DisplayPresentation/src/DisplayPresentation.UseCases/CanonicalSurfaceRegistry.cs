@@ -92,13 +92,17 @@ public sealed class CanonicalSurfaceRegistry
     public CanonicalProjectionResult Project(string surfaceId)
     {
         IReadOnlyList<JsonElement>? captured = null;
+        JsonElement? data = null;
         lock (_sync)
         {
             if (_surfaces.TryGetValue(surfaceId, out var surface))
+            {
+                data = surface.Data?.Clone();
                 captured = Array.AsReadOnly(surface.Components.Select(node => node.Clone()).ToArray());
+            }
         }
-        // Data and create Body are deliberately not passed to the projector.
-        return CanonicalSurfaceProjector.Project(surfaceId, captured);
+        // Capture Data with Components; create Body is not evaluator input.
+        return CanonicalSurfaceProjector.Project(surfaceId, captured, data);
     }
 
     public IReadOnlyList<CanonicalSurfaceSnapshot> Snapshot()

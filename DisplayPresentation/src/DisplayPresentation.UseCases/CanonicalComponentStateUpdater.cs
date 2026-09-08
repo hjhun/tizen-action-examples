@@ -88,8 +88,15 @@ internal static class CanonicalComponentStateUpdater
             (kind == "Column" && (!OptionalEnum(node, "justify", Justify) || !OptionalEnum(node, "align", Align))))
             return CanonicalSurfaceApplyStatus.InvalidComponent;
         // Recognizing a catalog-owned form is not certifying that form's schema validity.
-        if (node.TryGetProperty("weight", out _) || node.TryGetProperty("accessibility", out _) || value.ValueKind == JsonValueKind.Object)
+        if (node.TryGetProperty("weight", out _) || node.TryGetProperty("accessibility", out _))
             return CanonicalSurfaceApplyStatus.UnsupportedComponentForm;
+        if (value.ValueKind == JsonValueKind.Object)
+        {
+            if (kind == "Column" || value.TryGetProperty("call", out _))
+                return CanonicalSurfaceApplyStatus.UnsupportedComponentForm;
+            return value.EnumerateObject().Count() == 1 && String(value, "path")
+                ? CanonicalSurfaceApplyStatus.ComponentsUpdated : CanonicalSurfaceApplyStatus.InvalidComponent;
+        }
         if (kind == "Text" ? value.ValueKind != JsonValueKind.String :
             value.ValueKind != JsonValueKind.Array || value.EnumerateArray().Any(x => x.ValueKind != JsonValueKind.String))
             return CanonicalSurfaceApplyStatus.InvalidComponent;
@@ -105,7 +112,7 @@ internal static class CanonicalComponentStateUpdater
 
     private static bool SameRecord(JsonElement first, JsonElement second)
     {
-        // Admitted values are strings or arrays of strings. Ignore object property order only;
+        // Admitted values are strings, exact path objects or arrays of strings. Ignore object property order only;
         // do not default absent optional values, normalize literals or reorder/deduplicate edges.
         if (first.EnumerateObject().Count() != second.EnumerateObject().Count()) return false;
         foreach (var p in first.EnumerateObject())
@@ -114,6 +121,10 @@ internal static class CanonicalComponentStateUpdater
             if (value.ValueKind == JsonValueKind.String)
             {
                 if (value.GetString() != p.Value.GetString()) return false;
+            }
+            else if (value.ValueKind == JsonValueKind.Object)
+            {
+                if (value.GetProperty("path").GetString() != p.Value.GetProperty("path").GetString()) return false;
             }
             else if (!value.EnumerateArray().Select(x => x.GetString()).SequenceEqual(p.Value.EnumerateArray().Select(x => x.GetString()))) return false;
         }
