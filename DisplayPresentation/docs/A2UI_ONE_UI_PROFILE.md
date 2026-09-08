@@ -38,6 +38,42 @@ passed. Native compositing, input, focus restoration and annotation measurements
 remain target gates. The broader matrices below are design requirements where
 implementation is explicitly marked pending, not proof of delivered features.
 
+## C0 host envelope recognition (2026-09-08)
+
+The independent [CanonicalA2UiMessageReader](../src/DisplayPresentation.UseCases/CanonicalA2UiMessageReader.cs)
+recognizes the outer shape of one already framed JSON message for the selected
+`v0.9.1` profile. Other string versions, including `v0.9`, yield
+`UnsupportedVersion`, without judging their protocol validity; missing/wrong-type
+versions and malformed input yield `InvalidEnvelope`. Failures return no accepted
+envelope. Four lifecycle kinds and their catalog-independent required/allowed
+body fields are checked, but no lifecycle state or catalog semantics are applied.
+
+The pinned [official protocol](https://github.com/a2ui-project/a2ui/blob/8ff4651232ab0e02b0123730b502711170637a3a/specification/v0_9_1/docs/a2ui_protocol.md)
+was inspected on 2026-09-08 at revision `8ff4651232ab0e02b0123730b502711170637a3a`
+(committed 2026-09-04). Its four create/update-components/update-data/delete JSON
+examples are preserved verbatim in [CanonicalEnvelopeTests](../tests/DisplayPresentation.UseCases.Tests/CanonicalEnvelopeTests.cs),
+with source hash and provenance. The pinned schema allows both `v0.9` and `v0.9.1`;
+the basic catalog declares a `v0_9` catalog ID while the protocol's `v0.9.1`
+examples use a `v0_9_1` ID. C0 preserves literal IDs, without trimming or aliasing;
+catalog admission policy remains unresolved.
+
+64 KiB UTF8 input, depth 32, duplicate-key rejection and malformed-Unicode rejection
+are **local input policies**, not universal A2UI restrictions. String/property-name
+escape validation includes opaque component/theme/data JSON. Valid surrogate pairs
+and literal values survive. The returned body owns a clone safe after document
+disposal and caller-buffer changes; absent `value`/`path` stay absent, and explicit
+null/primitive/object/array values are preserved without defaults.
+
+Initial RED was compilation failure for missing reader/types. A later real Unicode
+behavior RED found eight escaping exceptions and twelve unsafe recognitions;
+focused correction limits `InvalidOperationException` handling to `GetString` on
+known string/property tokens. The 169 host checks (including 22 Unicode checks),
+the existing UseCases suite with 54 producer checks, and Release compilation pass
+(zero warnings/errors). These are host/compile results only. C0 is not connected
+to providers, manifest, Show, the legacy parser/serializer or NUI. Full schema,
+catalog/lifecycle validation, transport and canonical native rendering remain open.
+Earlier legacy/native evidence retains its recorded scope in [UI_PARITY.md](UI_PARITY.md).
+
 ## Wire envelope and safety boundary
 
 The current Tizen Presentation compatibility adapter requires `Template` to be one JSON object with legacy v0.8 `surfaceUpdate` and `Document` to be one JSON object with matching `dataModelUpdate`. Both are untrusted. This split pair is retained for existing producers but is **not** labeled v0.9.1. A future canonical adapter must explicitly negotiate version/catalog and process the matching v0.9.1 lifecycle (`createSurface`, `updateComponents`, `updateDataModel`, `deleteSurface`) or a separately declared candidate profile; message names from different versions may not be mixed. Every adapter performs JSON parsing, type checks, schema/profile validation, binding resolution, depth/count/string limits, lifecycle/order checks, and stale-request checks before the NUI renderer receives a semantic tree.
