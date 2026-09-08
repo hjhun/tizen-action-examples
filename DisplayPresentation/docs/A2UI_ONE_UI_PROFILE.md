@@ -76,7 +76,7 @@ Earlier legacy/native evidence retains its recorded scope in [UI_PARITY.md](UI_P
 
 ## C1 host catalog admission and surface registry (2026-09-08)
 
-This records C1 at acceptance; its data-update rejection is extended by the C2 subset below.
+This records C1 at acceptance; its data/component rejections are extended by the C2/C3 subsets below.
 
 The independent [CanonicalSurfaceRegistry](../src/DisplayPresentation.UseCases/CanonicalSurfaceRegistry.cs)
 adds a local admission policy after C0: only the exact pre-registered literal
@@ -115,6 +115,8 @@ unconnected; no renderer capability is advertised. Existing legacy behavior and
 its separately scoped native evidence in [UI_PARITY.md](UI_PARITY.md) are unchanged.
 
 ## C2 host data-update subset (2026-09-08)
+
+This records C2 at acceptance; the later C3 component-state subset is independent of Data.
 
 [CanonicalDataModelUpdater](../src/DisplayPresentation.UseCases/CanonicalDataModelUpdater.cs)
 now applies `updateDataModel` to registry Data independently of the create Body.
@@ -157,6 +159,52 @@ error and its initial compile log are preserved separately, not behavior RED.
 Provider/native integration remains absent. Full canonical/catalog/component,
 binding/theme/actions/transport/renderer support and earlier legacy evidence are
 unchanged by this host subset.
+
+## C3 host literal component-state subset (2026-09-08)
+
+[CanonicalComponentStateUpdater](../src/DisplayPresentation.UseCases/CanonicalComponentStateUpdater.cs)
+admits new IDs and structurally identical repeats as `ComponentsUpdated`, a registry
+result only. Object property order is ignored; optional-field presence, strings and
+child-array order/duplicates are preserved. Changed existing IDs yield
+`UnsupportedComponentUpdate`; replacement/merge semantics are not implemented.
+Literal Text strings with optional catalog `variant`, and Column child-ID arrays
+with optional catalog `justify`/`align`, are checked against the pinned fields/enums.
+Other types yield `UnsupportedComponent`; binding/function/template and common
+weight/accessibility forms yield `UnsupportedComponentForm`, without certifying
+those forms' schema validity. Invalid supported shapes yield `InvalidComponent`;
+same-batch duplicate IDs yield `DuplicateComponentId`. Unknown fields are not dropped.
+
+A root component need not be present at admission: pre-root nodes, unresolved
+references, multiple parents, repeated edges and unreferenced nodes remain graph
+state. No placeholders or reachability garbage collection are created. Memoized
+whole-candidate graph checks include disconnected nodes; cycles yield the local
+`ComponentCycle` result. Late resolution that introduces a cycle or excessive
+known-node depth rejects the entire batch, without inventing the missing node.
+
+After C0 and surface lookup, precedence is batch cardinality → shape then duplicate
+per input item → same-ID policy → cumulative count/edge/byte bounds → cycle →
+longest known-node depth → swap. Local bounds are **256 records / 1024 references
+(including unresolved/repeated edges) / depth 32 / 64 KiB compact Default-encoded,
+ID-sorted component array**. Failures of resource limits yield `StateLimitExceeded`.
+The byte figure measures serialized component payload, not actual RAM including
+JsonElement representation/whitespace/metadata, clones, snapshots and transients.
+C0 input bounds, C2 Data limits and the 16-surface cap remain separate.
+
+Only the fully checked candidate is swapped under the registry lock. Failure
+preserves Body/Data/Components and derived graph state; snapshots, session/surface
+ownership and concurrent independent-ID additions remain isolated. No wire-generation
+protection across delete/recreate is added.
+
+The unchanged pinned official three-node `updateComponents` message succeeds after
+**local** exact-catalog create; it is not an official end-to-end pairing. Other graph
+and boundary cases are local fixtures. Initial RED was missing-API compilation,
+not a reproduced behavior failure. **144 C3 host checks**, C2 174, C1 75, C0 169,
+producer 54 and the full UseCases suite pass; Release has zero warnings/errors.
+The older malformed components test now expects `InvalidComponent` for its missing
+required component field; known unsupported forms are tested separately.
+This is not render-ready, general component-update or full-catalog support.
+Binding/theme/actions/transport/renderer/provider/native integration remain outside
+C3; earlier native/legacy evidence retains its original scope.
 
 ## Wire envelope and safety boundary
 

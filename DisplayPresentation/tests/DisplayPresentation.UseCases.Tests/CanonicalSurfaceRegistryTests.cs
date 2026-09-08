@@ -43,6 +43,7 @@ internal static class CanonicalSurfaceRegistryTests
     internal static void Run()
     {
         RunDataChecks();
+        RunComponentChecks();
         int checks = 0;
         void Check(bool condition, string message)
         {
@@ -77,7 +78,9 @@ internal static class CanonicalSurfaceRegistryTests
         foreach (var kind in new[] { "updateComponents", "updateDataModel" })
         {
             Reject(registry, Update(kind, "missing"), CanonicalSurfaceApplyStatus.MissingSurface);
-            Reject(registry, Update(kind, "kept"), CanonicalSurfaceApplyStatus.UnsupportedOperation);
+            // Old components fixture lacks required component/type: now validated, not generic unsupported.
+            Reject(registry, Update(kind, "kept"), kind == "updateComponents"
+                ? CanonicalSurfaceApplyStatus.InvalidComponent : CanonicalSurfaceApplyStatus.UnsupportedOperation);
         }
         Reject(registry, Delete("missing"), CanonicalSurfaceApplyStatus.MissingSurface);
         Check(Apply(registry, Create("user_profile_card")) == CanonicalSurfaceApplyStatus.Created,
@@ -148,6 +151,169 @@ internal static class CanonicalSurfaceRegistryTests
                 x.Body.GetProperty("surfaceId").GetString() == x.SurfaceId), "Race records match successful admissions.");
         Console.WriteLine($"CanonicalSurfaceRegistryTests: {checks} checks PASS");
     }
+
+    private static void RunComponentChecks()
+    {
+        int checks = 0;
+        void Check(bool ok, string why) { if (!ok) throw new InvalidOperationException(why); checks++; }
+        var r = new CanonicalSurfaceRegistry();
+        CanonicalSurfaceApplyStatus Apply(string json) => r.Apply(Encoding.UTF8.GetBytes(json));
+        string State() => JsonSerializer.Serialize(r.Snapshot());
+        IReadOnlyList<JsonElement> Nodes(string id = "user_profile_card") => r.Snapshot().Single(x => x.SurfaceId == id).Components;
+        void Accept(params string[] nodes) => Check(Apply(ComponentMessage("user_profile_card", nodes)) == CanonicalSurfaceApplyStatus.ComponentsUpdated, "Component admission.");
+        void Reject(CanonicalSurfaceApplyStatus status, params string[] nodes)
+        {
+            var before = State();
+            Check(Apply(ComponentMessage("user_profile_card", nodes)) == status, "Expected component result " + status);
+            Check(State() == before, "Failure preserves full Body/Data/Components and derived graph.");
+        }
+        void Reset()
+        {
+            r.Clear(); Apply(Create("user_profile_card"));
+            Apply(DataMessage("user_profile_card", null, "{\"independent\":true}"));
+        }
+        Reset();
+        // Unchanged official protocol updateComponents; LOCAL create is not official pairing.
+        const string official = """
+        {
+          "version": "v0.9.1",
+          "updateComponents": {
+            "surfaceId": "user_profile_card",
+            "components": [
+              {
+                "id": "root",
+                "component": "Column",
+                "children": ["user_name", "user_title"]
+              },
+              {
+                "id": "user_name",
+                "component": "Text",
+                "text": "John Doe"
+              },
+              {
+                "id": "user_title",
+                "component": "Text",
+                "text": "Software Engineer"
+              }
+            ]
+          }
+        }
+        """;
+
+        Check(Apply(official) == CanonicalSurfaceApplyStatus.ComponentsUpdated && Nodes().Count == 3, "Official 3 nodes.");
+        Accept("{\"text\":\"John Doe\",\"component\":\"Text\",\"id\":\"user_name\"}");
+        Reject(CanonicalSurfaceApplyStatus.UnsupportedComponentUpdate, TextNode("user_name", "changed"));
+        Reject(CanonicalSurfaceApplyStatus.UnsupportedComponentUpdate, TextNode("user_name", "John Doe", ",\"variant\":\"body\""));
+        Reject(CanonicalSurfaceApplyStatus.UnsupportedComponentUpdate, ColumnNode("root", "user_title", "user_name"));
+        Reject(CanonicalSurfaceApplyStatus.UnsupportedComponentUpdate, ColumnNode("user_name"));
+        Accept(TextNode("after-failure"));
+        Check(Nodes().Count == 4 && r.Snapshot().Single().Data!.Value.GetProperty("independent").GetBoolean(), "Data independence/recovery.");
+        foreach (var variant in new[] { "h1", "h2", "h3", "h4", "h5", "caption", "body" })
+            Accept(TextNode(variant, "${/literal} **raw**", ",\"variant\":" + JsonSerializer.Serialize(variant)));
+        Reject(CanonicalSurfaceApplyStatus.UnsupportedComponentUpdate, TextNode("h1", "${/literal} **raw**")); // explicit optional cannot disappear
+        Reject(CanonicalSurfaceApplyStatus.UnsupportedComponentUpdate, TextNode("partial-before-change"), TextNode("user_name", "changed"));
+        foreach (var justify in new[] { "start", "center", "end", "spaceBetween", "spaceAround", "spaceEvenly", "stretch" })
+            Accept("{\"id\":\"j-" + justify + "\",\"component\":\"Column\",\"children\":[],\"justify\":\"" + justify + "\"}");
+        foreach (var align in new[] { "center", "end", "start", "stretch" })
+            Accept("{\"id\":\"a-" + align + "\",\"component\":\"Column\",\"children\":[],\"align\":\"" + align + "\"}");
+        foreach (var node in new[] { "null", "{}", "{\"id\":\"x\"}", TextNode("x", "x", ",\"variant\":\"bad\""),
+            TextNode("x", "x", ",\"unknown\":1"), "{\"id\":\"x\",\"component\":\"Column\",\"children\":[1]}",
+            "{\"id\":\"x\",\"component\":\"Text\",\"text\":12}",
+            "{\"id\":\"x\",\"component\":\"Column\",\"children\":[],\"align\":\"bad\"}" })
+            Reject(CanonicalSurfaceApplyStatus.InvalidComponent, node);
+        Reject(CanonicalSurfaceApplyStatus.UnsupportedComponent, "{\"id\":\"x\",\"component\":\"UnknownType\"}");
+        foreach (var node in new[] { TextNode("x", "x", ",\"weight\":1"), TextNode("x", "x", ",\"accessibility\":{\"label\":\"name\"}"),
+            "{\"id\":\"x\",\"component\":\"Text\",\"text\":{\"path\":\"/name\"}}",
+            "{\"id\":\"x\",\"component\":\"Text\",\"text\":{\"call\":\"formatString\",\"args\":{},\"returnType\":\"string\"}}",
+            "{\"id\":\"x\",\"component\":\"Column\",\"children\":{\"componentId\":\"t\",\"path\":\"/items\"}}" })
+            Reject(CanonicalSurfaceApplyStatus.UnsupportedComponentForm, node);
+        Reject(CanonicalSurfaceApplyStatus.DuplicateComponentId, TextNode("dup"), TextNode("dup"));
+        Reject(CanonicalSurfaceApplyStatus.InvalidComponent, TextNode("partial-add"), "{}");
+        Reject(CanonicalSurfaceApplyStatus.InvalidComponent, TextNode("dup"), "{\"id\":\"dup\"}"); // shape before duplicate on each item
+        Reject(CanonicalSurfaceApplyStatus.DuplicateComponentId, TextNode("dup"), TextNode("dup"), "{}");
+        Reject(CanonicalSurfaceApplyStatus.InvalidComponent, TextNode("user_name", "change"), "{}"); // all shapes before same-ID
+        Reject(CanonicalSurfaceApplyStatus.StateLimitExceeded, Enumerable.Repeat("{}", 257).ToArray()); // cardinality before shape
+        Reject(CanonicalSurfaceApplyStatus.UnsupportedComponentUpdate, TextNode("user_name", "change"), ColumnNode("cycle", "cycle"));
+        Reset();
+        Accept(TextNode("orphan"), ColumnNode("before-root", "late", "late"));
+        Check(Nodes().Count == 2 && !Nodes().Any(x => x.GetProperty("id").GetString() == "root"), "Buffer without root/placeholder.");
+        Accept(ColumnNode("root", "before-root", "other"), ColumnNode("other", "late"));
+        Accept(TextNode("late"));
+        Check(Nodes().Count == 5 && Nodes().Single(x => x.GetProperty("id").GetString() == "before-root").GetProperty("children").GetArrayLength() == 2,
+            "Multiple parents/duplicate edges/unreferenced node retained.");
+        Accept(TextNode(""), TextNode(" "), TextNode("Late"));
+        Reject(CanonicalSurfaceApplyStatus.ComponentCycle, ColumnNode("disconnected", "disconnected"));
+        Accept(ColumnNode("a", "b"));
+        Reject(CanonicalSurfaceApplyStatus.ComponentCycle, ColumnNode("b", "a"));
+        Accept(TextNode("b"));
+        Reset();
+        Accept(Enumerable.Range(0,32).Select(i => ColumnNode("n" + i, "n" + (i+1))).ToArray());
+        Check(Nodes().Count == 32, "32 known nodes, unresolved target not counted.");
+        Reject(CanonicalSurfaceApplyStatus.StateLimitExceeded, TextNode("n32"));
+        Reject(CanonicalSurfaceApplyStatus.ComponentCycle, TextNode("n32"), ColumnNode("priority-cycle", "priority-cycle")); // cycle before depth
+        Accept(TextNode("unconnected-recovery"));
+        // Dense DAG exercises memoized longest path, not exponential recursive enumeration.
+        Reset();
+        Accept(Enumerable.Range(0,32).Select(i => ColumnNode("d" + i, Enumerable.Range(i+1,31-i).Select(j => "d"+j).ToArray())).ToArray());
+        Reset();
+        Accept(Enumerable.Range(0,256).Select(i => TextNode("t"+i)).ToArray());
+        Accept(TextNode("t0")); // at cap repeat is allowed
+        Reject(CanonicalSurfaceApplyStatus.StateLimitExceeded, TextNode("extra"));
+        Reject(CanonicalSurfaceApplyStatus.UnsupportedComponentUpdate, TextNode("t0", "changed"), TextNode("extra"));
+        Reset();
+        Accept(Enumerable.Range(0,4).Select(i => ColumnNode("e"+i, Enumerable.Repeat("missing",256).ToArray())).ToArray());
+        Check(Nodes().Count == 4, "1024 references, unresolved remains absent.");
+        Reject(CanonicalSurfaceApplyStatus.StateLimitExceeded, ColumnNode("edge-over", "missing"));
+        Accept(TextNode("edge-recovery"));
+        // Byte bound precedes cycle; edge bound precedes graph as well.
+        Reject(CanonicalSurfaceApplyStatus.StateLimitExceeded, ColumnNode("self", "self"));
+        Reset();
+        for (int i = 0; i < 15; i++) Accept(TextNode("b" + i.ToString("D2"), new string('a',4000)));
+        int used = Encoding.UTF8.GetByteCount(JsonSerializer.Serialize(Nodes()));
+        int overhead = Encoding.UTF8.GetByteCount(TextNode("padding", "")) + 1;
+        int padding = 65536-used-overhead;
+        Accept(TextNode("padding", new string('p',padding)));
+        Check(Encoding.UTF8.GetByteCount(JsonSerializer.Serialize(Nodes())) == 65536, "Exact stored sorted-array byte cap.");
+        Reject(CanonicalSurfaceApplyStatus.StateLimitExceeded, TextNode("byte-over"));
+        Reject(CanonicalSurfaceApplyStatus.StateLimitExceeded, ColumnNode("byte-cycle", "byte-cycle"));
+        Accept(TextNode("b00", new string('a',4000))); // repeat still works, no GC/truncation
+        Reset();
+        Reject(CanonicalSurfaceApplyStatus.StateLimitExceeded, TextNode("expands", new string('é',12000)).Replace("\\u00E9", "é"));
+        Accept(TextNode("after-encoder-failure"));
+        var beforeHuge = State();
+        Check(Apply(ComponentMessage("user_profile_card", new[] { TextNode("too-large", new string('a',65536)) })) == CanonicalSurfaceApplyStatus.InvalidEnvelope && State() == beforeHuge,
+            "C0 envelope bound distinct from cumulative component bytes.");
+        var old = r.Snapshot();
+        var bytes = Encoding.UTF8.GetBytes(ComponentMessage("user_profile_card", new[] { TextNode("owned") }));
+        Check(r.Apply(bytes) == CanonicalSurfaceApplyStatus.ComponentsUpdated, "Owned component body.");
+        Array.Fill(bytes,(byte)' ');
+        Check(Nodes().Any(x => x.GetProperty("id").GetString() == "owned") && old.Single().Components.Count == 1, "Input lifetime and old snapshot.");
+        var view = Nodes();
+        if (view is IList<JsonElement> list) { try { list.Clear(); } catch (NotSupportedException) { } }
+        Check(Nodes().Count == 2, "Collection cannot alter registry.");
+        var editableCopy = System.Text.Json.Nodes.JsonNode.Parse(Nodes()[0].GetRawText())!;
+        editableCopy["text"] = "caller-edit";
+        Check(Nodes().All(x => x.GetProperty("text").GetString() == "value"), "Caller JSON edits cannot mutate stored component body.");
+        Apply(Create("second")); Apply(ComponentMessage("second",new[] { TextNode("second-only") }));
+        var otherSession = new CanonicalSurfaceRegistry(); otherSession.Apply(Encoding.UTF8.GetBytes(Create("user_profile_card")));
+        var outcomes = new CanonicalSurfaceApplyStatus[32];
+        Parallel.For(0,32,i => outcomes[i]=Apply(ComponentMessage("user_profile_card",new[]{TextNode("parallel"+i)})));
+        Check(outcomes.All(x=>x==CanonicalSurfaceApplyStatus.ComponentsUpdated) && Nodes().Count == 34 && Nodes("second").Count==1 &&
+            otherSession.Snapshot().Single().Components.Count==0, "Concurrent independent additions/session/surface isolation.");
+        Check(r.Snapshot().First(x=>x.SurfaceId=="user_profile_card").Data!.Value.GetProperty("independent").GetBoolean(), "Components do not mutate Data.");
+        Apply(DataMessage("user_profile_card","/independent","false"));
+        Check(Nodes().Count==34, "Data does not mutate Components.");
+        Apply(Delete("user_profile_card")); Apply(Create("user_profile_card"));
+        Check(Nodes().Count==0 && old.Single().Components.Count==1, "Recreate resets only owned components, snapshots live.");
+        r.Clear(); Check(r.Snapshot().Count==0 && otherSession.Snapshot().Count==1, "Clear isolation.");
+        Console.WriteLine($"CanonicalComponentChecks: {checks} checks PASS");
+    }
+
+    private static string TextNode(string id, string text = "value", string optional = "") =>
+        "{\"id\":"+JsonSerializer.Serialize(id)+",\"component\":\"Text\",\"text\":"+JsonSerializer.Serialize(text)+optional+"}";
+    private static string ColumnNode(string id, params string[] children) => JsonSerializer.Serialize(new { id, component="Column", children });
+    private static string ComponentMessage(string id, string[] nodes) =>
+        "{\"version\":\"v0.9.1\",\"updateComponents\":{\"surfaceId\":"+JsonSerializer.Serialize(id)+",\"components\":["+string.Join(',',nodes)+"]}}";
 
     private static void RunDataChecks()
     {

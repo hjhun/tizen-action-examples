@@ -7,10 +7,15 @@ public enum CanonicalSurfaceApplyStatus
     Created, Deleted, InvalidEnvelope, UnsupportedVersion, UnsupportedCatalog,
     DuplicateSurface, MissingSurface, CapacityExceeded, UnsupportedOperation,
     DataUpdated, InvalidPath, MissingPath, StateLimitExceeded,
+    ComponentsUpdated, InvalidComponent, UnsupportedComponent, UnsupportedComponentForm,
+    DuplicateComponentId, UnsupportedComponentUpdate, ComponentCycle,
 }
 
 /// <summary>Immutable registry metadata and opaque create body, not a rendered surface.</summary>
-public sealed record CanonicalSurfaceSnapshot(string SurfaceId, string Version, string CatalogId, JsonElement Body, JsonElement? Data = null);
+public sealed record CanonicalSurfaceSnapshot(string SurfaceId, string Version, string CatalogId, JsonElement Body, JsonElement? Data = null)
+{
+    public IReadOnlyList<JsonElement> Components { get; init; } = Array.Empty<JsonElement>();
+}
 
 /// <summary>
 /// Session-owned, portable create/delete registry with a bounded data-update subset. Not connected to legacy rendering or providers.
@@ -71,7 +76,14 @@ public sealed class CanonicalSurfaceRegistry
                     _surfaces[id] = surface with { Data = data };
                 return status;
             }
-            // Component updates remain unsupported.
+            if (envelope.Kind == CanonicalA2UiMessageKind.UpdateComponents)
+            {
+                var surface = _surfaces[id];
+                var status = CanonicalComponentStateUpdater.Apply(surface.Components, body.GetProperty("components"), out var components);
+                if (status == CanonicalSurfaceApplyStatus.ComponentsUpdated)
+                    _surfaces[id] = surface with { Components = components! };
+                return status;
+            }
             return CanonicalSurfaceApplyStatus.UnsupportedOperation;
         }
     }
@@ -82,7 +94,8 @@ public sealed class CanonicalSurfaceRegistry
         {
             // Detached read-only collection, immutable records, cloned JSON ownership.
             return Array.AsReadOnly(_surfaces.Values.OrderBy(x => x.SurfaceId, StringComparer.Ordinal)
-                .Select(x => x with { Body = x.Body.Clone(), Data = x.Data?.Clone() }).ToArray());
+                .Select(x => x with { Body = x.Body.Clone(), Data = x.Data?.Clone(),
+                    Components = Array.AsReadOnly(x.Components.Select(node => node.Clone()).ToArray()) }).ToArray());
         }
     }
 
