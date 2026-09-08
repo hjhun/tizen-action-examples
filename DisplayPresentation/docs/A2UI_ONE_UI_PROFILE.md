@@ -332,6 +332,37 @@ only UseCases was rerun for the writer assertion correction. Evidence remains in
 C5 ingress and its five binding/ownership decisions remain open. Provider,
 transport, NUI/native and full canonical support are not established by this step.
 
+## Canonical canvas design boundary — unimplemented (2026-09-08)
+
+The current [application consumer](../src/DisplayPresentation.App/DisplayPresentationApplication.cs),
+[canvas](../src/DisplayPresentation.App/OneUiPresentationCanvas.cs),
+[pager](../src/DisplayPresentation.UseCases/PresentationPages.cs) and
+[View serializer](../src/DisplayPresentation.UseCases/A2UiPresentationSerializer.cs)
+consume legacy semantic surfaces. They do not preserve canonical variant/layout,
+binding provenance, pending state and repeated occurrence identity through to a
+displayed frame and round trip. No canonical canvas or selection layer is implemented.
+
+The accepted first **design candidate** is LTR, one root Column with effective
+default `justify=start` / `align=stretch`, and short literal or resolved-string Text
+on one screen. It preserves the Column without leaf slicing, automatic shrink,
+ellipsis, TextFit or scroll fallback; failure to establish measured fit is explicit
+failure. `justify=stretch`, nested free-space allocation and other layout capabilities
+remain unsupported candidates. This is neither proof of glyph-fit measurement nor
+native success. A new selection removes old annotation eligibility; selected and
+displayed captures remain distinct, and waiting/failure must not expose old payload
+as the new capture. Covered staging is a proposal, not verified behavior.
+
+Five decisions remain before implementation: (1) actual typography values and nested
+allocation; (2) a supported measurement contract or explicit limited acceptance—
+API14-reference-exposed `CalculateScreenPositionSize` is marked hidden/inhouse in
+local source, not approved here as supported public API; (3) staging layout,
+visibility/input behavior and a bounded readiness deadline; (4) a legitimate internal
+invocation path, currently absent; (5) canonical outbound/ingress contracts under C5,
+which an internal canvas would not establish. Existing legacy use/evidence is not
+revoked. No fixture startup, test switch, diagnostic app or new provider is introduced.
+This section records design boundaries only, not code/target PASS or project completion;
+earlier C0–binding and legacy/native records retain their dated scopes.
+
 ## Wire envelope and safety boundary
 
 The current Tizen Presentation compatibility adapter requires `Template` to be one JSON object with legacy v0.8 `surfaceUpdate` and `Document` to be one JSON object with matching `dataModelUpdate`. Both are untrusted. This split pair is retained for existing producers but is **not** labeled v0.9.1. A future canonical adapter must explicitly negotiate version/catalog and process the matching v0.9.1 lifecycle (`createSurface`, `updateComponents`, `updateDataModel`, `deleteSurface`) or a separately declared candidate profile; message names from different versions may not be mixed. Every adapter performs JSON parsing, type checks, schema/profile validation, binding resolution, depth/count/string limits, lifecycle/order checks, and stale-request checks before the NUI renderer receives a semantic tree.
