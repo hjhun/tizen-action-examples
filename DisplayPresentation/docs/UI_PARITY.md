@@ -43,9 +43,9 @@ payload Button support.
 |---|---|---|
 | Calendar event/reminder ToPresentation | Real host builders parse; generated browser fixtures pass | Installed Action output → Show |
 | Calendar/Reminder page/control snapshot | Shared builder parses and round-trips in host tests | Installed View discovery → ToPresentation → Show |
-| DisplayPresentation visible page | Four-field semantic slices serialize and parse in order | Native paging → measured View → Presentation → Show |
+| DisplayPresentation visible page | Host page serialization; [one FHD PhotoGallery case](#photogallery-native-pairing-2026-09-08) verifies page replacement, stale View rejection and current-page View → Show | Other payloads, paging/input/lifecycle cases and resolutions remain open |
 | Browser | Current production legacy builder → parser → page serialization passes in the 2026-09-08 host follow-up below | Fresh installed producer/renderer payload pairing and native acceptance; host result is not canonical support |
-| PhotoGallery | Current production builder preserves all five fields across two semantic pages in host tests | Actual two-page display, focus and View round trip for the installed payload pair |
+| PhotoGallery | Five-field host coverage; [one installed FHD pairing](#photogallery-native-pairing-2026-09-08) verifies producer Action → two renderer pages → current renderer View → Show | PhotoGallery source View round trip and broader native acceptance remain open |
 
 Follow [target validation](TARGET_VALIDATION.md) to close each installed gate.
 Compare geometry, spacing, type, colors, states, labels, focus, density and every
@@ -90,3 +90,41 @@ The existing Calendar/shared producer, binding rejection and paging tests also
 pass. No actual Action calls, installation, native page/focus/annotation inspection
 or new UI captures were performed in this follow-up. Earlier target evidence keeps
 its original payload and scenario scope.
+
+## PhotoGallery native pairing (2026-09-08)
+
+One new, non-sensitive Photo fixture passed on `tc-0905-actionagent` / `emulator-26101`
+using the legacy v0.8 compatibility profile. Exact [Packages](../../Packages/README.md)
+artifacts (source `ff7a432`, package commit `456996e`):
+
+- PhotoGallery TPK SHA256: `f185325c0de37a2a4e7e712aea8f7f4147408124b25d3ba61cafd518cda45199`.
+- DisplayPresentation TPK SHA256: `60bae90956edfb4bae9c8df2cc71c105302c5745a3e71eacedadf9d756f7313b`.
+
+The actual Photo_ToPresentation output was passed unchanged to renderer Show.
+Three original 1920×1080 Aurum frames show the first four values on page 1/2
+(Next focused), ownership alone on page 2/2 (Previous focused), and the current
+renderer View's returned Presentation shown as one page (Dismiss focused).
+After Next was clicked once and page 2 was published, FindById for the old
+first-page View (zero-based `page:0` ID) failed
+with a non-null empty View, bounds and Annotation; old View_ToPresentation failed
+with empty Template/Document. Current page 2 succeeded and its serialized data
+contained ownership only. The 23 actual Action calls comprise 21 typed successes
+and these two expected stale failures. Measured View bounds fit each native frame.
+
+Restricted host evidence: `/tmp/p5-gallery-renderer-execution/` contains
+`final-report.json`, `wire-typed.jsonl`, `roundtrip-result.json`, `page1.png`,
+`page2.png`, `roundtrip-one-page.png` and `final-cleanup-result.json`; these temporary
+artifacts are not committed. This native case is separate from the 54 host checks
+above and does not verify PhotoGallery's source View round trip, canonical A2UI,
+overlay, all paging/input cases or other resolutions. Historical Pending entries
+retain their original scope.
+
+The one imported fixture was deleted and Search/resolver confirmed absence; its
+source PNG remains under `media/Images/p5-renderer-332a1f2e49b54bb6a00108ecb1e4ef15/`.
+Existing business-file hash was unchanged. PhotoGallery returned to stopped and
+renderer to running with test content dismissed; own forward/wire files were
+removed and owner restored. PID/starttime matched at the 05:44:56–05:47:28 UTC
+observations, with no new dump in that interval. Renderer memory-session loss was
+explicitly accepted; signed rollback and complete security-state restoration were
+not established. The preceding authored parent/child directory-check failure
+remains separately recorded in `prepare-result.json`, not counted as a native pass.
