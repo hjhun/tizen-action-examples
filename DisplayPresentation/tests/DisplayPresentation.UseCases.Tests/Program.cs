@@ -10,6 +10,7 @@ if (args is ["--write-fixtures", var fixturePath])
 
 var parser = new A2UiPresentationParser();
 ProducerInteropTests.Run();
+ProductProducerInteropTests.Run();
 PagingTests.Run();
 LegacyBindingTests.Run();
 var valid = new PresentationInput(

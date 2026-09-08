@@ -8,6 +8,8 @@
   <ItemGroup>
     <ProjectReference Include="../../src/DisplayPresentation.UseCases/DisplayPresentation.UseCases.csproj" />
     <ProjectReference Include="../../../Calendar/src/Calendar.Domain/Calendar.Domain.csproj" />
+    <ProjectReference Include="../../../Browser/src/Browser.UseCases/Browser.UseCases.csproj" />
+    <ProjectReference Include="../../../PhotoGallery/src/PhotoGallery.UseCases/PhotoGallery.UseCases.csproj" />
     <Compile Include="../../../Shared/ViewAnnotations/ViewSnapshotPresentation.cs" Link="ViewSnapshotPresentation.cs" />
   </ItemGroup>
 </Project>

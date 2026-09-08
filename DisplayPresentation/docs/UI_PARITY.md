@@ -44,8 +44,8 @@ payload Button support.
 | Calendar event/reminder ToPresentation | Real host builders parse; generated browser fixtures pass | Installed Action output → Show |
 | Calendar/Reminder page/control snapshot | Shared builder parses and round-trips in host tests | Installed View discovery → ToPresentation → Show |
 | DisplayPresentation visible page | Four-field semantic slices serialize and parse in order | Native paging → measured View → Presentation → Show |
-| Browser | Earlier audit found empty components/incompatible document | Producer repair and fresh audit; not rechecked in this follow-up |
-| PhotoGallery | Earlier audit found no Presentation producer | Producer implementation and fresh audit; not rechecked here |
+| Browser | Current production legacy builder → parser → page serialization passes in the 2026-09-08 host follow-up below | Fresh installed producer/renderer payload pairing and native acceptance; host result is not canonical support |
+| PhotoGallery | Current production builder preserves all five fields across two semantic pages in host tests | Actual two-page display, focus and View round trip for the installed payload pair |
 
 Follow [target validation](TARGET_VALIDATION.md) to close each installed gate.
 Compare geometry, spacing, type, colors, states, labels, focus, density and every
@@ -68,3 +68,25 @@ from the five-app package preparation in [Packages](../../Packages/README.md).
 The browser capture and matrices above retain their 2026-09-06 scope; no new
 browser, target installation or native acceptance was performed in this review.
 Canonical A2UI, overlay hosting and unexercised input/lifecycle cases remain open.
+
+## Browser / PhotoGallery producer regression (2026-09-08)
+
+The UseCases suite references the actual portable Browser and PhotoGallery use-case
+projects; it does not load their NUI or generated provider assemblies. Its 54 new
+checks pass with unchanged production code, filling the previously missing host
+integration coverage rather than reproducing and fixing a production failure.
+
+- Browser: field order, bounded title/details, query/fragment exclusion and
+  semantic page serialization preserve values, IDs and roles. Supplying the
+  producer's canonical lifecycle messages to the legacy parser is rejected;
+  this rejection test does not validate canonical protocol conformance.
+- PhotoGallery: both favorite and ownership states preserve all five fields over
+  two pages. Serialized page data contains only visible field IDs, and the parser
+  reconstructs the same values and order. File path, location and private note
+  are absent. A numeric title substituted into the real producer document fails
+  with portable `InvalidInput`; this is not a typed target RPC failure test.
+
+The existing Calendar/shared producer, binding rejection and paging tests also
+pass. No actual Action calls, installation, native page/focus/annotation inspection
+or new UI captures were performed in this follow-up. Earlier target evidence keeps
+its original payload and scenario scope.
