@@ -206,6 +206,48 @@ This is not render-ready, general component-update or full-catalog support.
 Binding/theme/actions/transport/renderer/provider/native integration remain outside
 C3; earlier native/legacy evidence retains its original scope.
 
+## C4 host semantic projection (2026-09-08)
+
+[Registry.Project](../src/DisplayPresentation.UseCases/CanonicalSurfaceRegistry.cs)
+consumes the C3 graph through separate [canonical projection records](../src/DisplayPresentation.UseCases/CanonicalSurfaceProjector.cs).
+Legacy `VerticalGroup` lacks justify/align and `TextValue.Role` does not preserve
+canonical variant behavior in the existing NUI renderer; those models/consumers
+remain unchanged. C4 preserves only the C3-admitted literal attributes, optional
+absence versus explicit enum values, source IDs and ordered occurrences. Each
+occurrence has a separate immutable numeric child-index path; repeated/shared
+references retain their source ID without collapsing occurrences.
+
+`MissingSurface` and `WaitingForRoot` return no root. `PartialProjection` means
+root-reachable missing-edge slots, not NUI placeholders or resource truncation.
+`Projected` means a resolved host projection, not render-ready. Resource failure is
+`ProjectionLimitExceeded` with `Root=null`. Data/create Body are not passed to the
+projector; disconnected payload is not emitted. Components are captured under the
+registry lock and projected outside it: results represent that immutable capture,
+not necessarily the latest state at return. Success and failure leave registry
+state unchanged; old projections survive later changes, delete and Clear.
+
+Independent **local** output limits are **256 emitted slots / depth 32**, including
+unresolved slots, checked before occurrence allocation/descent, and **64 KiB compact
+Default-encoded UTF8**. The resource-only representation is `{surfaceId,root,status}`;
+each node includes `kind`, `sourceId`, numeric `path`, plus Text `text`/optional
+`variant`, or Column optional `justify`/`align` and ordered `children`. Absent
+optionals are omitted; unresolved slots add no other fields. All keys, derived
+fields, repeated strings, paths and status count through an explicit bounded writer,
+with flushing before further expansion. This is not a new wire serializer or RAM
+cap. C3 unique-node bounds alone do not bound repeated-graph expansion; a graph
+accepted by C3 can exceed C4 limits without altering its admitted state.
+
+Tests pass **328 C4 host checks**, including the unchanged pinned official three-node
+message after **local** create/data setup, not an official end-to-end fixture.
+Other optional/progressive/graph/boundary cases are local fixtures. Tests cover
+exact 256/depth32/64KiB and +1 byte rejection, derived fields and repeated encoded
+strings, dense DAG bounds, immutable paths/children, excluded payload and consistent
+concurrent captures. Initial RED was missing-API compilation, not behavior RED.
+C3 144, C2 174, C1 75, C0 169, producer 54 and the full UseCases suite pass; Release
+has zero warnings/errors. Provider/NUI/native integration and full canonical
+support remain incomplete; binding/Markdown/theme/actions/transport/rendering are
+not added. Earlier C0–C3 and legacy/native records retain their dated scope.
+
 ## Wire envelope and safety boundary
 
 The current Tizen Presentation compatibility adapter requires `Template` to be one JSON object with legacy v0.8 `surfaceUpdate` and `Document` to be one JSON object with matching `dataModelUpdate`. Both are untrusted. This split pair is retained for existing producers but is **not** labeled v0.9.1. A future canonical adapter must explicitly negotiate version/catalog and process the matching v0.9.1 lifecycle (`createSurface`, `updateComponents`, `updateDataModel`, `deleteSurface`) or a separately declared candidate profile; message names from different versions may not be mixed. Every adapter performs JSON parsing, type checks, schema/profile validation, binding resolution, depth/count/string limits, lifecycle/order checks, and stale-request checks before the NUI renderer receives a semantic tree.

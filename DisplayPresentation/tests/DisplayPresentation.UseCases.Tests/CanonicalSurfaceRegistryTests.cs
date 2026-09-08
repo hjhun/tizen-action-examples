@@ -44,6 +44,7 @@ internal static class CanonicalSurfaceRegistryTests
     {
         RunDataChecks();
         RunComponentChecks();
+        RunProjectionChecks();
         int checks = 0;
         void Check(bool condition, string message)
         {
@@ -150,6 +151,160 @@ internal static class CanonicalSurfaceRegistryTests
                 x.Version == "v0.9.1" && x.CatalogId == CanonicalSurfaceRegistry.KnownCatalogId &&
                 x.Body.GetProperty("surfaceId").GetString() == x.SurfaceId), "Race records match successful admissions.");
         Console.WriteLine($"CanonicalSurfaceRegistryTests: {checks} checks PASS");
+    }
+
+    private static void RunProjectionChecks()
+    {
+        int checks = 0;
+        void Check(bool ok, string why) { if (!ok) throw new InvalidOperationException(why); checks++; }
+        CanonicalSurfaceRegistry Make(string id, params string[] nodes)
+        {
+            var registry = new CanonicalSurfaceRegistry();
+            Check(registry.Apply(Encoding.UTF8.GetBytes(Create(id, theme: "private-create-body"))) == CanonicalSurfaceApplyStatus.Created, "Local projection setup.");
+            Check(registry.Apply(Encoding.UTF8.GetBytes(DataMessage(id, null, "{\"private-data\":true}"))) == CanonicalSurfaceApplyStatus.DataUpdated, "Separate data setup.");
+            if (nodes.Length != 0) Check(registry.Apply(Encoding.UTF8.GetBytes(ComponentMessage(id,nodes))) == CanonicalSurfaceApplyStatus.ComponentsUpdated, "C3 admission before projection.");
+            return registry;
+        }
+        CanonicalProjectionResult Project(CanonicalSurfaceRegistry registry, string id, CanonicalProjectionStatus status)
+        {
+            var before = JsonSerializer.Serialize(registry.Snapshot());
+            var result = registry.Project(id);
+            Check(result.Status == status, "Projection status: " + status);
+            Check(JsonSerializer.Serialize(registry.Snapshot()) == before, "Projection success/failure does not mutate Body/Data/Components.");
+            if (status is CanonicalProjectionStatus.MissingSurface or CanonicalProjectionStatus.WaitingForRoot or CanonicalProjectionStatus.ProjectionLimitExceeded)
+                Check(result.Root is null, "No accepted tree on missing/wait/limit.");
+            return result;
+        }
+        var r = Make("user_profile_card");
+        Project(r,"missing",CanonicalProjectionStatus.MissingSurface);
+        Project(r,"user_profile_card",CanonicalProjectionStatus.WaitingForRoot);
+        // Unchanged official v0.9.1 updateComponents; preceding create/data is explicitly LOCAL.
+        const string official = """
+        {
+          "version": "v0.9.1",
+          "updateComponents": {
+            "surfaceId": "user_profile_card",
+            "components": [
+              {
+                "id": "root",
+                "component": "Column",
+                "children": ["user_name", "user_title"]
+              },
+              {
+                "id": "user_name",
+                "component": "Text",
+                "text": "John Doe"
+              },
+              {
+                "id": "user_title",
+                "component": "Text",
+                "text": "Software Engineer"
+              }
+            ]
+          }
+        }
+        """;
+
+        Check(r.Apply(Encoding.UTF8.GetBytes(official)) == CanonicalSurfaceApplyStatus.ComponentsUpdated, "Official message admitted.");
+        var officialResult = Project(r,"user_profile_card",CanonicalProjectionStatus.Projected);
+        var root = (CanonicalProjectedColumn)officialResult.Root!;
+        Check(root.SourceId=="root" && root.OccurrencePath.Count==0 && root.Justify is null && root.Align is null && root.Children.Count==2,
+            "Official root/optional absence preserved.");
+        Check(root.Children[0] is CanonicalProjectedText { SourceId:"user_name", Text:"John Doe", Variant:null } &&
+            root.Children[1] is CanonicalProjectedText { SourceId:"user_title", Text:"Software Engineer" }, "Official order/text preserved.");
+        foreach(var variant in new[]{"h1","h2","h3","h4","h5","caption","body"})
+        {
+            var result=Project(Make("v",TextNode("root","${/literal} **text** 한글",",\"variant\":"+JsonSerializer.Serialize(variant))),"v",CanonicalProjectionStatus.Projected);
+            Check(result.Root is CanonicalProjectedText t && t.Variant==variant && t.Text=="${/literal} **text** 한글", "Literal text/variant, no evaluation.");
+        }
+        foreach(var justify in new[]{"start","center","end","spaceBetween","spaceAround","spaceEvenly","stretch"})
+        foreach(var align in new[]{"center","end","start","stretch"})
+        {
+            var node="{\"id\":\"root\",\"component\":\"Column\",\"children\":[],\"justify\":\""+justify+"\",\"align\":\""+align+"\"}";
+            var c=(CanonicalProjectedColumn)Project(Make("enums",node),"enums",CanonicalProjectionStatus.Projected).Root!;
+            Check(c.Justify==justify && c.Align==align && c.Children.Count==0,"All optional enum literals, empty Column.");
+        }
+        r=Make("progress",TextNode("orphan","disconnected-secret"),ColumnNode("ROOT","unseen"));
+        Project(r,"progress",CanonicalProjectionStatus.WaitingForRoot); // exact ID, not first component
+        Check(r.Apply(Encoding.UTF8.GetBytes(ComponentMessage("progress",new[]{ColumnNode("root","late","known","late"),TextNode("known")})))==CanonicalSurfaceApplyStatus.ComponentsUpdated,"Root arrives.");
+        var partial=Project(r,"progress",CanonicalProjectionStatus.PartialProjection);
+        var pc=(CanonicalProjectedColumn)partial.Root!;
+        Check(pc.Children[0] is CanonicalUnresolvedChild { SourceId:"late" } && pc.Children[0].OccurrencePath.SequenceEqual(new[]{0}) &&
+            pc.Children[2] is CanonicalUnresolvedChild && pc.Children[2].OccurrencePath.SequenceEqual(new[]{2}),"Missing edge slots preserve positions.");
+        var encoded=ProjectionBytes(partial);
+        var encodedText=Encoding.UTF8.GetString(encoded);
+        Check(!encodedText.Contains("private-data") && !encodedText.Contains("private-create-body") && !encodedText.Contains("disconnected-secret") && !encodedText.Contains("orphan") && !encodedText.Contains("unseen"),"No Data/Body/disconnected payload.");
+        Check(r.Apply(Encoding.UTF8.GetBytes(ComponentMessage("progress",new[]{TextNode("late","resolved")})))==CanonicalSurfaceApplyStatus.ComponentsUpdated,"Missing target arrives.");
+        var resolved=(CanonicalProjectedColumn)Project(r,"progress",CanonicalProjectionStatus.Projected).Root!;
+        Check(resolved.Children[0] is CanonicalProjectedText { Text:"resolved" } && resolved.Children[2] is CanonicalProjectedText &&
+            resolved.Children[0].OccurrencePath.SequenceEqual(pc.Children[0].OccurrencePath) && resolved.Children[2].OccurrencePath.SequenceEqual(pc.Children[2].OccurrencePath),"Resolution keeps occurrence paths.");
+        Check(pc.Children[0] is CanonicalUnresolvedChild,"Old partial snapshot survives resolution.");
+        var shared=Make("shared",ColumnNode("root","left","right"),ColumnNode("left","text"),ColumnNode("right","text","text"),TextNode("text","same"));
+        var sr=(CanonicalProjectedColumn)Project(shared,"shared",CanonicalProjectionStatus.Projected).Root!;
+        var left=((CanonicalProjectedColumn)sr.Children[0]).Children[0];
+        var right=((CanonicalProjectedColumn)sr.Children[1]).Children;
+        Check(left.SourceId==right[0].SourceId && left.OccurrencePath.SequenceEqual(new[]{0,0}) && right[0].OccurrencePath.SequenceEqual(new[]{1,0}) && right[1].OccurrencePath.SequenceEqual(new[]{1,1}),"Shared source, distinct numeric occurrences/order.");
+        if(sr.Children is IList<CanonicalProjectedNode> children) { try{children.Clear();}catch(NotSupportedException){} }
+        if(left.OccurrencePath is IList<int> path) { try{path[0]=99;}catch(NotSupportedException){} }
+        Check(sr.Children.Count==2 && left.OccurrencePath.SequenceEqual(new[]{0,0}),"Immutable children/path.");
+        shared.Clear(); Check(sr.Children.Count==2 && left.SourceId=="text","Old projection survives Clear.");
+
+        var slots=Make("slots",ColumnNode("root",Enumerable.Repeat("t",255).ToArray()),TextNode("t"));
+        var exactSlots=(CanonicalProjectedColumn)Project(slots,"slots",CanonicalProjectionStatus.Projected).Root!;
+        Check(exactSlots.Children.Count==255,"Exactly256 emitted nodes from two unique nodes.");
+        Project(Make("slot-over",ColumnNode("root",Enumerable.Repeat("t",256).ToArray()),TextNode("t")),"slot-over",CanonicalProjectionStatus.ProjectionLimitExceeded);
+        Project(Make("unresolved-slots",ColumnNode("root",Enumerable.Repeat("not-yet",255).ToArray())),"unresolved-slots",CanonicalProjectionStatus.PartialProjection);
+        Project(Make("unresolved-over",ColumnNode("root",Enumerable.Repeat("not-yet",256).ToArray())),"unresolved-over",CanonicalProjectionStatus.ProjectionLimitExceeded);
+        string[] Chain(int columns,bool leaf) => Enumerable.Range(0,columns).Select(i=>ColumnNode(i==0?"root":"n"+i,"n"+(i+1)))
+            .Concat(leaf?new[]{TextNode("n"+columns)}:Array.Empty<string>()).ToArray();
+        Project(Make("depth",Chain(31,true)),"depth",CanonicalProjectionStatus.Projected);
+        Project(Make("partial-depth",Chain(31,false)),"partial-depth",CanonicalProjectionStatus.PartialProjection);
+        Project(Make("depth-over",Chain(32,false)),"depth-over",CanonicalProjectionStatus.ProjectionLimitExceeded); // C3 known32, unresolved slot33
+        var dense=Make("dense",Enumerable.Range(0,32).Select(i=>ColumnNode(i==0?"root":"d"+i,
+            Enumerable.Range(i+1,31-i).Select(j=>"d"+j).ToArray())).ToArray());
+        Project(dense,"dense",CanonicalProjectionStatus.ProjectionLimitExceeded); // Never expand exponential graph fully.
+
+        CanonicalSurfaceRegistry Repeated(string id,string text) => Make(id,
+            "{\"id\":\"root\",\"component\":\"Column\",\"children\":[\"long\",\"long\"],\"justify\":\"start\",\"align\":\"stretch\"}",
+            TextNode("long",text,",\"variant\":\"body\""));
+        var id="bytes";
+        int overhead=ProjectionBytes(Project(Repeated(id,""),id,CanonicalProjectionStatus.Projected)).Length;
+        if((65536-overhead)%2!=0){id+="x";overhead=ProjectionBytes(Project(Repeated(id,""),id,CanonicalProjectionStatus.Projected)).Length;}
+        var content=new string('a',(65536-overhead)/2);
+        var exact=Project(Repeated(id,content),id,CanonicalProjectionStatus.Projected);
+        Check(ProjectionBytes(exact).Length==65536,"Exact64KiB including derived Text/children/path/keys/status and both occurrences.");
+        Project(Repeated(id+"x",content),id+"x",CanonicalProjectionStatus.ProjectionLimitExceeded); // exactly+1 surfaceId byte
+        Project(Repeated("encoded",new string('é',6000)),"encoded",CanonicalProjectionStatus.ProjectionLimitExceeded); // C3 one string<64KiB, repeated encoded projection>64KiB
+
+        r=Make("capture",ColumnNode("root","late","late"));
+        Check(r.Apply(Encoding.UTF8.GetBytes(Create("other")))==CanonicalSurfaceApplyStatus.Created,"Other surface.");
+        var other=Make("capture",TextNode("root","other-session"));
+        Project(r,"other",CanonicalProjectionStatus.WaitingForRoot);
+        var captures=new CanonicalProjectionResult[32];
+        Parallel.Invoke(()=>Parallel.For(0,32,i=>captures[i]=r.Project("capture")),()=>r.Apply(Encoding.UTF8.GetBytes(ComponentMessage("capture",new[]{TextNode("late","arrived")}))));
+        Check(captures.All(result=> result.Root is CanonicalProjectedColumn c &&
+            ((result.Status==CanonicalProjectionStatus.PartialProjection && c.Children.All(x=>x is CanonicalUnresolvedChild)) ||
+             (result.Status==CanonicalProjectionStatus.Projected && c.Children.All(x=>x is CanonicalProjectedText { Text:"arrived" })))),"Each capture sees one consistent before/after snapshot, not latest-at-return.");
+        Check(other.Project("capture").Root is CanonicalProjectedText { Text:"other-session" },"Session isolation.");
+        var saved=r.Project("capture"); r.Apply(Encoding.UTF8.GetBytes(Delete("capture")));
+        Check(saved.Root is CanonicalProjectedColumn && r.Project("capture").Status==CanonicalProjectionStatus.MissingSurface,"Old projection survives delete.");
+        Console.WriteLine($"CanonicalProjectionChecks: {checks} checks PASS");
+    }
+
+    // Test oracle for the documented resource-only representation. Explicit derived fields,
+    // no base-record serialization which could silently omit text or children.
+    private static byte[] ProjectionBytes(CanonicalProjectionResult result)
+    {
+        object? Node(CanonicalProjectedNode? node)
+        {
+            if(node is null)return null;
+            var o=new Dictionary<string,object?> { ["kind"]=node switch { CanonicalProjectedText=>"Text",CanonicalProjectedColumn=>"Column",_=>"Unresolved" },
+                ["sourceId"]=node.SourceId,["path"]=node.OccurrencePath };
+            if(node is CanonicalProjectedText t){o["text"]=t.Text;if(t.Variant is not null)o["variant"]=t.Variant;}
+            if(node is CanonicalProjectedColumn c){if(c.Justify is not null)o["justify"]=c.Justify;if(c.Align is not null)o["align"]=c.Align;o["children"]=c.Children.Select(Node).ToArray();}
+            return o;
+        }
+        return JsonSerializer.SerializeToUtf8Bytes(new Dictionary<string,object?> { ["surfaceId"]=result.SurfaceId,["root"]=Node(result.Root),["status"]=result.Status.ToString() });
     }
 
     private static void RunComponentChecks()

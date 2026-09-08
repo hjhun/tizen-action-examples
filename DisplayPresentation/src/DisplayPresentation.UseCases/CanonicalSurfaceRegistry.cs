@@ -88,6 +88,19 @@ public sealed class CanonicalSurfaceRegistry
         }
     }
 
+    /// <summary>Projects the captured component snapshot, not necessarily the latest state at return.</summary>
+    public CanonicalProjectionResult Project(string surfaceId)
+    {
+        IReadOnlyList<JsonElement>? captured = null;
+        lock (_sync)
+        {
+            if (_surfaces.TryGetValue(surfaceId, out var surface))
+                captured = Array.AsReadOnly(surface.Components.Select(node => node.Clone()).ToArray());
+        }
+        // Data and create Body are deliberately not passed to the projector.
+        return CanonicalSurfaceProjector.Project(surfaceId, captured);
+    }
+
     public IReadOnlyList<CanonicalSurfaceSnapshot> Snapshot()
     {
         lock (_sync)
