@@ -33,34 +33,6 @@ public sealed class PhotoGalleryViewService : TizenActionView.ServiceBase
         return Failure("not_found: no annotated view is focused");
     }
 
-    public override TizenEntityStatus ToPresentation(TizenEntityView view, out TizenEntityPresentation result)
-    {
-        result = new TizenEntityPresentation { Template = string.Empty, Document = string.Empty };
-        if (view?.Annotation is not { } annotation || string.IsNullOrWhiteSpace(annotation.EntityId)) return Failure("A current annotated view is required.");
-        var current = PhotoGalleryViewProviderState.Store.Resolve(view.Id, annotation.EntityType, annotation.EntityId);
-        if (current is null) return Failure("The annotated view is no longer visible or its identity does not match.");
-        string template, document;
-        if (current.EntityType == "Tizen.Entity.Photo")
-        {
-            try
-            {
-                using var source = System.Text.Json.JsonDocument.Parse(current.EntityInfo);
-                var photo = System.Text.Json.JsonSerializer.Deserialize<RPCPort.PhotoGalleryActionProvider.TizenEntityPhoto>(source.RootElement.GetProperty("TizenEntityPhoto").GetRawText(), new System.Text.Json.JsonSerializerOptions { IncludeFields = true })!;
-                using var metadata = System.Text.Json.JsonDocument.Parse(photo.Extra);
-                var extra = metadata.RootElement;
-                var record = PhotoGallery.Domain.PhotoRecord.Create(photo.Id, extra.GetProperty("title").GetString(), DateTimeOffset.Parse(photo.Date), "", "", "") with
-                { Album = extra.GetProperty("album").GetString() ?? "", Favorite = extra.GetProperty("favorite").GetBoolean(), Owned = extra.GetProperty("owned").GetBoolean() };
-                (template, document) = PhotoPresentation.Create(record);
-            }
-            catch { return Failure("Invalid current photo annotation."); }
-        }
-        else if (!ViewSnapshotPresentation.TryCreate(current.EntityType, current.EntityId, current.EntityInfo, out template, out document))
-            return Failure("Unsupported or invalid ViewAnnotation entity snapshot.");
-        result.Template = template;
-        result.Document = document;
-        return Success();
-    }
-
     private static TizenEntityStatus Success() => new() { Success = true, Reason = string.Empty };
     private static TizenEntityStatus Failure(string reason) => new() { Success = false, Reason = reason };
     private static TizenEntityView EmptyView() => new()

@@ -36,20 +36,16 @@ public sealed class CalendarService : TizenActionCalendar.ServiceBase
     {
     }
 
-    public override TizenEntityStatus AddEvent(TizenEntityCalendarEvent calendar)
+    public override TizenEntityStatus AddEvent(TizenEntityCalendarEvent calendar, out TizenEntityCalendarEvent result)
     {
-        if (_commands is null)
-        {
-            return Failure("Calendar mutation service is unavailable.");
-        }
-
-        return TryToDomain(calendar, out var calendarEvent, out var failure)
-            ? ToStatus(_commands.CreateEvent(calendarEvent!, []))
-            : Failure(failure);
+        result = null!;
+        return Failure("unavailable: canonical AddEvent is not implemented");
     }
 
     public override TizenEntityStatus DeleteEvent(TizenEntityCalendarEvent calendar)
     {
+        if (calendar?.StartDate is not null || calendar?.Recurrence is not null)
+            return Failure("unavailable: occurrence/recurrence deletion is not implemented");
         if (_commands is null)
         {
             return Failure("Calendar mutation service is unavailable.");
@@ -64,40 +60,19 @@ public sealed class CalendarService : TizenActionCalendar.ServiceBase
     {
         result = [];
         if (query is null) return Failure("A calendar query is required.");
+        if (query.CalendarId is not null || query.Profiles is not null)
+            return Failure("unavailable: calendar book/profile filters are not implemented");
         if (!CalendarSearchQueryAdapter.TryCreate(query.Keyword, query.StartDate, query.EndDate,
-                query.Limit, true, true, true, out var criteria, out var error, query.Id, query.Category)) return Failure(error);
+                query.Limit ?? 0, true, true, true, out var criteria, out var error, query.Id, query.Category)) return Failure(error);
         result = _repository.Search(criteria!).Select(ToEntity).ToList();
         return Success();
     }
 
-    public override TizenEntityStatus ToPresentation(List<TizenEntityCalendarEvent> calendarEvents, out TizenEntityPresentation result)
+    public override TizenEntityStatus UpdateEvent(TizenEntityCalendarEvent target,
+        TizenEntityCalendarEvent changes, out TizenEntityCalendarEvent result)
     {
-        result = new() { Template = string.Empty, Document = string.Empty };
-        if (calendarEvents is null || calendarEvents.Count > 100)
-            return Failure("At most 100 calendar events are allowed.");
-        var events = new List<CalendarEvent>();
-        foreach (var entity in calendarEvents)
-        {
-            if (!TryToDomain(entity, out var calendarEvent, out var failure)) return Failure(failure);
-            events.Add(calendarEvent!);
-        }
-        var presentation = CalendarA2UiPresentations.Create(events);
-        if (!presentation.FitsTransport) return Failure("Presentation Template and Document must each fit within 64 Ki characters.");
-        result.Template = presentation.Template;
-        result.Document = presentation.Document;
-        return Success();
-    }
-
-    public override TizenEntityStatus UpdateEvent(TizenEntityCalendarEvent calendar)
-    {
-        if (_commands is null)
-        {
-            return Failure("Calendar mutation service is unavailable.");
-        }
-
-        return TryToDomain(calendar, out var calendarEvent, out var failure)
-            ? ToStatus(_commands.UpdateEvent(calendarEvent!, []))
-            : Failure(failure);
+        result = new() { Title = string.Empty };
+        return Failure("unavailable: canonical UpdateEvent is not implemented");
     }
 
     private static bool TryToDomain(

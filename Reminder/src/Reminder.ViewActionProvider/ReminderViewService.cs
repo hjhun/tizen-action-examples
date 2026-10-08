@@ -32,22 +32,8 @@ public sealed class ReminderViewService : TizenActionView.ServiceBase
         return Failure("not_found: no annotated view is focused");
     }
 
-    public override TizenEntityStatus ToPresentation(TizenEntityView view, out TizenEntityPresentation result)
-    {
-        result = new TizenEntityPresentation { Template = string.Empty, Document = string.Empty };
-        if (view?.Annotation is not { } annotation || string.IsNullOrWhiteSpace(annotation.EntityId)) return Failure("A current annotated view is required.");
-        var current = ReminderViewProviderState.Store.Resolve(view.Id, annotation.EntityType, annotation.EntityId);
-        if (current is null) return Failure("The annotated view is no longer visible or its identity does not match.");
-        if (!ViewSnapshotPresentation.TryCreate(current.EntityType, current.EntityId, current.EntityInfo, out var template, out var document))
-            return Failure("Unsupported or invalid ViewAnnotation entity snapshot.");
-        result.Template = template;
-        result.Document = document;
-        return Success();
-    }
-
     private static TizenEntityStatus Success() => new() { Success = true, Reason = string.Empty };
     private static TizenEntityStatus Failure(string reason) => new() { Success = false, Reason = reason };
-    private static TizenEntityPresentation EmptyPresentation() => new() { Document = string.Empty, Template = string.Empty };
     private static TizenEntityView EmptyView() => new()
     {
         Id = string.Empty,

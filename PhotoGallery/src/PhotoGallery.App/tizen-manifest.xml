@@ -12,18 +12,13 @@
   <ui-application appid="org.tizen.photogallery" exec="PhotoGallery.App.dll" type="dotnet" multiple="false" taskmanage="true" nodisplay="false" launch_mode="single" api-version="14">
     <label>Gallery</label>
     <metadata key="http://tizen.org/metadata/prefer_dotnet_aot" value="true" />
-    <metadata key="http://tizen.org/metadata/action/provider" value="Tv_Tizen.Action.Photo_AddPhoto" />
-    <metadata key="http://tizen.org/metadata/action/provider" value="Tv_Tizen.Action.Photo_DeletePhoto" />
     <metadata key="http://tizen.org/metadata/action/provider" value="Tv_Tizen.Action.Photo_GetCurrent" />
     <metadata key="http://tizen.org/metadata/action/provider" value="Tv_Tizen.Action.Photo_Search" />
     <metadata key="http://tizen.org/metadata/action/provider" value="Tv_Tizen.Action.Photo_Show" />
-    <metadata key="http://tizen.org/metadata/action/provider" value="Tv_Tizen.Action.Photo_StartSlideshow" />
     <metadata key="http://tizen.org/metadata/action/provider" value="Tv_Tizen.Action.Photo_StopSlideshow" />
-    <metadata key="http://tizen.org/metadata/action/provider" value="Tv_Tizen.Action.Photo_ToPresentation" />
     <metadata key="http://tizen.org/metadata/action/provider" value="Common_Tizen.Action.View_FindById" />
     <metadata key="http://tizen.org/metadata/action/provider" value="Common_Tizen.Action.View_GetAnnotatedViews" />
     <metadata key="http://tizen.org/metadata/action/provider" value="Common_Tizen.Action.View_GetFocusedView" />
-    <metadata key="http://tizen.org/metadata/action/provider" value="Common_Tizen.Action.View_ToPresentation" />
     <metadata key="http://tizen.org/metadata/action/provider" value="App_Tizen.Action.PhotoGalleryCustom_GetPhotoByIds" />
     <metadata key="http://tizen.org/metadata/action" value="App_Tizen.Action.PhotoGalleryCustom_GetPhotoByIds.action" />
     <metadata key="http://tizen.org/metadata/action/provider" value="App_Tizen.Action.PhotoGalleryCustom_SetFavorite" />

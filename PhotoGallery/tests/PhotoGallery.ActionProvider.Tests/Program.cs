@@ -3,7 +3,7 @@ using System.Xml.Linq;
 
 static void Assert(bool value, string message) { if (!value) throw new InvalidOperationException(message); }
 var root = Directory.GetCurrentDirectory();
-var catalog = Path.GetFullPath(Path.Combine(root, "../..", "appfw/tizen-action/default-actions"));
+var catalog = Environment.GetEnvironmentVariable("ACTION_CATALOG_ROOT") ?? Path.GetFullPath(Path.Combine(root, "../..", "appfw/tizen-action/default-actions"));
 var sections = new Dictionary<string, List<string>>();
 string? category = null;
 foreach (var raw in File.ReadLines(Path.Combine(catalog, "action.seq")))
@@ -18,6 +18,7 @@ var app = manifest.Root!.Element(ns + "ui-application")!;
 Assert((string?)app.Attribute("type") == "dotnet" && (string?)app.Attribute("api-version") == "14", "Require .NET API14.");
 var metadata = app.Elements(ns + "metadata").Where(e => (string?)e.Attribute("key") == "http://tizen.org/metadata/action/provider")
     .Select(e => (string)e.Attribute("value")!).ToHashSet();
+var unavailable = new HashSet<string> { "Tv_Tizen.Action.Photo_AddPhoto", "Tv_Tizen.Action.Photo_DeletePhoto", "Tv_Tizen.Action.Photo_StartSlideshow", "Tv_Tizen.Action.Photo_GetMemories", "Tv_Tizen.Action.Photo_PlayMemory" };
 var custom = Directory.GetFiles(Path.Combine(root, "actions"), "*.action").Select(Path.GetFileNameWithoutExtension).Order(StringComparer.Ordinal).Cast<string>().ToList();
 foreach (var (name, project, binding, names) in new[]
 {
@@ -32,7 +33,10 @@ foreach (var (name, project, binding, names) in new[]
     {
         var method = names[index][(names[index].LastIndexOf('_') + 1)..];
         Assert(Regex.IsMatch(methods, $@"\b{method}\s*=\s*{index + 2},"), name + " method order differs from runtime contract.");
-        Assert(metadata.Remove(names[index]), "Missing/duplicate advertised Action " + names[index]);
+        if (unavailable.Contains(names[index]))
+            Assert(!metadata.Contains(names[index]), "Unavailable Action must not be advertised " + names[index]);
+        else
+            Assert(metadata.Remove(names[index]), "Missing/duplicate advertised Action " + names[index]);
     }
     Assert(!generated.Contains("TIZEN_RPCPORT_HAS_PRIVILEGE_LOCAL") && !generated.Contains("Disabled for compatibility"), "Generated output was patched.");
 }

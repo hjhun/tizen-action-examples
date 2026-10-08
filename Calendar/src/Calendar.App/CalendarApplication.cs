@@ -1024,6 +1024,8 @@ internal sealed class CalendarApplication : NUIApplication
 
     private static void Main(string[] args)
     {
+        if (!Tizen.NUI.EnvironmentVariable.SetEnvironmentVariable("DALI_DISABLE_ENTITY_DATA_TIDL", "1"))
+            throw new InvalidOperationException("Could not select the app-owned View provider.");
         var app = new CalendarApplication();
         app.Run(args);
     }

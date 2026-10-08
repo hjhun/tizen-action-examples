@@ -1,4 +1,5 @@
-using RPCPort.DisplayActions;
+using DisplayPresentation.Domain;
+using System.Text.Json;
 using RPCPort.ViewActions.Stub;
 
 namespace DisplayPresentation.ViewActionProvider;
@@ -19,7 +20,7 @@ public static class DisplayPresentationViewActionProviderHost
 
     public static void PublishVisibleSurface(
         string surfaceId,
-        TizenEntityPresentation presentation,
+        PresentationInput presentation,
         double screenX,
         double screenY,
         double? windowX,
@@ -32,19 +33,29 @@ public static class DisplayPresentationViewActionProviderHost
         ArgumentNullException.ThrowIfNull(presentation);
         DisplayPresentationViewProviderState.Publish([new DisplayPresentationViewProviderState.PublishedPresentationView(
             $"display:{surfaceId}:surface", surfaceId, presentation.Template, presentation.Document,
-            presentation.ToJson(), screenX, screenY, windowX, windowY, width, height, isFocused)]);
+            AnnotationJson(presentation), screenX, screenY, windowX, windowY, width, height, isFocused)]);
     }
 
     public static void PublishViews(IEnumerable<PresentationViewSnapshot> views) =>
         DisplayPresentationViewProviderState.Publish(views.Select(view =>
             new DisplayPresentationViewProviderState.PublishedPresentationView(view.Id, view.SurfaceId,
-                view.Presentation.Template, view.Presentation.Document, view.Presentation.ToJson(),
+                view.Presentation.Template, view.Presentation.Document, AnnotationJson(view.Presentation),
                 view.ScreenX, view.ScreenY, view.WindowX, view.WindowY, view.Width, view.Height,
                 view.IsFocused, view.Description)));
+
+    private static string AnnotationJson(PresentationInput presentation) =>
+        JsonSerializer.Serialize(new
+        {
+            TizenEntityPresentation = new
+            {
+                presentation.Document,
+                presentation.Template,
+            },
+        });
 
     public static void ClearPublishedViews() => DisplayPresentationViewProviderState.Clear();
 }
 
 public sealed record PresentationViewSnapshot(string Id, string SurfaceId, string Description,
-    TizenEntityPresentation Presentation, double ScreenX, double ScreenY, double? WindowX, double? WindowY,
+    PresentationInput Presentation, double ScreenX, double ScreenY, double? WindowX, double? WindowY,
     double Width, double Height, bool IsFocused);

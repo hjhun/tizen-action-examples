@@ -42,11 +42,13 @@ public sealed class CalendarCustomService : TizenActionCalendarCustom.ServiceBas
             return Failure("A calendar search query is required.");
         }
 
+        if (calendarSearchQuery.CalendarId is not null || calendarSearchQuery.Profiles is not null)
+            return Failure("unavailable: calendar book/profile filters are not implemented");
         if (!CalendarSearchQueryAdapter.TryCreate(
                 calendarSearchQuery.Keyword,
                 calendarSearchQuery.StartDate,
                 calendarSearchQuery.EndDate,
-                calendarSearchQuery.Limit,
+                calendarSearchQuery.Limit ?? 0,
                 calendarSearchQuery.SearchTitle,
                 calendarSearchQuery.SearchLocation,
                 calendarSearchQuery.SearchNote,

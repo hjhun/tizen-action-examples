@@ -750,5 +750,10 @@ internal sealed class ReminderApplication : NUIApplication
     private static Size S(float w, float h) => new(w, h);
     private sealed record ListItem(string Id, string Primary, string Secondary);
 
-    private static void Main(string[] args) => new ReminderApplication().Run(args);
+    private static void Main(string[] args)
+    {
+        if (!Tizen.NUI.EnvironmentVariable.SetEnvironmentVariable("DALI_DISABLE_ENTITY_DATA_TIDL", "1"))
+            throw new InvalidOperationException("Could not select the app-owned View provider.");
+        new ReminderApplication().Run(args);
+    }
 }

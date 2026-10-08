@@ -25,7 +25,7 @@ one ancestor transform shared by pages and modals.
 ```sh
 ./test.sh             # Five host test projects
 ./build.sh            # Release .NET/API14 build
-./build.sh generate   # Complete Photo 8 / Custom 2 / View 4 regeneration
+./build.sh generate   # Complete Photo 9 / Custom 2 / View 3 regeneration
 ./package.sh          # Emulator-signed TPK under ignored dist/
 ```
 

@@ -17,7 +17,7 @@ public sealed class PhotoGalleryCustomService : TizenActionPhotoGalleryCustom.Se
         try
         {
             var resolution = _service.Resolve(ids);
-            result = resolution.Photos.Select(p => { var dto = PhotoGalleryService.ToEntity(p); return new TizenEntityPhoto { Id = dto.Id, Extra = dto.Extra, Date = dto.Date, Note = dto.Note, Location = dto.Location, File = new TizenEntityFile { Id = dto.File.Id, Extra = dto.File.Extra, Path = dto.File.Path, StorageType = dto.File.StorageType, Size = dto.File.Size, ModifiedDate = dto.File.ModifiedDate, MimeType = dto.File.MimeType } }; }).ToList();
+            result = resolution.Photos.Select(p => { var dto = PhotoGalleryService.ToEntity(p); return new TizenEntityPhoto { Id = dto.Id, Extra = dto.Extra, Date = dto.Date, Note = dto.Note, Location = dto.Location, File = new TizenEntityFile { Id = dto.File.Id, Extra = dto.File.Extra, Path = dto.File.Path, StorageType = dto.File.StorageType, Size = dto.File.Size, ModifiedDate = dto.File.ModifiedDate } }; }).ToList();
             unresolvedIds = resolution.UnresolvedIds.ToList();
             return new() { Success = true, Reason = "" };
         }

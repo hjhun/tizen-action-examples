@@ -2,7 +2,6 @@ using DisplayPresentation.ActionProvider;
 using DisplayPresentation.Domain;
 using DisplayPresentation.UseCases;
 using DisplayPresentation.ViewActionProvider;
-using DisplayEntity = RPCPort.DisplayActions.TizenEntityPresentation;
 using Tizen.NUI;
 using Tizen.NUI.BaseComponents;
 
@@ -188,7 +187,7 @@ internal sealed class DisplayPresentationApplication : NUIApplication
     {
         if (_paused || _terminated || _canvas is null || _visibleSurface is not { } surface) return;
         var wire = A2UiPresentationSerializer.Serialize(surface);
-        var entity = new DisplayEntity { Template = wire.Template, Document = wire.Document };
+        var entity = wire;
         var views = new List<PresentationViewSnapshot>();
         var focused = FocusManager.Instance.GetCurrentFocusView();
         void Capture(View view, string id, string description)
@@ -216,6 +215,8 @@ internal sealed class DisplayPresentationApplication : NUIApplication
 
     private static void Main(string[] args)
     {
+        if (!Tizen.NUI.EnvironmentVariable.SetEnvironmentVariable("DALI_DISABLE_ENTITY_DATA_TIDL", "1"))
+            throw new InvalidOperationException("Could not select the app-owned View provider.");
         var app = new DisplayPresentationApplication();
         app.Run(args);
     }

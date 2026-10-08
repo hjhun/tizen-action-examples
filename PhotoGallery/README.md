@@ -25,7 +25,7 @@ tree는 실측 View bounds로 보완했습니다. SystemInfo와 WindowSize/GetIn
 ```sh
 ./test.sh             # 5개 호스트 테스트 프로젝트
 ./build.sh            # .NET/API14 Release 빌드
-./build.sh generate   # 전체 Photo 8 / Custom 2 / View 4 재생성
+./build.sh generate   # 전체 Photo 9 / Custom 2 / View 3 재생성
 ./package.sh          # dist/에 에뮬레이터 서명 TPK 생성
 ```
 

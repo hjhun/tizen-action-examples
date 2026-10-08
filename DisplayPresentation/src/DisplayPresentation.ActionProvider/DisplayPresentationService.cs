@@ -6,8 +6,7 @@ using RPCPort.DisplayActions.Stub;
 namespace DisplayPresentation.ActionProvider;
 
 /// <summary>
-/// Typed boundary for <c>Tv_Tizen.Action.Presentation_Show</c>. Rendering is added by the
-/// application composition root; this boundary validates the wire payload first.
+/// The canonical Nudge action is unavailable; rendering stays in the app.
 /// </summary>
 public sealed class DisplayPresentationService : TizenActionPresentation.ServiceBase
 {
@@ -31,18 +30,8 @@ public sealed class DisplayPresentationService : TizenActionPresentation.Service
     {
     }
 
-    public override TizenEntityStatus Show(TizenEntityPresentation presentation)
-    {
-        if (presentation is null)
-        {
-            return Failure("A Presentation payload is required.");
-        }
-
-        var outcome = _renderer.Submit(new PresentationInput(presentation.Template, presentation.Document));
-        return outcome.IsSuccess
-            ? Success()
-            : Failure(outcome.Failure!.Message);
-    }
+    public override TizenEntityStatus ShowNudge(TizenEntityNudge nudge) =>
+        Failure("unavailable: ShowNudge is not implemented");
 
     private static TizenEntityStatus Success() => new() { Success = true, Reason = string.Empty };
 

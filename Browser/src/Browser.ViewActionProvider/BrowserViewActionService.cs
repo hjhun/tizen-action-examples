@@ -46,25 +46,6 @@ public sealed class BrowserViewActionService : TizenActionView.ServiceBase
             : Failure("not_found");
     }
 
-    public override RPCPort.TizenActionView.TizenEntityStatus ToPresentation(
-        TizenEntityView view,
-        out RPCPort.TizenActionView.TizenEntityPresentation result)
-    {
-        result = EmptyPresentation();
-        if (!BrowserViewProviderState.TryGetCurrentSnapshot(view, out var snapshot))
-        {
-            return Failure("invalid_input");
-        }
-
-        var presentation = BrowserActionContract.CreateLegacyDisplayPresentation(snapshot.Page);
-        result = new TizenEntityPresentation
-        {
-            Template = presentation.Template,
-            Document = presentation.Document,
-        };
-        return Success();
-    }
-
     private static TizenEntityView EmptyView() => new()
     {
         Id = string.Empty,
@@ -83,11 +64,6 @@ public sealed class BrowserViewActionService : TizenActionView.ServiceBase
         },
     };
 
-    private static RPCPort.TizenActionView.TizenEntityPresentation EmptyPresentation() => new()
-    {
-        Template = string.Empty,
-        Document = string.Empty,
-    };
 
     private static RPCPort.TizenActionView.TizenEntityStatus Success() => new() { Success = true, Reason = string.Empty };
 

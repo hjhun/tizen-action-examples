@@ -13,46 +13,55 @@ public sealed class PhotoGalleryService : TizenActionPhoto.ServiceBase
     public PhotoGalleryService(GalleryLibraryService service) => _service = service;
     public override void OnCreate() { }
     public override void OnTerminate() { }
-    public override TizenEntityStatus AddPhoto(TizenEntityPhoto photo) => Invoke(() =>
+    public override TizenEntityStatus AddPhoto(TizenEntityPhoto photo, out TizenEntityPhoto result)
     {
-        if (photo is null || photo.File is null || !string.IsNullOrEmpty(photo.Id))
-            throw new ArgumentException("invalid: provide File.Path and an empty Photo.Id; MediaContent assigns the stable ID");
-        var title = photo.Extra ?? "";
-        // Extra in an Add request is the optional display title; returned Extra is versioned metadata.
-        _service.ImportAsync(photo.File.Path, title, CancellationToken.None).GetAwaiter().GetResult();
-    });
-    public override TizenEntityStatus DeletePhoto(TizenEntityPhoto photo) => Invoke(() => _service.DeleteAsync(Id(photo), CancellationToken.None).GetAwaiter().GetResult());
+        result = null!;
+        return Unavailable();
+    }
+    public override TizenEntityStatus DeletePhoto(List<TizenEntityPhoto> photos) => Unavailable();
     public override TizenEntityStatus GetCurrent(out TizenEntityPhoto result)
     {
         var value = EmptyPhoto(); var status = Invoke(() => value = ToEntity(_service.Current())); result = value; return status;
     }
-    public override TizenEntityStatus Search(TizenEntityQuery query, out List<TizenEntityPhoto> result)
+    public override TizenEntityStatus Search(TizenEntityPhotoQuery query, out List<TizenEntityPhoto> result)
     {
         var values = new List<TizenEntityPhoto>();
         var status = Invoke(() =>
         {
             if (query is null) throw new ArgumentException("invalid: query is required");
-            values = _service.Search(query.Id, query.Keyword, query.Category, query.Limit).Select(ToEntity).ToList();
+            if (query.DateFrom is not null || query.DateTo is not null ||
+                query.Location is not null || query.Person is not null ||
+                query.Activity is not null || query.Object is not null)
+                throw new InvalidOperationException("photo filters are not implemented");
+            values = _service.Search(query.Id, query.Keyword, query.Category, query.Limit ?? 0).Select(ToEntity).ToList();
         });
         result = values; return status;
     }
     public override TizenEntityStatus Show(TizenEntityPhoto photo) => Invoke(() => _service.Show(Id(photo)));
-    public override TizenEntityStatus StartSlideshow() => Invoke(_service.StartSlideshow);
-    public override TizenEntityStatus StopSlideshow() => Invoke(_service.StopSlideshow);
-    public override TizenEntityStatus ToPresentation(TizenEntityPhoto photo, out TizenEntityPresentation result)
+    public override TizenEntityStatus StartSlideshow(List<TizenEntityPhoto> photos, out List<TizenEntityPhoto> result)
     {
-        var value = new TizenEntityPresentation { Template = "", Document = "" };
-        var status = Invoke(() => { var p = PhotoPresentation.Create(_service.Find(Id(photo))); value.Template = p.Template; value.Document = p.Document; });
-        result = value; return status;
+        result = [];
+        return Unavailable();
     }
+    public override TizenEntityStatus StopSlideshow() => Invoke(_service.StopSlideshow);
+    public override TizenEntityStatus GetMemories(out TizenEntityMemoryFeed result)
+    {
+        result = new() { Memories = [], RecommendationIndex = -1, Locked = false };
+        return Unavailable();
+    }
+    public override TizenEntityStatus PlayMemory(TizenEntityMemory memory) => Unavailable();
+    private static TizenEntityStatus Unavailable() => new()
+    {
+        Success = false, Reason = "unavailable: canonical action is not implemented",
+    };
     private static string Id(TizenEntityPhoto? photo) => photo?.Id ?? "";
     public static TizenEntityPhoto ToEntity(PhotoRecord p) => new()
     {
         Id = p.Id, Extra = JsonSerializer.Serialize(new { schemaVersion = 1, title = p.Title, album = p.Album, favorite = p.Favorite, owned = p.Owned }),
         Location = p.Location, Date = p.CapturedAt.ToString("O"), Note = p.Note,
-        File = new TizenEntityFile { Id = p.Id, Extra = "", Path = p.Path, StorageType = p.StorageType, Size = (int)Math.Clamp(p.FileSize, 0, int.MaxValue), ModifiedDate = p.CapturedAt.ToString("O"), MimeType = p.MimeType },
+        File = new TizenEntityFile { Id = p.Id, Extra = "", Path = p.Path, StorageType = p.StorageType, Size = (int)Math.Clamp(p.FileSize, 0, int.MaxValue), ModifiedDate = p.CapturedAt.ToString("O") },
     };
-    public static TizenEntityPhoto EmptyPhoto() => new() { Id = "", Extra = "", Location = "", Date = "", Note = "", File = new TizenEntityFile { Id = "", Extra = "", Path = "", StorageType = "internal", ModifiedDate = "", MimeType = "" } };
+    public static TizenEntityPhoto EmptyPhoto() => new() { Id = "", Extra = "", Location = "", Date = "", Note = "", File = new TizenEntityFile { Id = "", Extra = "", Path = "", StorageType = "internal", ModifiedDate = "" } };
     private static TizenEntityStatus Invoke(Action action)
     {
         try { action(); return new() { Success = true, Reason = "" }; }

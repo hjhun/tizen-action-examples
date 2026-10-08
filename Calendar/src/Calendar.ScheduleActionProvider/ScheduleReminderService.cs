@@ -31,28 +31,16 @@ public sealed class ScheduleReminderService : TizenActionReminder.ServiceBase
     {
     }
 
-    public override TizenEntityStatus Add(TizenEntityReminder reminder)
+    public override TizenEntityStatus Add(TizenEntityReminder reminder, out TizenEntityReminder result)
     {
-        if (_commands is null)
-        {
-            return Failure("Reminder mutation service is unavailable.");
-        }
-
-        return TryToDomain(reminder, out var domainReminder, out var reason)
-            ? ToStatus(_commands.CreateReminder(domainReminder!))
-            : Failure(reason);
+        result = null!;
+        return Failure("unavailable: canonical Add is not implemented");
     }
 
-    public override TizenEntityStatus Update(TizenEntityReminder reminder)
+    public override TizenEntityStatus Update(TizenEntityReminder reminder, out TizenEntityReminder result)
     {
-        if (_commands is null)
-        {
-            return Failure("Reminder mutation service is unavailable.");
-        }
-
-        return TryToDomain(reminder, out var domainReminder, out var reason)
-            ? ToStatus(_commands.UpdateReminder(domainReminder!))
-            : Failure(reason);
+        result = new() { Title = string.Empty, State = new() { State = "To-do" } };
+        return Failure("unavailable: canonical Update is not implemented");
     }
 
     public override TizenEntityStatus Delete(TizenEntityReminder reminder)
@@ -67,7 +55,7 @@ public sealed class ScheduleReminderService : TizenActionReminder.ServiceBase
             : ToStatus(_commands.DeleteReminder(reminder.Id));
     }
 
-    public override TizenEntityStatus Search(TizenEntityQuery query, out List<TizenEntityReminder> result)
+    public override TizenEntityStatus Search(TizenEntityReminderQuery query, out List<TizenEntityReminder> result)
     {
         if (query is null || query.Keyword?.Length > 512)
         {
@@ -86,23 +74,29 @@ public sealed class ScheduleReminderService : TizenActionReminder.ServiceBase
             result = [];
             return Failure("Category must name Reminder, Tizen.Action.Reminder, or this app.");
         }
-        var limit = query.Limit <= 0 ? 20 : Math.Min(query.Limit, 100);
-        result = _reminders.Search(query.Keyword)
+        if (HasUnsupportedFilters(query))
+        {
+            result = [];
+            return Failure("unavailable: reminder filters are not implemented");
+        }
+        if (query.State is not null && query.State.State is not ("To-do" or "Done"))
+        {
+            result = [];
+            return Failure("invalid: State must be To-do or Done");
+        }
+        var requestedLimit = query.Limit ?? 0;
+        var limit = requestedLimit <= 0 ? 20 : Math.Min(requestedLimit, 100);
+        var matched = _reminders.Search(query.Keyword)
             .Where(reminder => reminder.CalendarEventId is null)
             .Where(reminder => string.IsNullOrWhiteSpace(query.Id) || reminder.Id == query.Id)
-            .Take(limit)
-            .Select(ToEntity)
-            .ToList();
-        return Success();
-    }
-
-    public override TizenEntityStatus ToPresentation(TizenEntityReminder entity, out TizenEntityPresentation result)
-    {
-        result = new() { Template = string.Empty, Document = string.Empty };
-        if (!TryToDomain(entity, out var reminder, out var reason)) return Failure(reason);
-        var presentation = CalendarA2UiPresentations.CreateReminder(reminder!);
-        result.Template = presentation.Template;
-        result.Document = presentation.Document;
+            .Where(reminder => query.State is null ? !reminder.IsCompleted : reminder.State == query.State.State)
+            .ToArray();
+        if (matched.Any(reminder => reminder.State is not ("To-do" or "Done")))
+        {
+            result = [];
+            return Failure("unavailable: matched reminder state cannot be represented");
+        }
+        result = matched.Take(limit).Select(ToEntity).ToList();
         return Success();
     }
 
@@ -135,6 +129,11 @@ public sealed class ScheduleReminderService : TizenActionReminder.ServiceBase
             return false;
         }
     }
+
+    private static bool HasUnsupportedFilters(TizenEntityReminderQuery query) =>
+        query.StartDate is not null || query.EndDate is not null ||
+        query.CategoryId is not null || query.SourceAppId is not null ||
+        query.ExternalId is not null || query.Profiles is not null;
 
     private static TizenEntityReminder ToEntity(CalendarReminder reminder) => new()
     {

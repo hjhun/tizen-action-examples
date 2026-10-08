@@ -33,6 +33,8 @@ public sealed class ReminderCustomService : TizenActionReminderCustom.ServiceBas
         try
         {
             var resolved = _service.ResolveReminderIds(ids);
+            if (resolved.Items.Any(item => item.State is not ("To-do" or "Done")))
+                return Failure("unavailable: matched reminder state cannot be represented");
             result = resolved.Items.Select(ToEntity).ToList();
             unresolvedIds = resolved.UnresolvedIds.ToList();
             return Success();
@@ -85,7 +87,7 @@ public sealed class ReminderCustomService : TizenActionReminderCustom.ServiceBas
 
     private static TizenEntityReminder ToEntity(ReminderItem item) => new()
     {
-        Id = item.Id, Extra = string.Empty, Title = item.Title, DueDate = item.DueAt?.ToString("O") ?? string.Empty,
+        Id = item.Id, Extra = string.Empty, Title = item.Title, DueDate = item.DueAt?.ToString("O"),
         Note = item.Note, State = new TizenEntityReminderState { Id = string.Empty, Extra = string.Empty, State = item.State },
     };
 

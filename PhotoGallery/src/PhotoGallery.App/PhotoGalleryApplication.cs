@@ -338,5 +338,10 @@ internal sealed class PhotoGalleryApplication : NUIApplication
         }
         PhotoGalleryViewActionProviderHost.Publish(snapshots);
     }
-    private static void Main(string[] args)=>new PhotoGalleryApplication().Run(args);
+    private static void Main(string[] args)
+    {
+        if (!Tizen.NUI.EnvironmentVariable.SetEnvironmentVariable("DALI_DISABLE_ENTITY_DATA_TIDL", "1"))
+            throw new InvalidOperationException("Could not select the app-owned View provider.");
+        new PhotoGalleryApplication().Run(args);
+    }
 }
